@@ -54,7 +54,7 @@ export class CompaniasImportService {
       await this.jobsService.update(jobId, { stagingTable: session.table });
 
       // ---------- Fase 1: parseo + COPY ----------
-      const writer = session.beginCopy();
+      const writer = session.beginCopyIntoStaging();
       let header: ReturnType<typeof resolveHeader> | null = null;
       let leidas = 0;
       let copiadas = 0;

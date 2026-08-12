@@ -24,10 +24,6 @@ export function createStagingTableSql(table: string): string {
   return `CREATE UNLOGGED TABLE ${table} (\n${cols}\n)`;
 }
 
-export function dropStagingTableSql(table: string): string {
-  return `DROP TABLE IF EXISTS ${table}`;
-}
-
 export function copyIntoStagingSql(table: string): string {
   return `COPY ${table} (${COPY_COLUMNS.join(', ')}) FROM STDIN WITH (FORMAT text)`;
 }

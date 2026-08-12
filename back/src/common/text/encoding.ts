@@ -24,7 +24,7 @@ export interface TextoDecodificado {
  * resuelve ahí, que es lo correcto.
  */
 export function decodificarTexto(buffer: Buffer): TextoDecodificado {
-  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+  if (tieneBom(buffer)) {
     return { texto: buffer.subarray(3).toString('utf8'), encoding: 'utf-8-bom' };
   }
 
@@ -36,5 +36,40 @@ export function decodificarTexto(buffer: Buffer): TextoDecodificado {
     // difieren en el rango 0x80-0x9F, que no contiene ninguna letra acentuada;
     // `latin1` de Node cubre el caso sin dependencias.
     return { texto: buffer.toString('latin1'), encoding: 'latin1' };
+  }
+}
+
+export function tieneBom(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf
+  );
+}
+
+export interface EncodingDeMuestra {
+  encoding: EncodingDetectado;
+  /** Bytes a saltar al principio del archivo (sólo el BOM los usa). */
+  offsetBytes: number;
+}
+
+/**
+ * Misma heurística que `decodificarTexto`, pero sobre una **muestra** del
+ * principio del archivo, para poder decidir sin cargarlo entero en memoria.
+ *
+ * El detalle que la hace correcta es `{ stream: true }`: sin él, una secuencia
+ * UTF-8 multibyte partida justo en el corte de la muestra haría fallar la prueba
+ * estricta y el archivo se leería como Latin-1 — con TODOS los acentos
+ * corruptos y sin ningún error. En modo stream el decodificador deja pendiente
+ * la secuencia incompleta en lugar de rechazarla.
+ */
+export function detectarEncoding(muestra: Buffer): EncodingDeMuestra {
+  if (tieneBom(muestra)) {
+    return { encoding: 'utf-8-bom', offsetBytes: 3 };
+  }
+
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(muestra, { stream: true });
+    return { encoding: 'utf-8', offsetBytes: 0 };
+  } catch {
+    return { encoding: 'latin1', offsetBytes: 0 };
   }
 }

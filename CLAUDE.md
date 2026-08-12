@@ -26,15 +26,18 @@ FRIDAY/
 │       ├── database/migrations/       esquema versionado
 │       ├── common/text/
 │       │   ├── normalize.ts           deaccent, headerKey, nullify
-│       │   └── encoding.ts            detección UTF-8 / Latin-1
+│       │   ├── encoding.ts            detección UTF-8 / Latin-1
+│       │   └── lineas.ts              lectura de .txt grandes en streaming
 │       └── modules/
 │           ├── companias/             consulta de compañías
 │           ├── catalogo/              consulta del plan de cuentas
 │           ├── ciiu/                  consulta de actividades económicas
 │           └── imports/               base común de importación
+│               ├── pg/pg-copy.session.ts  COPY con contrapresión (compartido)
 │               ├── companias/         importador XLSX masivo <- ver README.md
 │               ├── catalogo/          importador TXT         <- ver README.md
-│               └── ciiu/              importador XLSX         <- ver README.md
+│               ├── ciiu/              importador XLSX        <- ver README.md
+│               └── balances/          importador TXT masivo  <- ver README.md
 │
 ├── db/init.sql                   SÓLO para un volumen nuevo (ver aviso abajo)
 └── docker-compose.yml            Postgres con tuning para carga masiva
@@ -107,6 +110,19 @@ con la que se enlaza contra `companias.ciiu_nivel_6`.
 plan de cuentas usa el prefijo más largo a secas; la del CIIU exige además que el
 padre tenga un nivel menor. Copiar una en la otra rompe los datos en silencio —
 está explicado en el README de cada importador.
+
+`balance` / `balance_cuenta` — los balances presentados, en formato **largo**:
+`balance` es la cabecera (PK `anio, formulario, expediente`) y `balance_cuenta`
+el detalle (PK `anio, formulario, expediente, codigo_cuenta`), **particionado por
+año**. Sólo se guardan los valores distintos de cero: la ausencia de fila
+significa cero. Cargados 2021–2025: 577.557 balances y 25.531.702 celdas.
+
+**`formulario` está en la clave primaria y no es opcional.** El sufijo del nombre
+del archivo (`balances_2023_1` / `_2`) no es el período sino el tipo de
+formulario, y cada uno trae su propio plan de cuentas. 33 códigos se repiten
+entre planes con significados distintos: el código `3` es PATRIMONIO NETO en el
+formulario 1 y ACTIVO CON PARTES RELACIONADAS LOCALES en el 3. Está explicado en
+`back/src/modules/imports/balances/README.md`.
 
 `import_job` — un registro por carga con contadores y progreso. Un índice único
 parcial garantiza **un solo import activo a la vez**.

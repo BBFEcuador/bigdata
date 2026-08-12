@@ -1,22 +1,16 @@
-import { Logger } from '@nestjs/common';
-import { Client } from 'pg';
-import { once } from 'node:events';
-// OJO: este proyecto NO tiene `esModuleInterop`. Un import por defecto
-// (`import copyFrom from 'pg-copy-streams'`) compila pero en runtime emite
-// `mod.default`, que es `undefined`. Debe ser un import de namespace.
-import * as copyStreams from 'pg-copy-streams';
 import {
   SECONDARY_INDEXES,
-  SESSION_TUNING,
   copyIntoStagingSql,
   countMissingSql,
   createStagingTableSql,
-  dropStagingTableSql,
   markMissingSql,
   mergeChunkSql,
   stagingTableName,
 } from './sql/import.sql';
 import { MERGE_CHUNKS } from '../imports.constants';
+import { CopyWriter, PgCopySession } from './pg-copy.session';
+
+export { CopyWriter };
 
 export interface MergeTotals {
   inserted: number;
@@ -24,118 +18,31 @@ export interface MergeTotals {
 }
 
 /**
- * Conexión dedicada para un job de import.
+ * Conexión dedicada para un job de import de COMPAÑÍAS.
  *
- * Es un `pg.Client` propio y no una conexión del pool de TypeORM por dos
- * motivos: el `COPY` mantiene la conexión ocupada en una sentencia durante
- * minutos, y los ajustes de sesión (`synchronous_commit = off`, etc.) no deben
- * filtrarse al resto de la aplicación.
+ * La mecánica genérica (conexión, lock consultivo, `COPY` con contrapresión)
+ * vive en `PgCopySession`; aquí sólo queda el SQL propio de `companias`.
  */
-export class ImportPgSession {
-  private readonly logger = new Logger(ImportPgSession.name);
-  private client: Client;
+export class ImportPgSession extends PgCopySession {
   readonly table: string;
 
-  constructor(private readonly jobId: string) {
+  constructor(jobId: string) {
+    super(jobId);
     this.table = stagingTableName(jobId);
   }
 
-  async connect(): Promise<void> {
-    this.client = new Client({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT, 10) || 5432,
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      database: process.env.DB_NAME || 'app_db',
-    });
-    await this.client.connect();
-    for (const stmt of SESSION_TUNING) {
-      await this.client.query(stmt);
-    }
-  }
-
-  /**
-   * Toma un lock consultivo a nivel de SESIÓN mientras dura el job.
-   *
-   * Postgres lo libera solo cuando la conexión se cierra —incluido el caso en
-   * que el proceso muere—, que es justo la semántica que hace falta: al
-   * arrancar, otra instancia puede distinguir "este job está vivo en otro
-   * proceso" de "este job quedó colgado" simplemente intentando tomar el lock.
-   */
-  async acquireJobLock(): Promise<boolean> {
-    const { rows } = await this.client.query(
-      'SELECT pg_try_advisory_lock(hashtext($1)::bigint) AS ok',
-      [`import_job:${this.jobId}`],
-    );
-    return rows[0]?.ok === true;
-  }
-
   async createStaging(): Promise<void> {
-    await this.client.query(dropStagingTableSql(this.table));
+    await this.dropTable(this.table);
     await this.client.query(createStagingTableSql(this.table));
   }
 
-  /**
-   * Abre el `COPY ... FROM STDIN` y devuelve un escritor que respeta la
-   * contrapresión.
-   *
-   * Este es EL punto donde este tipo de importadores se cae por falta de
-   * memoria. `write()` devuelve `false` cuando el buffer del socket está lleno;
-   * si se ignora, el parser de Excel sigue produciendo filas a más velocidad de
-   * la que Postgres las consume y la diferencia se acumula, sin límite y sin
-   * síntoma visible salvo que "el COPY tiene una fuga de memoria".
-   *
-   * Al esperar el evento `drain` desde dentro del `for await` que recorre las
-   * filas, se suspende toda la cadena de arriba —incluidas la descompresión del
-   * ZIP y el parseo del XML— porque el iterador no se vuelve a consultar hasta
-   * volver del await.
-   */
-  beginCopy(): CopyWriter {
-    const stream: any = this.client.query(
-      (copyStreams as any).from(copyIntoStagingSql(this.table)),
-    );
-
-    // El error debe capturarse ANTES del bucle: si la conexión se corta a mitad,
-    // un `await once(stream, 'drain')` se quedaría esperando para siempre.
-    //
-    // Se registra UNA sola promesa de rechazo en vez de un `once(stream,'error')`
-    // dentro de cada espera: con cientos de miles de `drain`, esa segunda forma
-    // añadiría un listener por iteración y acabaría en un aviso de fuga.
-    let failure: Error | null = null;
-    let rejectOnError: (err: Error) => void;
-    const errorPromise = new Promise<never>((_, reject) => {
-      rejectOnError = reject;
-    });
-    errorPromise.catch(() => undefined); // evita un unhandledRejection si nadie la espera
-    stream.on('error', (err: Error) => {
-      failure = err;
-      rejectOnError(err);
-    });
-
-    return {
-      async write(text: string): Promise<void> {
-        if (failure) throw failure;
-        if (!stream.write(text)) {
-          await Promise.race([once(stream, 'drain'), errorPromise]);
-        }
-      },
-      async finish(): Promise<number> {
-        if (failure) throw failure;
-        stream.end();
-        await Promise.race([once(stream, 'finish'), errorPromise]);
-        if (failure) throw failure;
-        return Number(stream.rowCount ?? 0);
-      },
-    };
+  /** Abre el `COPY ... FROM STDIN` contra el staging de compañías. */
+  beginCopyIntoStaging(): CopyWriter {
+    return this.beginCopy(copyIntoStagingSql(this.table));
   }
 
-  /**
-   * Sin esto el planner no tiene estadísticas del staging (reltuples = -1 en
-   * PG16) y elige un nested loop sobre la PK para el merge, convirtiendo un
-   * hash join de un minuto en horas. Cuesta un par de segundos.
-   */
   async analyzeStaging(): Promise<void> {
-    await this.client.query(`ANALYZE ${this.table}`);
+    await this.analyze(this.table);
   }
 
   /** Cuántos expedientes distintos y cuántos duplicados trae el archivo. */
@@ -216,23 +123,6 @@ export class ImportPgSession {
   }
 
   async dropStaging(): Promise<void> {
-    try {
-      await this.client.query(dropStagingTableSql(this.table));
-    } catch (err) {
-      this.logger.warn(`No se pudo borrar el staging ${this.table}: ${(err as Error).message}`);
-    }
+    await this.dropTable(this.table);
   }
-
-  async close(): Promise<void> {
-    try {
-      await this.client?.end();
-    } catch {
-      /* la conexión ya estaba caída */
-    }
-  }
-}
-
-export interface CopyWriter {
-  write(text: string): Promise<void>;
-  finish(): Promise<number>;
 }

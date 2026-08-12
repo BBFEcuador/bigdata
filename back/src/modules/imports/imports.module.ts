@@ -6,6 +6,7 @@ import { ImportRecoveryService } from './import-recovery.service';
 import { CompaniasImportService } from './companias/companias-import.service';
 import { CatalogoImportService } from './catalogo/catalogo-import.service';
 import { CiiuImportService } from './ciiu/ciiu-import.service';
+import { BalancesImportService } from './balances/balances-import.service';
 import { ImportJob } from './entities/import-job.entity';
 import { ImportRowReject } from './entities/import-row-reject.entity';
 
@@ -18,6 +19,7 @@ import { ImportRowReject } from './entities/import-row-reject.entity';
     CompaniasImportService,
     CatalogoImportService,
     CiiuImportService,
+    BalancesImportService,
   ],
 })
 export class ImportsModule {}

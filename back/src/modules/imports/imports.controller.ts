@@ -18,8 +18,15 @@ import { ImportJobsService } from './import-jobs.service';
 import { CompaniasImportService } from './companias/companias-import.service';
 import { CatalogoImportService } from './catalogo/catalogo-import.service';
 import { CiiuImportService } from './ciiu/ciiu-import.service';
-import { multerConfigCatalogo, multerConfigCiiu, multerConfigCompanias } from './multer.config';
+import { BalancesImportService } from './balances/balances-import.service';
+import {
+  multerConfigBalances,
+  multerConfigCatalogo,
+  multerConfigCiiu,
+  multerConfigCompanias,
+} from './multer.config';
 import { IMPORT_KIND, IMPORT_KIND_CATALOGO, IMPORT_KIND_CIIU } from './imports.constants';
+import { IMPORT_KIND_BALANCES } from './balances/balances.constants';
 import { ImportJob } from './entities/import-job.entity';
 
 @Controller('imports')
@@ -29,6 +36,7 @@ export class ImportsController {
     private readonly companias: CompaniasImportService,
     private readonly catalogo: CatalogoImportService,
     private readonly ciiu: CiiuImportService,
+    private readonly balances: BalancesImportService,
   ) {}
 
   /**
@@ -68,6 +76,22 @@ export class ImportsController {
   async subirCiiu(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
     const job = await this.crearJob(file, IMPORT_KIND_CIIU, modo);
     this.ciiu.enqueue(job.id);
+    return this.respuesta(job);
+  }
+
+  /**
+   * Balances de un ejercicio, en texto plano separado por tabuladores.
+   *
+   * Un archivo = un año. El formulario NO se pide ni se deduce del nombre: se
+   * detecta por el plan de cuentas del encabezado, porque el sufijo del nombre
+   * de archivo señala formularios distintos según el año.
+   */
+  @Post('balances')
+  @HttpCode(202)
+  @UseInterceptors(FileInterceptor('file', multerConfigBalances))
+  async subirBalances(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+    const job = await this.crearJob(file, IMPORT_KIND_BALANCES, modo);
+    this.balances.enqueue(job.id);
     return this.respuesta(job);
   }
 

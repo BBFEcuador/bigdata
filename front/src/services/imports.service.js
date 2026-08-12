@@ -40,9 +40,11 @@ export const obtenerRechazos = jobId =>
 export const KIND_COMPANIAS = 'supercias_companias'
 export const KIND_CATALOGO = 'catalogo_cuentas'
 export const KIND_CIIU = 'catalogo_ciiu'
+export const KIND_BALANCES = 'supercias_balances'
 
 export const ETIQUETA_KIND = {
   [KIND_COMPANIAS]: 'Compañías',
   [KIND_CATALOGO]: 'Catálogo de cuentas',
   [KIND_CIIU]: 'Catálogo CIIU',
+  [KIND_BALANCES]: 'Balances',
 }

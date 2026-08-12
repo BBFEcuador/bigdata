@@ -38,14 +38,25 @@ export class ImportRecoveryService implements OnApplicationBootstrap {
       // Barrido de tablas huérfanas de ejecuciones anteriores, EXCLUYENDO las de
       // jobs que siguen vivos: borrar el staging de un import en curso lo haría
       // fallar a mitad de la carga.
+      //
+      // La exclusión se hace por el ID DEL JOB embebido en el nombre, no por la
+      // columna `staging_table`. Es deliberado: un import puede crear VARIAS
+      // tablas de staging (el de balances crea `stg_balance_`,
+      // `stg_balance_cuenta_` y `stg_bal_cambiadas_`) y en esa columna sólo cabe
+      // una. Filtrando por `staging_table` se borrarían las demás tablas de un
+      // job vivo en mitad de su carga.
+      //
+      // Por el mismo motivo el prefijo es `stg_` a secas y no `stg_companias_`:
+      // cualquier importador nuevo queda cubierto sin tocar esto. Se usa
+      // `left(...)` en vez de LIKE porque en LIKE el guión bajo es un comodín.
       const huerfanas: { tablename: string }[] = await this.dataSource.query(
         `SELECT tablename FROM pg_tables
-         WHERE schemaname='public'
-           AND tablename LIKE 'stg_companias_%'
-           AND tablename NOT IN (
-             SELECT staging_table FROM import_job
-             WHERE staging_table IS NOT NULL
-               AND status IN ('pending','parsing','merging','indexing')
+         WHERE schemaname = 'public'
+           AND left(tablename, 4) = 'stg_'
+           AND NOT EXISTS (
+             SELECT 1 FROM import_job j
+             WHERE j.status IN ('pending','parsing','merging','indexing')
+               AND tablename LIKE '%' || replace(j.id::text, '-', '') || '%'
            )`,
       );
       for (const { tablename } of huerfanas) {

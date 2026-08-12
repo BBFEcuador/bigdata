@@ -65,3 +65,6 @@ export const multerConfigCatalogo = crearMulterConfig(['.txt', '.csv'], 32 * 102
 
 /** Catálogo CIIU: Excel de unos cientos de KB. */
 export const multerConfigCiiu = crearMulterConfig(['.xlsx'], 32 * 1024 * 1024);
+
+/** Balances: texto plano de ~250 MB por ejercicio; margen hasta 800 MB. */
+export const multerConfigBalances = crearMulterConfig(['.txt'], 800 * 1024 * 1024);
