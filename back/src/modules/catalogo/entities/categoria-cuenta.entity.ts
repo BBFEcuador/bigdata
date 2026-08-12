@@ -3,6 +3,15 @@ import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 /** Una cuenta del plan contable de la Superintendencia. */
 @Entity('categoria_cuenta')
 export class CategoriaCuenta {
+  /**
+   * A qué formulario pertenece este plan de cuentas. Forma parte de la clave
+   * porque los códigos se repiten entre planes con significados distintos: el
+   * `3` es PATRIMONIO NETO en el formulario 1 y ACTIVO CON PARTES RELACIONADAS
+   * LOCALES en el 3.
+   */
+  @PrimaryColumn({ type: 'smallint' })
+  formulario: number;
+
   @PrimaryColumn({ type: 'text' })
   codigo: string;
 

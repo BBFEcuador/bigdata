@@ -5,7 +5,8 @@ import {
   parsearCabecera,
   parsearFila,
 } from '../src/modules/imports/balances/balances-file.parser';
-import { FORMULARIO_POR_NUM_CUENTAS } from '../src/modules/imports/balances/balances.constants';
+import { FORMULARIO_POR_NUM_CUENTAS } from '../src/modules/imports/formularios';
+import { codigosEcuacion } from '../src/common/finanzas/conceptos';
 
 /**
  * Ensayo en seco del importador de balances: recorre el archivo entero haciendo
@@ -28,6 +29,9 @@ async function main(): Promise<void> {
   const { encoding, lineas } = await abrirLectorDeLineas(ruta);
 
   let cabecera: CabeceraBalances | null = null;
+  // Los códigos de la ecuación contable dependen del formulario: el activo es
+  // la cuenta `1` en el IFRS y la `499` en el fiscal.
+  let ecuacion: { activo: string; pasivo: string; patrimonio: string } | null = null;
   let numeroLinea = 0;
   let filas = 0;
   let rechazadas = 0;
@@ -52,6 +56,7 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       cabecera = r.cabecera;
+      ecuacion = codigosEcuacion(FORMULARIO_POR_NUM_CUENTAS[cabecera.cuentas.length]);
       continue;
     }
     if (linea === '') continue;
@@ -73,10 +78,10 @@ async function main(): Promise<void> {
     anios.set(fila.anio, (anios.get(fila.anio) ?? 0) + 1);
     if (/[ÁÉÍÓÚÑáéíóúñ]/.test(fila.descripcion_rama ?? '')) conAcento++;
 
-    // ACTIVO = PASIVO + PATRIMONIO, sólo tiene sentido en el formulario IFRS.
-    const activo = cuentas.find((c) => c.codigo === '1');
-    const pasivo = cuentas.find((c) => c.codigo === '2');
-    const patrimonio = cuentas.find((c) => c.codigo === '3');
+    if (ecuacion === null) continue;
+    const activo = cuentas.find((c) => c.codigo === ecuacion!.activo);
+    const pasivo = cuentas.find((c) => c.codigo === ecuacion!.pasivo);
+    const patrimonio = cuentas.find((c) => c.codigo === ecuacion!.patrimonio);
     if (activo || pasivo || patrimonio) {
       conEcuacion++;
       const a = Number(activo?.valor ?? 0);

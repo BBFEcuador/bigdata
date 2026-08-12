@@ -168,7 +168,8 @@ WITH src AS (
   FROM ${staging} s
   JOIN ${cambiadas} c
     ON c.anio = s.anio AND c.formulario = s.formulario AND c.expediente = s.expediente
-  JOIN categoria_cuenta cc ON cc.codigo = s.codigo_cuenta
+  JOIN categoria_cuenta cc
+    ON cc.codigo = s.codigo_cuenta AND cc.formulario = s.formulario
   WHERE ((hashtext(s.expediente) % $1) + $1) % $1 = $2
 )
 INSERT INTO balance_cuenta (anio, formulario, expediente, codigo_cuenta, valor)
@@ -181,7 +182,8 @@ export function codigosDesconocidosSql(staging: string): string {
   return `
 SELECT DISTINCT s.codigo_cuenta
 FROM ${staging} s
-LEFT JOIN categoria_cuenta cc ON cc.codigo = s.codigo_cuenta
+LEFT JOIN categoria_cuenta cc
+  ON cc.codigo = s.codigo_cuenta AND cc.formulario = s.formulario
 WHERE cc.codigo IS NULL
 LIMIT 20
 `;
@@ -234,18 +236,21 @@ WHERE c.expediente IS NULL
  * Comprueba la ecuación contable por empresa: ACTIVO = PASIVO + PATRIMONIO.
  *
  * Es un control de calidad, no un filtro: la fila se carga igual y el recuento
- * queda en los avisos del job. Los códigos 1, 2 y 3 son las tres raíces del
- * catálogo IFRS y sólo tienen ese significado en el formulario 1.
+ * queda en los avisos del job.
+ *
+ * Los códigos son distintos en cada formulario y NO son intercambiables: en el
+ * IFRS el activo es la cuenta `1` y en el fiscal es la `499`. Se pasan como
+ * parámetros para que sea imposible aplicar los de un plan al otro.
  */
 export function contarDescuadresSql(staging: string): string {
   return `
 WITH totales AS (
   SELECT expediente,
-         sum(valor) FILTER (WHERE codigo_cuenta = '1') AS activo,
-         sum(valor) FILTER (WHERE codigo_cuenta = '2') AS pasivo,
-         sum(valor) FILTER (WHERE codigo_cuenta = '3') AS patrimonio
+         sum(valor) FILTER (WHERE codigo_cuenta = $2) AS activo,
+         sum(valor) FILTER (WHERE codigo_cuenta = $3) AS pasivo,
+         sum(valor) FILTER (WHERE codigo_cuenta = $4) AS patrimonio
   FROM ${staging}
-  WHERE formulario = 1 AND codigo_cuenta IN ('1','2','3')
+  WHERE formulario = $1 AND codigo_cuenta IN ($2, $3, $4)
   GROUP BY expediente
 )
 SELECT count(*)::bigint AS descuadres

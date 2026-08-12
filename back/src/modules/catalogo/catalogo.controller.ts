@@ -13,12 +13,12 @@ export class CatalogoController {
 
   /** Debe declararse antes de `:codigo`, o "resumen" se tomaría por un código. */
   @Get('resumen')
-  resumen() {
-    return this.service.resumen();
+  resumen(@Query() query: QueryCatalogoDto) {
+    return this.service.resumen(query.formulario);
   }
 
   @Get(':codigo')
-  detalle(@Param('codigo') codigo: string) {
-    return this.service.detalle(codigo);
+  detalle(@Param('codigo') codigo: string, @Query() query: QueryCatalogoDto) {
+    return this.service.detalle(codigo, query.formulario);
   }
 }

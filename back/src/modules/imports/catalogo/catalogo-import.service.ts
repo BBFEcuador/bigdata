@@ -7,6 +7,7 @@ import { UMBRAL_AUSENCIA } from '../imports.constants';
 import { decodificarTexto } from '../../../common/text/encoding';
 import { parsearCatalogo } from './catalogo-file.parser';
 import { CuentaJerarquica, construirJerarquia } from './jerarquia';
+import { detectarFormulario } from '../formularios';
 
 /**
  * Importador del catálogo de cuentas.
@@ -101,6 +102,13 @@ export class CatalogoImportService {
 
     const jerarquia = construirJerarquia(cuentas);
 
+    // El plan se identifica por su número de cuentas, igual que en el
+    // importador de balances y por el mismo motivo: el nombre del archivo no es
+    // fiable (`catalogo_2021_3` y `catalogo_2023_2` son el mismo plan). Cargar
+    // un plan bajo el formulario equivocado sobrescribiría los nombres de las
+    // cuentas cuyo código se repite entre planes.
+    const formulario = detectarFormulario(jerarquia.length);
+
     await this.jobsService.reportProgress(
       jobId,
       {
@@ -110,13 +118,18 @@ export class CatalogoImportService {
         rowsRejected: rechazos.length,
         duplicados,
         progressPct: 50,
-        avisos: encoding === 'latin1' ? 'Archivo leído como Latin-1 (no era UTF-8).' : null,
+        avisos:
+          `Plan de cuentas del formulario ${formulario} (${jerarquia.length} cuentas).` +
+          (encoding === 'latin1' ? ' Archivo leído como Latin-1 (no era UTF-8).' : ''),
       },
       true,
     );
 
     // Salvaguarda contra un archivo truncado subido como snapshot completo.
-    const { missing, vivas } = await this.contarAusentes(jerarquia.map((c) => c.codigo));
+    const { missing, vivas } = await this.contarAusentes(
+      formulario,
+      jerarquia.map((c) => c.codigo),
+    );
     if (modo === 'snapshot_completo' && vivas > 0 && missing / vivas > UMBRAL_AUSENCIA) {
       throw new Error(
         `El archivo dejaría fuera ${missing} de ${vivas} cuentas vigentes ` +
@@ -125,11 +138,11 @@ export class CatalogoImportService {
       );
     }
 
-    const { insertadas, actualizadas } = await this.upsert(jobId, jerarquia);
+    const { insertadas, actualizadas } = await this.upsert(jobId, formulario, jerarquia);
 
     const marcadas =
       modo === 'snapshot_completo'
-        ? await this.marcarAusentes(jobId, jerarquia.map((c) => c.codigo))
+        ? await this.marcarAusentes(jobId, formulario, jerarquia.map((c) => c.codigo))
         : 0;
 
     await this.jobsService.update(jobId, {
@@ -162,24 +175,25 @@ export class CatalogoImportService {
    */
   private async upsert(
     jobId: string,
+    formulario: number,
     cuentas: CuentaJerarquica[],
   ): Promise<{ insertadas: number; actualizadas: number }> {
     const filas = await this.dataSource.query(
       `
       WITH entrada AS (
         SELECT * FROM unnest(
-          $2::text[], $3::text[], $4::text[], $5::smallint[], $6::boolean[], $7::smallint[], $8::uuid[]
+          $3::text[], $4::text[], $5::text[], $6::smallint[], $7::boolean[], $8::smallint[], $9::uuid[]
         ) AS t(codigo, nombre, codigo_padre, nivel, es_hoja, longitud, row_hash)
       ),
       merged AS (
         INSERT INTO categoria_cuenta (
-          codigo, nombre, codigo_padre, nivel, es_hoja, longitud,
+          formulario, codigo, nombre, codigo_padre, nivel, es_hoja, longitud,
           row_hash, primer_job_id, ultimo_job_id, ausente_desde_job
         )
-        SELECT e.codigo, e.nombre, e.codigo_padre, e.nivel, e.es_hoja, e.longitud,
+        SELECT $2, e.codigo, e.nombre, e.codigo_padre, e.nivel, e.es_hoja, e.longitud,
                e.row_hash, $1, $1, NULL
         FROM entrada e
-        ON CONFLICT (codigo) DO UPDATE SET
+        ON CONFLICT (formulario, codigo) DO UPDATE SET
           nombre = EXCLUDED.nombre,
           codigo_padre = EXCLUDED.codigo_padre,
           nivel = EXCLUDED.nivel,
@@ -200,6 +214,7 @@ export class CatalogoImportService {
       `,
       [
         jobId,
+        formulario,
         cuentas.map((c) => c.codigo),
         cuentas.map((c) => c.nombre),
         cuentas.map((c) => c.codigoPadre),
@@ -216,25 +231,38 @@ export class CatalogoImportService {
     };
   }
 
-  private async contarAusentes(codigos: string[]): Promise<{ missing: number; vivas: number }> {
+  /**
+   * Sólo cuenta dentro del MISMO formulario. Sin ese filtro, cargar el plan del
+   * formulario 3 vería las 622 cuentas del IFRS como "ausentes" y dispararía la
+   * salvaguarda del 20 % — o peor, las marcaría todas como desaparecidas.
+   */
+  private async contarAusentes(
+    formulario: number,
+    codigos: string[],
+  ): Promise<{ missing: number; vivas: number }> {
     const [r] = await this.dataSource.query(
       `SELECT
-         count(*) FILTER (WHERE codigo <> ALL($1::text[]))::bigint AS missing,
+         count(*) FILTER (WHERE codigo <> ALL($2::text[]))::bigint AS missing,
          count(*)::bigint AS vivas
        FROM categoria_cuenta
-       WHERE ausente_desde_job IS NULL`,
-      [codigos],
+       WHERE ausente_desde_job IS NULL AND formulario = $1`,
+      [formulario, codigos],
     );
     return { missing: Number(r?.missing ?? 0), vivas: Number(r?.vivas ?? 0) };
   }
 
-  private async marcarAusentes(jobId: string, codigos: string[]): Promise<number> {
+  private async marcarAusentes(
+    jobId: string,
+    formulario: number,
+    codigos: string[],
+  ): Promise<number> {
     const res = await this.dataSource.query(
       `UPDATE categoria_cuenta
        SET ausente_desde_job = $1, updated_at = now()
        WHERE ausente_desde_job IS NULL
+         AND formulario = $3
          AND codigo <> ALL($2::text[])`,
-      [jobId, codigos],
+      [jobId, codigos, formulario],
     );
     // node-postgres devuelve [filas, rowCount] en los UPDATE vía query().
     return Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0;

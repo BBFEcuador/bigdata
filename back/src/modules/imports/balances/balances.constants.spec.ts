@@ -3,10 +3,11 @@ import {
   CABECERAS_IDENTIDAD,
   COPY_COLUMNS_BALANCE,
   COPY_COLUMNS_CUENTA,
-  FORMULARIO_POR_NUM_CUENTAS,
   STAGING_TYPES_BALANCE,
   STAGING_TYPES_CUENTA,
 } from './balances.constants';
+import { FORMULARIO_POR_NUM_CUENTAS } from '../formularios';
+import { CONCEPTOS, codigosEcuacion } from '../../../common/finanzas/conceptos';
 
 /**
  * Estos tests no prueban lógica: fijan la correspondencia entre las cuatro
@@ -64,5 +65,48 @@ describe('constantes del import de balances', () => {
     const formularios = Object.values(FORMULARIO_POR_NUM_CUENTAS);
     expect(new Set(formularios).size).toBe(formularios.length);
     expect(FORMULARIO_POR_NUM_CUENTAS[622]).toBe(1);
+    expect(FORMULARIO_POR_NUM_CUENTAS[925]).toBe(3);
+  });
+});
+
+/**
+ * El mapeo entre formularios es el punto donde un error no daría ningún fallo:
+ * mostraría el activo de una empresa en la fila del pasivo, o dejaría 2021
+ * fuera de la serie sin avisar.
+ */
+describe('conceptos financieros', () => {
+  it('cada concepto tiene código en los dos formularios cargados', () => {
+    for (const c of CONCEPTOS) {
+      expect(typeof c.codigos[1]).toBe('string');
+      expect(typeof c.codigos[3]).toBe('string');
+    }
+  });
+
+  it('no repite un código dentro del mismo formulario', () => {
+    for (const formulario of [1, 3]) {
+      const codigos = CONCEPTOS.map((c) => c.codigos[formulario]);
+      expect(new Set(codigos).size).toBe(codigos.length);
+    }
+  });
+
+  it('no repite una clave de concepto', () => {
+    const claves = CONCEPTOS.map((c) => c.clave);
+    expect(new Set(claves).size).toBe(claves.length);
+  });
+
+  it('los códigos de la ecuación contable son los del catálogo real', () => {
+    // IFRS: raíces 1, 2 y 3. Fiscal: TOTAL ACTIVO / PASIVOS / PATRIMONIO NETO.
+    expect(codigosEcuacion(1)).toEqual({ activo: '1', pasivo: '2', patrimonio: '3' });
+    expect(codigosEcuacion(3)).toEqual({ activo: '499', pasivo: '599', patrimonio: '698' });
+  });
+
+  it('no mezcla los códigos de un formulario con los del otro', () => {
+    // El `3` es patrimonio en el IFRS y una cuenta de activo en el fiscal:
+    // usarlo como patrimonio del formulario 3 sería el error clásico.
+    expect(codigosEcuacion(3)!.patrimonio).not.toBe(codigosEcuacion(1)!.patrimonio);
+  });
+
+  it('devuelve null para un formulario sin mapeo', () => {
+    expect(codigosEcuacion(2)).toBeNull();
   });
 });

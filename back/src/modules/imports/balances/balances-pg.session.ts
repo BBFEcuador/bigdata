@@ -1,5 +1,6 @@
 import { Client } from 'pg';
 import { MERGE_CHUNKS } from '../imports.constants';
+import { codigosEcuacion } from '../../../common/finanzas/conceptos';
 import { CopyWriter, PgCopySession } from '../pg/pg-copy.session';
 import {
   borrarDetalleChunkSql,
@@ -104,8 +105,16 @@ export class BalancesPgSession extends PgCopySession {
     return Number(rows[0]?.huerfanas ?? 0);
   }
 
-  async contarDescuadres(): Promise<number> {
-    const { rows } = await this.client.query(contarDescuadresSql(this.tablaCuenta));
+  /** Devuelve -1 si el formulario no tiene definida la ecuación contable. */
+  async contarDescuadres(formulario: number): Promise<number> {
+    const codigos = codigosEcuacion(formulario);
+    if (codigos === null) return -1;
+    const { rows } = await this.client.query(contarDescuadresSql(this.tablaCuenta), [
+      formulario,
+      codigos.activo,
+      codigos.pasivo,
+      codigos.patrimonio,
+    ]);
     return Number(rows[0]?.descuadres ?? 0);
   }
 

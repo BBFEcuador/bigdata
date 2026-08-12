@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import { CategoriaCuenta } from './entities/categoria-cuenta.entity';
 import { QueryCatalogoDto } from './dto/query-catalogo.dto';
 
+/** El IFRS de 622 cuentas: el plan con el que trabaja la aplicación por defecto. */
+export const FORMULARIO_POR_DEFECTO = 1;
+
 @Injectable()
 export class CatalogoService {
   constructor(
@@ -20,6 +23,10 @@ export class CatalogoService {
    */
   async listar(q: QueryCatalogoDto) {
     const qb = this.repo.createQueryBuilder('c');
+
+    // Siempre acotado a un formulario: mezclar planes daría dos filas con el
+    // mismo código y nombres contradictorios en la misma tabla.
+    qb.andWhere('c.formulario = :formulario', { formulario: q.formulario ?? FORMULARIO_POR_DEFECTO });
 
     if (q.incluirAusentes !== 'true') {
       qb.andWhere('c.ausenteDesdeJob IS NULL');
@@ -44,22 +51,25 @@ export class CatalogoService {
   }
 
   /** Detalle de una cuenta, con su padre y sus hijos directos. */
-  async detalle(codigo: string) {
-    const cuenta = await this.repo.findOne({ where: { codigo } });
+  async detalle(codigo: string, formulario = FORMULARIO_POR_DEFECTO) {
+    const cuenta = await this.repo.findOne({ where: { codigo, formulario } });
     if (!cuenta) throw new NotFoundException(`No existe la cuenta ${codigo}`);
 
     const [padre, hijos] = await Promise.all([
       cuenta.codigoPadre
-        ? this.repo.findOne({ where: { codigo: cuenta.codigoPadre } })
+        ? this.repo.findOne({ where: { codigo: cuenta.codigoPadre, formulario } })
         : Promise.resolve(null),
-      this.repo.find({ where: { codigoPadre: codigo }, order: { codigo: 'ASC' } }),
+      this.repo.find({
+        where: { codigoPadre: codigo, formulario },
+        order: { codigo: 'ASC' },
+      }),
     ]);
 
     return { cuenta, padre, hijos };
   }
 
   /** Contadores para la cabecera de la pantalla. */
-  async resumen() {
+  async resumen(formulario = FORMULARIO_POR_DEFECTO) {
     const [r] = await this.repo.query(
       `SELECT
          count(*)::int                                        AS total,
@@ -67,7 +77,9 @@ export class CatalogoService {
          count(*) FILTER (WHERE codigo_padre IS NULL)::int      AS raices,
          count(*) FILTER (WHERE es_hoja)::int                   AS hojas,
          coalesce(max(nivel), 0)::int                           AS nivel_max
-       FROM categoria_cuenta`,
+       FROM categoria_cuenta
+       WHERE formulario = $1`,
+      [formulario],
     );
     return {
       total: r?.total ?? 0,

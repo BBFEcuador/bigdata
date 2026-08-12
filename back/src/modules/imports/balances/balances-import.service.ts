@@ -10,10 +10,8 @@ import {
   PROGRESS_ROW_INTERVAL,
   UMBRAL_AUSENCIA,
 } from '../imports.constants';
-import {
-  FORMULARIOS_SOPORTADOS,
-  FORMULARIO_POR_NUM_CUENTAS,
-} from './balances.constants';
+import { FORMULARIOS_SOPORTADOS } from './balances.constants';
+import { NOMBRE_FORMULARIO, detectarFormulario } from '../formularios';
 import { CabeceraBalances, parsearCabecera, parsearFila } from './balances-file.parser';
 import { BalancesPgSession } from './balances-pg.session';
 
@@ -96,7 +94,7 @@ export class BalancesImportService {
             );
           }
           cabecera = resultado.cabecera;
-          formulario = this.detectarFormulario(cabecera.cuentas.length);
+          formulario = this.resolverFormulario(cabecera.cuentas.length);
           if (resultado.problemas.length) {
             avisos += resultado.problemas.length;
             this.logger.warn(
@@ -241,7 +239,7 @@ export class BalancesImportService {
 
       const desconocidos = await session.codigosDesconocidos();
       const huerfanas = await session.contarHuerfanas();
-      const descuadres = await session.contarDescuadres();
+      const descuadres = await session.contarDescuadres(formulario);
 
       const { missing, vivas } = await session.contarAusentes(anio, formulario);
       if (job.modo === 'snapshot_completo' && vivas > 0 && missing / vivas > UMBRAL_AUSENCIA) {
@@ -314,19 +312,12 @@ export class BalancesImportService {
    * códigos que significan cosas diferentes, así que se rechaza de entrada en
    * vez de entrar mal.
    */
-  private detectarFormulario(numCuentas: number): number {
-    const formulario = FORMULARIO_POR_NUM_CUENTAS[numCuentas];
-    if (formulario === undefined) {
-      throw new Error(
-        `Plan de cuentas desconocido: el archivo trae ${numCuentas} cuentas y los ` +
-          `formularios conocidos tienen ${Object.keys(FORMULARIO_POR_NUM_CUENTAS).join(', ')}.`,
-      );
-    }
+  private resolverFormulario(numCuentas: number): number {
+    const formulario = detectarFormulario(numCuentas);
     if (!FORMULARIOS_SOPORTADOS.includes(formulario)) {
       throw new Error(
         `El archivo es del formulario ${formulario} (${numCuentas} cuentas), que todavía ` +
-          `no está soportado. Sus códigos NO significan lo mismo que los del formulario 1: ` +
-          `cargarlo mezclaría cuentas distintas bajo el mismo código.`,
+          `no está soportado.`,
       );
     }
     return formulario;
@@ -346,7 +337,10 @@ export class BalancesImportService {
     huerfanas: number;
     descuadres: number;
   }): string {
-    const partes = [`Ejercicio ${d.anio}, formulario ${d.formulario}, ${d.celdas} celdas con valor.`];
+    const partes = [
+      `Ejercicio ${d.anio}, ${NOMBRE_FORMULARIO[d.formulario] ?? `formulario ${d.formulario}`}, ` +
+        `${d.celdas} celdas con valor.`,
+    ];
     if (d.encoding === 'latin1') partes.push('Archivo leído como Latin-1 (no era UTF-8).');
     if (d.desconocidos.length) {
       partes.push(
@@ -359,7 +353,7 @@ export class BalancesImportService {
           `Se cargaron igual: son empresas que presentaron balance pero no figuran en el directorio.`,
       );
     }
-    if (d.descuadres) {
+    if (d.descuadres > 0) {
       partes.push(
         `${d.descuadres} balances no cumplen ACTIVO = PASIVO + PATRIMONIO. ` +
           `Se cargaron, pero quedan marcados para excluirlos de los indicadores.`,

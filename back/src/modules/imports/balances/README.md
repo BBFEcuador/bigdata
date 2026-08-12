@@ -139,15 +139,39 @@ contables. Sobre los 251 MB de 2025 tarda unos 3 segundos.
 ## Resultado de la carga real
 
 ```
-anio | balances |  celdas
------+----------+---------
-2021 |    17365 |   473783
-2022 |   123624 |  5391239
-2023 |   137523 |  6211390
-2024 |   147371 |  6591418
-2025 |   151674 |  6863872
+anio | formulario | balances |  celdas
+-----+------------+----------+---------
+2021 |          1 |    17365 |   473783
+2021 |          3 |    92127 |  5337732
+2022 |          1 |   123624 |  5391239
+2023 |          1 |   137523 |  6211390
+2024 |          1 |   147371 |  6591418
+2025 |          1 |   151674 |  6863872
 ```
 
-**2021 está incompleto a propósito**: ese año 92.127 compañías declararon en el
-formulario 3 y sólo 17.365 en el IFRS. Recuperarlo exige cargar también ese
-formulario con su catálogo.
+**669.684 balances y 30.869.434 celdas.** En 2021 hay 109.492 empresas repartidas
+entre los dos formularios: ese año la mayoría declaró en el fiscal.
+
+## Cómo se comparan dos formularios distintos
+
+Los planes no tienen nada que ver entre sí, pero las magnitudes grandes existen
+en ambos con otro código. El diccionario está en
+[common/finanzas/conceptos.ts](../../../common/finanzas/conceptos.ts):
+
+```
+concepto     formulario 1 (IFRS)   formulario 3 (fiscal)
+activo       1                     499
+pasivo       2                     599
+patrimonio   3                     698
+ingresos     401                   1005
+```
+
+El mapeo no está adivinado: se validó comprobando que `activo = pasivo +
+patrimonio` cuadra en el **97,1 %** de los balances del formulario 3. Y sobre un
+caso real —ACEITES TROPICALES, expediente 1— la serie 2021-2025 cruza los dos
+planes sin salto: 1.402.783,28 en 2021 (fiscal) frente a 1.360.051,92 en 2022
+(IFRS).
+
+**El formulario 3 trae datos bastante más sucios que el IFRS**: 654 descuadres
+contables de 87.268 balances (0,75 %), frente a 0 de 149.175 en el IFRS de 2025.
+Es un formulario fiscal autodeclarado, con menos validación en origen.

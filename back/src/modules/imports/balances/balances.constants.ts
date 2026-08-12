@@ -113,22 +113,13 @@ export const ANIO_MAX = 2100;
 export const MIN_COLUMNAS_CUENTA = 50;
 
 /**
- * Formulario según el número de cuentas del encabezado.
+ * Formularios que se pueden cargar.
  *
- * **El sufijo del nombre del archivo NO sirve para esto.** Comprobado sobre los
- * archivos reales de 2021-2025: el plan de 925 cuentas es el `_3` en 2021 y
- * 2022, y el `_2` en 2023. Lo único estable es el propio plan de cuentas, que
- * sí es idéntico byte a byte entre años.
+ * La detección del formulario a partir del número de cuentas vive en
+ * `../formularios.ts`, compartida con el importador de catálogo: los dos tienen
+ * que llegar al mismo número o el detalle no encontraría sus cuentas.
  *
- * Y la distinción es obligatoria, no cosmética: 33 códigos se repiten entre
- * planes con significados distintos — el código `3` es PATRIMONIO NETO en el
- * formulario 1 y ACTIVO CON PARTES RELACIONADAS LOCALES en el 3.
+ * El 2 (868 cuentas) queda fuera porque de él sólo hay archivos de muestra con
+ * una fila. Cargar un formulario exige tener antes su plan de cuentas.
  */
-export const FORMULARIO_POR_NUM_CUENTAS: Record<number, number> = {
-  622: 1,
-  868: 2,
-  925: 3,
-};
-
-/** Único formulario que se carga hoy; los demás se rechazan con un mensaje claro. */
-export const FORMULARIOS_SOPORTADOS = [1];
+export const FORMULARIOS_SOPORTADOS = [1, 3];
