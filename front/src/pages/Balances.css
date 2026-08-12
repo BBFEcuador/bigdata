@@ -10,8 +10,8 @@
 }
 
 .balances .caja {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.75rem;
   text-align: center;
@@ -21,13 +21,13 @@
   display: block;
   font-size: 1.3rem;
   font-weight: 600;
-  color: #282c34;
+  color: var(--primary-dark);
 }
 
 .balances .caja-etiqueta {
   display: block;
   font-size: 0.72rem;
-  color: #777;
+  color: var(--text-soft);
   margin-top: 0.2rem;
 }
 
@@ -45,30 +45,30 @@
   align-items: center;
   min-width: 82px;
   padding: 0.45rem 0.8rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-soft);
 }
 
 .balances .chip strong {
   font-size: 0.95rem;
-  color: #282c34;
+  color: var(--primary-dark);
 }
 
 .balances .chip:hover {
-  border-color: #b9c2cc;
+  border-color: var(--border-light);
 }
 
 .balances .chip.activo {
-  border-color: #3d6fb4;
-  background: #eef4fc;
+  border-color: var(--secondary);
+  background: var(--primary-light);
 }
 
 .balances .chip.activo strong {
-  color: #3d6fb4;
+  color: var(--secondary);
 }
 
 .balances .filtros {
@@ -77,8 +77,8 @@
   align-items: center;
   gap: 0.7rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   margin-bottom: 1rem;
 }
@@ -86,7 +86,7 @@
 .balances .filtros input,
 .balances .filtros button {
   padding: 0.45rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.85rem;
 }
@@ -96,15 +96,15 @@
 }
 
 .balances .filtros button {
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
 }
 
 .balances .tabla {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   overflow: hidden;
   font-size: 0.85rem;
@@ -113,21 +113,21 @@
 .balances .tabla th,
 .balances .tabla td {
   padding: 0.5rem 0.7rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--container-bg);
   text-align: left;
   white-space: nowrap;
 }
 
 .balances .tabla th {
-  background: #fafafa;
+  background: var(--surface-alt);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .balances .tabla tbody tr:hover {
-  background: #fbfcfe;
+  background: var(--surface-alt);
 }
 
 .balances .derecha {
@@ -143,26 +143,26 @@
 
 .balances .ver {
   padding: 0.25rem 0.6rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f7f7f7;
+  background: var(--surface-alt);
   cursor: pointer;
   font-size: 0.78rem;
 }
 
 .balances .ver:hover {
-  background: #eef4fc;
-  border-color: #3d6fb4;
+  background: var(--primary-light);
+  border-color: var(--secondary);
 }
 
 .balances .vacio,
 .balances .cargando {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .balances .error {
-  color: #b3261e;
+  color: var(--error);
   font-size: 0.85rem;
 }
 
@@ -170,8 +170,8 @@
 .balances .panel {
   margin-top: 1.25rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -190,9 +190,9 @@
 
 .balances .panel-cabecera button {
   padding: 0.35rem 0.8rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -200,7 +200,7 @@
 .balances .sub {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .balances .panel h4 {
@@ -208,7 +208,7 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .balances .comparativa td:first-child {
@@ -217,9 +217,9 @@
 }
 
 .balances .sube {
-  color: #1a7f4b;
+  color: var(--success);
 }
 
 .balances .baja {
-  color: #b3261e;
+  color: var(--error);
 }

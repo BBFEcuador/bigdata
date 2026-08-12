@@ -13,25 +13,25 @@
   align-items: baseline;
   gap: 0.35rem;
   padding: 0.12rem 0.45rem;
-  border: 1px solid #d7e3f5;
+  border: 1px solid var(--secondary-light);
   border-radius: 999px;
-  background: #f2f7ff;
-  color: #2a4d80;
+  background: var(--primary-light);
+  color: var(--primary);
   font-size: 0.7rem;
   line-height: 1.5;
   width: fit-content;
 }
 
 .marcas-catastro .marca.turismo {
-  border-color: #cfe8d8;
-  background: #f1faf4;
-  color: #1f6b43;
+  border-color: var(--success-border);
+  background: var(--success-light);
+  color: var(--success);
 }
 
 /* Ratificado = inspección superada. Es la diferencia entre un registro real y
    uno pendiente, así que se distingue. */
 .marcas-catastro .marca.turismo.ratificado {
-  border-color: #7fc59b;
+  border-color: var(--success-border);
   font-weight: 600;
 }
 
@@ -39,5 +39,5 @@
   font-style: normal;
   font-family: Consolas, Menlo, monospace;
   font-size: 0.66rem;
-  color: #6b7c92;
+  color: var(--text-soft);
 }

@@ -8,8 +8,8 @@
 .sidebar {
   width: 240px;
   flex-shrink: 0;
-  background: #21242b;
-  color: #c7cbd1;
+  background: var(--primary-dark);
+  color: var(--text-on-dark-soft);
   display: flex;
   flex-direction: column;
   padding: 1.25rem 0;
@@ -31,8 +31,8 @@
   height: 30px;
   flex-shrink: 0;
   border-radius: 7px;
-  background: #61dafb;
-  color: #21242b;
+  background: var(--primary-200);
+  color: var(--primary-dark);
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -41,7 +41,7 @@
 .marca-texto {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--surface);
   letter-spacing: 0.06em;
 }
 
@@ -53,7 +53,7 @@
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #6d7683;
+  color: var(--text-muted);
   padding: 0 1.25rem 0.45rem;
 }
 
@@ -62,21 +62,21 @@
   align-items: center;
   gap: 0.7rem;
   padding: 0.55rem 1.25rem;
-  color: #c7cbd1;
+  color: var(--text-on-dark-soft);
   text-decoration: none;
   font-size: 0.88rem;
   border-left: 3px solid transparent;
 }
 
 .enlace:hover {
-  background: #2a2e37;
-  color: #fff;
+  background: var(--primary);
+  color: var(--surface);
 }
 
 .enlace.activo {
-  background: #2a2e37;
-  color: #fff;
-  border-left-color: #61dafb;
+  background: var(--primary);
+  color: var(--surface);
+  border-left-color: var(--primary-200);
 }
 
 .enlace-icono {

@@ -3,7 +3,7 @@
 }
 
 .ciiu .ayuda {
-  color: #666;
+  color: var(--text-soft);
   font-size: 0.85rem;
   margin-bottom: 1.25rem;
 }
@@ -16,8 +16,8 @@
 }
 
 .ciiu .caja {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.75rem;
   text-align: center;
@@ -27,13 +27,13 @@
   display: block;
   font-size: 1.3rem;
   font-weight: 600;
-  color: #282c34;
+  color: var(--primary-dark);
 }
 
 .ciiu .caja-etiqueta {
   display: block;
   font-size: 0.72rem;
-  color: #777;
+  color: var(--text-soft);
   margin-top: 0.2rem;
 }
 
@@ -43,8 +43,8 @@
   align-items: center;
   gap: 0.7rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -52,7 +52,7 @@
 .ciiu .filtros select,
 .ciiu .filtros button {
   padding: 0.45rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.85rem;
 }
@@ -66,24 +66,24 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.83rem;
-  color: #444;
+  color: var(--text);
 }
 
 .ciiu .filtros button {
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
 }
 
 .ciiu .resumen {
   margin: 0.9rem 0;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-soft);
 }
 
 .ciiu .tabla-scroll {
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -98,7 +98,7 @@
 .ciiu td {
   text-align: left;
   padding: 0.45rem 0.7rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
   vertical-align: top;
 }
 
@@ -108,11 +108,11 @@
 .ciiu th:nth-child(5), .ciiu td:nth-child(5) { width: 220px; }
 
 .ciiu thead th {
-  background: #fafafa;
+  background: var(--surface-alt);
   position: sticky;
   top: 0;
   font-weight: 600;
-  color: #444;
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -138,11 +138,11 @@
 }
 
 .ciiu .tenue {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .ciiu td a {
-  color: #2f6feb;
+  color: var(--secondary);
   text-decoration: none;
   font-weight: 600;
 }
@@ -152,15 +152,15 @@
 }
 
 .ciiu tr.ausente td {
-  color: #9aa0a6;
-  background: #fafafa;
+  color: var(--text-muted);
+  background: var(--surface-alt);
 }
 
 .ciiu .etiqueta {
   margin-left: 0.5rem;
   font-size: 0.68rem;
-  background: #eceff1;
-  color: #607d8b;
+  background: var(--container-bg);
+  color: var(--text-soft);
   border-radius: 3px;
   padding: 0.1rem 0.35rem;
 }
@@ -168,9 +168,9 @@
 .ciiu .vacio-total {
   padding: 2.5rem;
   text-align: center;
-  color: #888;
-  background: #fff;
-  border: 1px dashed #ddd;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px dashed var(--border-color);
   border-radius: 6px;
 }
 
@@ -178,8 +178,8 @@
   margin: 1rem 0;
   padding: 0.85rem 1rem;
   border-radius: 6px;
-  background: #fdecea;
-  color: #a4130a;
-  border: 1px solid #f5c2bd;
+  background: var(--error-light);
+  color: var(--error);
+  border: 1px solid var(--error-border);
   font-size: 0.9rem;
 }

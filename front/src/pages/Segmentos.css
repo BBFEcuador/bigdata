@@ -5,11 +5,11 @@
 .segmentos .nota {
   margin: 0 0 1rem;
   padding: 0.7rem 0.9rem;
-  background: #eef4fc;
-  border: 1px solid #cfe0f5;
+  background: var(--primary-light);
+  border: 1px solid var(--secondary-light);
   border-radius: 6px;
   font-size: 0.8rem;
-  color: #38546f;
+  color: var(--secondary-dark);
   max-width: 70ch;
 }
 
@@ -22,10 +22,10 @@
 
 .segmentos .acciones button {
   padding: 0.5rem 0.9rem;
-  border: 1px solid #3d6fb4;
+  border: 1px solid var(--secondary);
   border-radius: 4px;
-  background: #3d6fb4;
-  color: #fff;
+  background: var(--secondary);
+  color: var(--surface);
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -36,7 +36,7 @@
 }
 
 .segmentos .error {
-  color: #b3261e;
+  color: var(--error);
   font-size: 0.85rem;
 }
 
@@ -47,8 +47,8 @@
 }
 
 .segmentos .tarjeta {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 1rem 1.1rem;
   display: flex;
@@ -59,7 +59,7 @@
 /* Un segmento bloqueado se muestra igual: el hueco de datos tiene que verse
    dentro de la herramienta, no vivir en la cabeza de alguien. */
 .segmentos .tarjeta.inactiva {
-  background: #fafafa;
+  background: var(--surface-alt);
   border-style: dashed;
 }
 
@@ -80,38 +80,38 @@
   font-variant-numeric: tabular-nums;
   font-size: 1.3rem;
   font-weight: 600;
-  color: #3d6fb4;
+  color: var(--secondary);
 }
 
 .segmentos .desc {
   margin: 0;
   font-size: 0.84rem;
-  color: #666;
+  color: var(--text-soft);
   max-width: 80ch;
 }
 
 .segmentos .bloqueo {
   margin: 0;
   padding: 0.5rem 0.7rem;
-  background: #fdf3ee;
-  border: 1px solid #f0d3c4;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
   border-radius: 4px;
   font-size: 0.8rem;
-  color: #9a4a25;
+  color: var(--accent);
 }
 
 .segmentos .corrida {
   margin: 0;
   font-size: 0.79rem;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .segmentos .corrida .alta {
-  color: #1a7f4b;
+  color: var(--success);
 }
 
 .segmentos .corrida .baja {
-  color: #b3261e;
+  color: var(--error);
 }
 
 .segmentos .productos {
@@ -122,10 +122,10 @@
 
 .segmentos .producto {
   padding: 0.15rem 0.5rem;
-  border: 1px solid #d7e3f5;
+  border: 1px solid var(--secondary-light);
   border-radius: 999px;
-  background: #f2f7ff;
-  color: #2a4d80;
+  background: var(--primary-light);
+  color: var(--primary);
   font-size: 0.73rem;
 }
 
@@ -138,24 +138,24 @@
 .segmentos .tarjeta footer button,
 .segmentos .descarga {
   padding: 0.3rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f7f7f7;
+  background: var(--surface-alt);
   font-size: 0.78rem;
   cursor: pointer;
-  color: #333;
+  color: var(--text);
   text-decoration: none;
 }
 
 .segmentos .tarjeta footer button:hover,
 .segmentos .descarga:hover {
-  background: #eef4fc;
-  border-color: #3d6fb4;
+  background: var(--primary-light);
+  border-color: var(--secondary);
 }
 
 /* ------------------------------------------------------------- miembros */
 .segmentos .miembros-vacio {
-  color: #888;
+  color: var(--text-muted);
 }
 
 .segmentos .filtros-miembros {
@@ -165,7 +165,7 @@
   gap: 1rem;
   padding: 0.6rem 0;
   font-size: 0.82rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
 }
 
 .segmentos .filtros-miembros label {
@@ -177,13 +177,13 @@
 
 .segmentos .filtros-miembros .cuenta {
   margin-left: auto;
-  color: #888;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .segmentos .tabla-scroll {
   overflow-x: auto;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
@@ -198,15 +198,15 @@
 .segmentos td {
   text-align: left;
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--container-bg);
 }
 
 .segmentos thead th {
-  background: #fafafa;
+  background: var(--surface-alt);
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .segmentos td.der,
@@ -227,25 +227,25 @@
 
 .segmentos .acciones-fila button {
   padding: 0.15rem 0.45rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 3px;
-  background: #fff;
+  background: var(--surface);
   font-size: 0.7rem;
   cursor: pointer;
 }
 
 .segmentos .acciones-fila button:hover {
-  border-color: #3d6fb4;
-  background: #eef4fc;
+  border-color: var(--secondary);
+  background: var(--primary-light);
 }
 
 .segmentos .vacio {
   text-align: center;
-  color: #999;
+  color: var(--text-muted);
   padding: 1.2rem;
 }
 
 .segmentos .cargando {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }

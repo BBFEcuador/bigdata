@@ -7,8 +7,8 @@
   flex-wrap: wrap;
   gap: 0.6rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -16,7 +16,7 @@
 .filtros select,
 .filtros button {
   padding: 0.45rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.85rem;
 }
@@ -26,21 +26,21 @@
 }
 
 .filtros button {
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
 }
 
 .resumen {
   margin: 0.9rem 0;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-soft);
 }
 
 /* La tabla es ancha: debe desplazarse dentro de su caja y nunca desplazar la página. */
 .tabla-scroll {
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -55,15 +55,15 @@
 .companias td {
   text-align: left;
   padding: 0.55rem 0.7rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .companias thead th {
-  background: #fafafa;
+  background: var(--surface-alt);
   position: sticky;
   top: 0;
   font-weight: 600;
-  color: #444;
+  color: var(--text);
 }
 
 .companias td.der,
@@ -86,12 +86,12 @@
 }
 
 .companias .tenue {
-  color: #999;
+  color: var(--text-muted);
 }
 
 .companias .vacio {
   text-align: center;
-  color: #999;
+  color: var(--text-muted);
   padding: 2rem;
 }
 
@@ -106,9 +106,9 @@
 
 .paginacion button {
   padding: 0.45rem 0.9rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -121,9 +121,9 @@
   margin: 1rem 0;
   padding: 0.85rem 1rem;
   border-radius: 6px;
-  background: #fdecea;
-  color: #a4130a;
-  border: 1px solid #f5c2bd;
+  background: var(--error-light);
+  color: var(--error);
+  border: 1px solid var(--error-border);
   font-size: 0.9rem;
 }
 
@@ -138,33 +138,33 @@
 }
 
 .companias .estado.activo {
-  background: #e6f4ec;
-  color: #1a7f4b;
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .companias .estado.suspendido {
-  background: #fdeeee;
-  color: #b3261e;
+  background: var(--error-light);
+  color: var(--error);
 }
 
 .companias .estado.pasivo {
-  background: #f1f1f1;
-  color: #666;
+  background: var(--container-bg);
+  color: var(--text-soft);
 }
 
 .companias .ver {
   padding: 0.22rem 0.55rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f7f7f7;
+  background: var(--surface-alt);
   cursor: pointer;
   font-size: 0.76rem;
   white-space: nowrap;
 }
 
 .companias .ver:hover {
-  background: #eef4fc;
-  border-color: #3d6fb4;
+  background: var(--primary-light);
+  border-color: var(--secondary);
 }
 
 /* La columna de catastros apila una marca por catastro; la tabla es `nowrap`,

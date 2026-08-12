@@ -6,7 +6,7 @@
 .selector-ciiu input {
   width: 100%;
   padding: 0.45rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.85rem;
 }
@@ -19,8 +19,8 @@
   gap: 0.5rem;
   max-width: 420px;
   padding: 0.35rem 0.4rem 0.35rem 0.6rem;
-  border: 1px solid #b6d4fe;
-  background: #eef5ff;
+  border: 1px solid var(--primary-200);
+  background: var(--primary-light);
   border-radius: 4px;
   font-size: 0.82rem;
 }
@@ -28,12 +28,12 @@
 .selector-ciiu.elegido .codigo {
   font-family: Consolas, Menlo, monospace;
   font-weight: 600;
-  color: #0d47a1;
+  color: var(--primary);
   flex-shrink: 0;
 }
 
 .selector-ciiu.elegido .nombre {
-  color: #34495e;
+  color: var(--secondary-dark);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -44,7 +44,7 @@
   flex-shrink: 0;
   border: none;
   background: transparent;
-  color: #5a6a7a;
+  color: var(--text-soft);
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
@@ -52,7 +52,7 @@
 }
 
 .selector-ciiu.elegido button:hover {
-  color: #a4130a;
+  color: var(--error);
 }
 
 /* --- Desplegable de sugerencias --- */
@@ -69,10 +69,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  background: #fff;
-  border: 1px solid #d0d7de;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 5px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
 .sugerencias li {
@@ -81,22 +81,22 @@
   padding: 0.45rem 0.7rem;
   font-size: 0.82rem;
   cursor: pointer;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--container-bg);
 }
 
 .sugerencias li.activa {
-  background: #eef5ff;
+  background: var(--primary-light);
 }
 
 .sugerencias li .codigo {
   font-family: Consolas, Menlo, monospace;
-  color: #0d47a1;
+  color: var(--primary);
   flex-shrink: 0;
 }
 
 /* Los nombres de último nivel pueden ser muy largos: se recortan a dos líneas. */
 .sugerencias li .nombre {
-  color: #333;
+  color: var(--text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -104,7 +104,7 @@
 }
 
 .sugerencias li.info {
-  color: #888;
+  color: var(--text-muted);
   cursor: default;
   font-style: italic;
 }

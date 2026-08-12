@@ -11,7 +11,7 @@
 .analisis .buscador input {
   width: 100%;
   padding: 0.6rem 0.8rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   font-size: 0.9rem;
 }
@@ -24,10 +24,10 @@
   margin: 0.25rem 0 0;
   padding: 0;
   list-style: none;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -45,7 +45,7 @@
 }
 
 .analisis .sugerencias button:hover {
-  background: #eef4fc;
+  background: var(--primary-light);
 }
 
 .analisis .sugerencias strong {
@@ -55,7 +55,7 @@
 
 .analisis .sugerencias span {
   font-size: 0.75rem;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .analisis .ficha {
@@ -71,10 +71,10 @@
 .analisis .boton-informe {
   flex: none;
   padding: 0.45rem 0.9rem;
-  border: 1px solid #3d6fb4;
+  border: 1px solid var(--secondary);
   border-radius: 5px;
-  background: #fff;
-  color: #3d6fb4;
+  background: var(--surface);
+  color: var(--secondary);
   font-size: 0.82rem;
   font-weight: 600;
   text-decoration: none;
@@ -82,8 +82,8 @@
 }
 
 .analisis .boton-informe:hover {
-  background: #3d6fb4;
-  color: #fff;
+  background: var(--secondary);
+  color: var(--surface);
 }
 
 .analisis .ficha h3 {
@@ -94,13 +94,13 @@
 .analisis .sub {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .analisis .pestanas {
   display: flex;
   gap: 0.4rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 1rem;
 }
 
@@ -111,12 +111,12 @@
   background: none;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-soft);
 }
 
 .analisis .pestanas button.activa {
-  color: #3d6fb4;
-  border-bottom-color: #3d6fb4;
+  color: var(--secondary);
+  border-bottom-color: var(--secondary);
   font-weight: 600;
 }
 
@@ -125,7 +125,7 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .analisis .controles {
@@ -134,8 +134,8 @@
   align-items: center;
   gap: 1rem;
   padding: 0.7rem 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   margin-bottom: 0.75rem;
   font-size: 0.82rem;
@@ -145,12 +145,12 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: #444;
+  color: var(--text);
 }
 
 .analisis .conteo {
   margin-left: auto;
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.78rem;
 }
 
@@ -158,8 +158,8 @@
    la página nunca debe desplazarse en horizontal. */
 .analisis .scroll {
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -172,7 +172,7 @@
 .analisis .tabla th,
 .analisis .tabla td {
   padding: 0.4rem 0.65rem;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--container-bg);
   text-align: left;
   white-space: nowrap;
 }
@@ -180,19 +180,19 @@
 .analisis .tabla thead th {
   position: sticky;
   top: 0;
-  background: #fafafa;
+  background: var(--surface-alt);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .analisis .tabla tbody tr:hover {
-  background: #fbfcfe;
+  background: var(--surface-alt);
 }
 
 .analisis .tabla tr.destacada {
-  background: #f6f8fb;
+  background: var(--surface-alt);
   font-weight: 600;
 }
 
@@ -208,23 +208,23 @@
 
 /* Las columnas de variación van atenuadas para que las cifras manden. */
 .analisis .var {
-  background: #fcfcfd;
+  background: var(--surface-alt);
   font-size: 0.74rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .analisis td.sube {
-  color: #1a7f4b;
+  color: var(--success);
 }
 
 .analisis td.baja {
-  color: #b3261e;
+  color: var(--error);
 }
 
 .analisis .codigo {
   display: inline-block;
   min-width: 5.5rem;
-  color: #999;
+  color: var(--text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.72rem;
 }
@@ -232,27 +232,27 @@
 .analisis .aviso {
   margin: 0.75rem 0 0;
   padding: 0.6rem 0.8rem;
-  background: #fff8e6;
-  border: 1px solid #f0e0b0;
+  background: var(--warning-light);
+  border: 1px solid var(--warning-border);
   border-radius: 6px;
   font-size: 0.78rem;
-  color: #6b5a20;
+  color: var(--warning);
 }
 
 .analisis .error {
-  color: #b3261e;
+  color: var(--error);
   font-size: 0.85rem;
 }
 
 .analisis .cargando,
 .analisis .pista {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-top: 1.5rem;
 }
 
 .analisis sup {
-  color: #b07d2b;
+  color: var(--warning);
   font-weight: 600;
 }
 
@@ -274,14 +274,14 @@
   align-items: baseline;
   gap: 0.45rem;
   padding: 0.35rem 0.6rem;
-  background: #f5f7fa;
-  border: 1px solid #e3e8ef;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 0.75rem;
 }
 
 .analisis .sectorial .par .nombre {
-  color: #555;
+  color: var(--text);
   max-width: 22rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -289,7 +289,7 @@
 }
 
 .analisis .sectorial .par .nivel {
-  color: #6b7280;
+  color: var(--text-soft);
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -297,7 +297,7 @@
 
 /* La sección es el repliegue: se marca para que no se confunda con la división. */
 .analisis .sectorial .par .nivel.seccion {
-  color: #b07d2b;
+  color: var(--warning);
 }
 
 .analisis .comparacion td.celda {
@@ -320,22 +320,22 @@
 .analisis .comparacion .pct {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #555;
+  color: var(--text);
 }
 
 .analisis .comparacion .pct.bien {
-  color: #1e7c46;
+  color: var(--success);
 }
 
 .analisis .comparacion .pct.mal {
-  color: #b3261e;
+  color: var(--error);
 }
 
 .analisis .comparacion .barra {
   position: relative;
   height: 5px;
   margin: 0.25rem 0 0.2rem;
-  background: #eceff3;
+  background: var(--container-bg);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -343,15 +343,15 @@
 .analisis .comparacion .barra .relleno {
   display: block;
   height: 100%;
-  background: #9aa7b5;
+  background: var(--text-muted);
 }
 
 .analisis .comparacion .barra .relleno.bien {
-  background: #2f9e5f;
+  background: var(--success);
 }
 
 .analisis .comparacion .barra .relleno.mal {
-  background: #d3564b;
+  background: var(--error);
 }
 
 /* La mediana del sector, para leer la barra sin buscar el 50 a ojo. */
@@ -361,10 +361,10 @@
   bottom: 0;
   left: 50%;
   width: 1px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .analisis .comparacion .sector {
   font-size: 0.68rem;
-  color: #888;
+  color: var(--text-muted);
 }

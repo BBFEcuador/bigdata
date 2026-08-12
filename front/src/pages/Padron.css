@@ -10,8 +10,8 @@
 }
 
 .padron .caja {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.75rem;
   text-align: center;
@@ -21,13 +21,13 @@
   display: block;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #282c34;
+  color: var(--primary-dark);
 }
 
 .padron .caja-etiqueta {
   display: block;
   font-size: 0.72rem;
-  color: #777;
+  color: var(--text-soft);
   margin-top: 0.2rem;
 }
 
@@ -36,17 +36,17 @@
 .padron .nota {
   margin: 0 0 1rem;
   padding: 0.7rem 0.9rem;
-  background: #eef4fc;
-  border: 1px solid #cfe0f5;
+  background: var(--primary-light);
+  border: 1px solid var(--secondary-light);
   border-radius: 6px;
   font-size: 0.78rem;
-  color: #38546f;
+  color: var(--secondary-dark);
 }
 
 .padron .pestanas {
   display: flex;
   gap: 0.4rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 1rem;
 }
 
@@ -57,12 +57,12 @@
   background: none;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-soft);
 }
 
 .padron .pestanas button.activa {
-  color: #3d6fb4;
-  border-bottom-color: #3d6fb4;
+  color: var(--secondary);
+  border-bottom-color: var(--secondary);
   font-weight: 600;
 }
 
@@ -72,8 +72,8 @@
   align-items: center;
   gap: 0.7rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   margin-bottom: 1rem;
 }
@@ -82,7 +82,7 @@
 .padron .filtros select,
 .padron .filtros button {
   padding: 0.45rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 0.85rem;
 }
@@ -92,15 +92,15 @@
 }
 
 .padron .filtros button {
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
 }
 
 .padron .tabla {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 0.84rem;
 }
@@ -108,21 +108,21 @@
 .padron .tabla th,
 .padron .tabla td {
   padding: 0.45rem 0.7rem;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--container-bg);
   text-align: left;
   white-space: nowrap;
 }
 
 .padron .tabla th {
-  background: #fafafa;
+  background: var(--surface-alt);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .padron .tabla tbody tr:hover {
-  background: #fbfcfe;
+  background: var(--surface-alt);
 }
 
 .padron .derecha {
@@ -146,51 +146,51 @@
 }
 
 .padron .estado.activo {
-  background: #e6f4ec;
-  color: #1a7f4b;
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .padron .estado.suspendido {
-  background: #fdeeee;
-  color: #b3261e;
+  background: var(--error-light);
+  color: var(--error);
 }
 
 .padron .estado.pasivo {
-  background: #f1f1f1;
-  color: #666;
+  background: var(--container-bg);
+  color: var(--text-soft);
 }
 
 .padron .ver {
   padding: 0.22rem 0.55rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f7f7f7;
+  background: var(--surface-alt);
   cursor: pointer;
   font-size: 0.76rem;
 }
 
 .padron .ver:hover {
-  background: #eef4fc;
-  border-color: #3d6fb4;
+  background: var(--primary-light);
+  border-color: var(--secondary);
 }
 
 /* Fila desplegada bajo el contribuyente: el detalle se lee donde se pulsó, no
    al final de la página. El fondo la separa visualmente de la tabla. */
 .padron .fila-detalle > td {
   padding: 0;
-  background: #f7f9fc;
+  background: var(--surface-alt);
   white-space: normal;
 }
 
 .padron tr.abierta > td {
-  background: #eef3fb;
+  background: var(--primary-light);
 }
 
 .padron .panel {
   margin: 0;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   overflow-x: auto;
 }
@@ -209,9 +209,9 @@
 
 .padron .panel-cabecera button {
   padding: 0.3rem 0.7rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -235,20 +235,20 @@
 
 .padron .vacio,
 .padron .cargando {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .padron .error {
-  color: #b3261e;
+  color: var(--error);
   font-size: 0.85rem;
 }
 
 /* La tabla lleva las 16 columnas del padrón: scrollea ella, nunca la página. */
 .padron .tabla-scroll {
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -280,9 +280,9 @@
 
 .padron .paginacion button {
   padding: 0.45rem 0.9rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -303,7 +303,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #777;
+  color: var(--text-soft);
 }
 
 /* En el panel hay sitio de sobra: las marcas van en fila y no apiladas. */

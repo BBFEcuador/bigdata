@@ -4,7 +4,7 @@
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(20, 24, 30, 0.45);
+  background: var(--overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -14,9 +14,9 @@
 
 .ficha {
   width: min(1100px, 100%);
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-lg);
 }
 
 .ficha-cabecera {
@@ -28,8 +28,8 @@
   align-items: flex-start;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
   border-radius: 8px 8px 0 0;
 }
 
@@ -41,14 +41,14 @@
 .ficha-cabecera .sub {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
-  color: #777;
+  color: var(--text-soft);
 }
 
 .ficha-cabecera button {
   padding: 0.35rem 0.8rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background: #f1f1f1;
+  background: var(--container-bg);
   cursor: pointer;
   font-size: 0.8rem;
 }
@@ -61,7 +61,7 @@
 }
 
 .ficha .bloque {
-  border: 1px solid #eee;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.8rem 0.9rem;
 }
@@ -79,7 +79,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #444;
+  color: var(--text);
 }
 
 /* La procedencia de cada bloque es información, no adorno: la situación legal
@@ -89,7 +89,7 @@
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
-  color: #9aa4ae;
+  color: var(--text-muted);
 }
 
 .ficha .datos {
@@ -104,7 +104,7 @@
   align-items: baseline;
   gap: 0.75rem;
   padding: 0.22rem 0;
-  border-bottom: 1px dashed #f2f2f2;
+  border-bottom: 1px dashed var(--container-bg);
   font-size: 0.82rem;
 }
 
@@ -115,7 +115,7 @@
 }
 
 .ficha .clave {
-  color: #777;
+  color: var(--text-soft);
   white-space: nowrap;
 }
 
@@ -123,15 +123,15 @@
   margin-left: 0.35rem;
   padding: 0.05rem 0.3rem;
   border-radius: 3px;
-  background: #eef4fc;
-  color: #3d6fb4;
+  background: var(--primary-light);
+  color: var(--secondary);
   font-size: 0.62rem;
   font-style: normal;
 }
 
 .ficha .valor {
   text-align: right;
-  color: #222;
+  color: var(--text);
 }
 
 .ficha .dato.ancho .valor {
@@ -150,7 +150,7 @@
 .ficha .vacio-bloque {
   margin: 0;
   font-size: 0.78rem;
-  color: #888;
+  color: var(--text-muted);
   line-height: 1.45;
 }
 
@@ -163,22 +163,22 @@
 
 .ficha .anio {
   padding: 0.2rem 0.55rem;
-  border: 1px solid #cfe0f5;
+  border: 1px solid var(--secondary-light);
   border-radius: 4px;
-  background: #eef4fc;
-  color: #3d6fb4;
+  background: var(--primary-light);
+  color: var(--secondary);
   font-size: 0.78rem;
   font-weight: 600;
 }
 
 .ficha .anio sup {
-  color: #b07d2b;
+  color: var(--warning);
 }
 
 .ficha .enlace-analisis {
   margin-left: auto;
   font-size: 0.78rem;
-  color: #3d6fb4;
+  color: var(--secondary);
 }
 
 .ficha .tabla-locales {
@@ -194,16 +194,16 @@
 .ficha .tabla-locales th,
 .ficha .tabla-locales td {
   padding: 0.35rem 0.55rem;
-  border-bottom: 1px solid #f2f2f2;
+  border-bottom: 1px solid var(--container-bg);
   text-align: left;
   white-space: nowrap;
 }
 
 .ficha .tabla-locales th {
-  background: #fafafa;
+  background: var(--surface-alt);
   font-size: 0.68rem;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-muted);
 }
 
 /* Igual que en el listado: el nombre de la actividad se lee entero. */
@@ -220,7 +220,7 @@
 }
 
 .ficha .error {
-  color: #b3261e;
+  color: var(--error);
 }
 
 /* --- Catastros públicos ---
@@ -238,24 +238,24 @@
   align-items: baseline;
   gap: 0.4rem;
   padding: 0.3rem 0.6rem;
-  border: 1px solid #d7e3f5;
+  border: 1px solid var(--secondary-light);
   border-radius: 999px;
-  background: #f2f7ff;
+  background: var(--primary-light);
   font-size: 0.78rem;
-  color: #2a4d80;
+  color: var(--primary);
 }
 
 .ficha .catastros .marca.turismo {
-  border-color: #cfe8d8;
-  background: #f1faf4;
-  color: #1f6b43;
+  border-color: var(--success-border);
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .ficha .catastros .marca em {
   font-style: normal;
   font-family: Consolas, Menlo, monospace;
   font-size: 0.72rem;
-  color: #6b7c92;
+  color: var(--text-soft);
 }
 
 /* --- Qué ofrecerle ---
@@ -277,10 +277,10 @@
   align-items: baseline;
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid #e3e8ef;
-  border-left: 3px solid #3d6fb4;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--secondary);
   border-radius: 4px;
-  background: #fbfcfe;
+  background: var(--surface-alt);
 }
 
 .ficha .oferta-producto {
@@ -292,12 +292,12 @@
   font-size: 0.72rem;
   padding: 0.08rem 0.4rem;
   border-radius: 999px;
-  background: #eef4fc;
-  color: #2a4d80;
+  background: var(--primary-light);
+  color: var(--primary);
 }
 
 .ficha .oferta-motivo {
   margin-left: auto;
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-muted);
 }
