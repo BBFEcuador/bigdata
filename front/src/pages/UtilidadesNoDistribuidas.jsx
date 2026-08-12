@@ -6,8 +6,6 @@ const dinero = n =>
     ? '—'
     : Number(n).toLocaleString('es-EC', { maximumFractionDigits: 0 })
 
-const pct = n => (n === null || n === undefined ? '—' : `${(Number(n) * 100).toFixed(0)} %`)
-
 const millones = n =>
   n === null || n === undefined ? '—' : `${(Number(n) / 1e6).toLocaleString('es-EC', { maximumFractionDigits: 0 })} M`
 
@@ -65,19 +63,53 @@ export default function UtilidadesNoDistribuidas() {
         declaración sustitutiva ni hay convenio de pago.
       </p>
 
+      <p className="nota">
+        <strong>Cómo se calcula aquí.</strong> Base = resultados acumulados (cuenta 306) + utilidad
+        del ejercicio con su signo, que ya viene neta del 15 % de participación y del impuesto a la
+        renta. <strong>Es un techo</strong>: no descuenta dividendos ni capitalizaciones entre el 1
+        de enero y el 31 de julio, ni ajustes por método de participación — nada de eso está en el
+        balance de la Superintendencia. Tampoco la reserva legal, que es una decisión de junta
+        todavía no tomada.{' '}
+        <strong>
+          El anticipo aplica el 1,25 % del tramo 3 a todos por igual porque la escala progresiva aún
+          no está cargada: es un orden de magnitud, no la cifra de nadie.
+        </strong>
+      </p>
+
       {res && (
         <div className="panorama">
           <div className="tarjeta destacada">
             <div className="anio">Ejercicio {res.anio}</div>
             <div className="cifra">{dinero(res.total)}</div>
-            <div className="pie">compañías con resultados acumulados positivos</div>
+            <div className="pie">compañías con base positiva</div>
             <div className="reparto">
-              <span>{millones(res.suma)} USD en la cuenta 306</span>
+              <span>{millones(res.sumaBase)} USD de base</span>
               {res.sumaNiif > 0 && (
-                <span title="Adopción por primera vez de NIIF: no es utilidad repartible">
-                  de los cuales {millones(res.sumaNiif)} por NIIF
+                <span title="Adopción por primera vez de NIIF: sumando del total, no repartible">
+                  {millones(res.sumaNiif)} por NIIF
                 </span>
               )}
+              {res.financieras > 0 && (
+                <span title="Financieras y aseguradoras: excluidas por utilidades restringidas">
+                  {dinero(res.financieras)} financieras
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="tarjeta provisional">
+            <div className="anio">Anticipo provisional</div>
+            <div className="cifra">{millones(res.sumaAnticipo)}</div>
+            <div className="pie">
+              al {((res.tarifa?.tramos?.[0]?.tarifa ?? 0.0125) * 100).toFixed(2)} % — tarifa del
+              tramo {res.tarifa?.tramos?.[0]?.tramo ?? 3}
+            </div>
+            <div className="reparto">
+              <span>
+                {res.tarifa?.completa
+                  ? 'escala progresiva cargada'
+                  : 'escala sin cargar: una sola tarifa para todos'}
+              </span>
             </div>
           </div>
           <div className="tarjeta">
@@ -129,14 +161,22 @@ export default function UtilidadesNoDistribuidas() {
             <th>Compañía</th>
             <th>Rama</th>
             <th className="num" title="Cuenta 306: ganancias acumuladas, menos pérdidas, más adopción NIIF">
-              Resultados acumulados
+              Acumulados (306)
             </th>
-            <th className="num" title="Adopción por primera vez de NIIF: está dentro del total y NO es repartible">
-              de los cuales NIIF
+            {/* No dice "de los cuales": la adopción NIIF puede superar al total
+                cuando la compañía arrastra pérdidas acumuladas que lo netean, y
+                ahí la frase sería falsa. Es un sumando, no una parte. */}
+            <th className="num" title="Adopción por primera vez de NIIF: es un sumando del total y NO es utilidad repartible. Puede superar al total si hay pérdidas acumuladas.">
+              Por adopción NIIF
+            </th>
+            <th className="num">Utilidad del ejercicio</th>
+            <th className="num" title="Acumulados más utilidad del ejercicio, con su signo. Antes de dividendos y capitalizaciones de enero a julio.">
+              Base
+            </th>
+            <th className="num" title="Base por la tarifa del tramo 3 (1,25 %). Provisional: la escala progresiva no está cargada.">
+              Anticipo provisional
             </th>
             <th className="num">Variación vs. año anterior</th>
-            <th className="num">Peso sobre patrimonio</th>
-            <th className="num">Utilidad del ejercicio</th>
           </tr>
         </thead>
         <tbody>
@@ -147,18 +187,21 @@ export default function UtilidadesNoDistribuidas() {
                 <span className="ruc">{d.ruc}</span>
               </td>
               <td className="rama">{d.grupo_ciiu}</td>
-              <td className="num fuerte">{dinero(d.netas)}</td>
+              <td className="num">{dinero(d.netas)}</td>
               <td className="num niif">{d.niif ? dinero(d.niif) : '—'}</td>
+              <td className={`num ${Number(d.utilidad_ejercicio) < 0 ? 'baja' : ''}`}>
+                {dinero(d.utilidad_ejercicio)}
+              </td>
+              <td className="num fuerte">{dinero(d.base_anticipo)}</td>
+              <td className="num anticipo">{dinero(d.anticipo_provisional)}</td>
               <td className={`num ${Number(d.variacion) < 0 ? 'baja' : 'sube'}`}>
                 {d.variacion === null ? '—' : `${Number(d.variacion) > 0 ? '+' : ''}${dinero(d.variacion)}`}
               </td>
-              <td className="num">{pct(d.peso_patrimonio)}</td>
-              <td className="num">{dinero(d.utilidad_ejercicio)}</td>
             </tr>
           ))}
           {!cargando && res?.datos.length === 0 && (
             <tr>
-              <td colSpan={7} className="vacio">
+              <td colSpan={8} className="vacio">
                 Ninguna compañía con esos filtros.
               </td>
             </tr>

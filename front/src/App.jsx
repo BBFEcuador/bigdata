@@ -7,6 +7,7 @@ import Balances from './pages/Balances'
 import Analisis from './pages/Analisis'
 import Tributario from './pages/Tributario'
 import Informe from './pages/Informe'
+import InformeTributario from './pages/InformeTributario'
 import PadronLista from './pages/PadronLista'
 import ImportarCompanias from './pages/ImportarCompanias'
 import ImportarBalances from './pages/ImportarBalances'
@@ -27,6 +28,7 @@ function App() {
         {/* El informe va FUERA del Layout: es un documento, no una pantalla de
             la aplicación. Así no hay menú lateral que ocultar al imprimir. */}
         <Route path="/informe/:expediente" element={<Informe />} />
+        <Route path="/informe-tributario/:expediente" element={<InformeTributario />} />
 
         <Route element={<Layout />}>
           <Route path="/" element={<Navigate to={RUTA_INICIAL} replace />} />

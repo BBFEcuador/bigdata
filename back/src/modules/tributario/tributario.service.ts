@@ -47,7 +47,19 @@ export class TributarioService {
       `SELECT anio, resolucion, suscrita, registro FROM resolucion_presuntiva ORDER BY anio`,
     );
 
-    return { porAnio, persistencia, resoluciones };
+    // Devolución potencial: impuesto ya pagado que sigue en el activo.
+    const credito = await this.dataSource.query(`
+      SELECT anio,
+             count(*) FILTER (WHERE (magnitudes->>'creditoIva')::numeric > 0)::int AS con_iva,
+             count(*) FILTER (WHERE (magnitudes->>'creditoIr')::numeric > 0)::int  AS con_ir,
+             sum(greatest((magnitudes->>'creditoIva')::numeric, 0)) AS suma_iva,
+             sum(greatest((magnitudes->>'creditoIr')::numeric, 0))  AS suma_ir
+        FROM balance_magnitud
+       GROUP BY anio
+       ORDER BY anio
+    `);
+
+    return { porAnio, persistencia, credito, resoluciones };
   }
 
   /** Ranking, con el detalle del ejercicio pedido. */
@@ -153,12 +165,15 @@ export class TributarioService {
     );
     const ejercicio = q.anio ?? anio;
 
-    const where = ['u.anio = $1', 'u.netas > 0'];
+    // La población es la de la obligación —base positiva—, no la de "tiene
+    // acumuladas": una compañía con acumuladas negativas y un ejercicio muy
+    // bueno también debe el anticipo, y al revés.
+    const where = ['u.anio = $1', 'u.base_anticipo > 0'];
     const params: unknown[] = [ejercicio];
 
     if (q.minimo) {
       params.push(q.minimo);
-      where.push(`u.netas >= $${params.length}`);
+      where.push(`u.base_anticipo >= $${params.length}`);
     }
     if (q.rama) {
       params.push(`${q.rama.toUpperCase()}%`);
@@ -175,19 +190,22 @@ export class TributarioService {
       `SELECT u.anio, u.expediente, u.ruc, c.nombre, c.situacion_legal,
               substring(c.ciiu_nivel_6 from 1 for 4) AS grupo_ciiu,
               u.netas, u.origen, u.total_306, u.acumuladas, u.perdidas, u.niif,
-              u.netas_sin_niif, u.patrimonio,
-              u.utilidad_ejercicio, u.netas_prev, u.variacion, u.peso_patrimonio
+              u.netas_sin_niif, u.patrimonio, u.financiera, u.tipo,
+              u.utilidad_ejercicio, u.base_anticipo, u.anticipo_provisional,
+              u.netas_prev, u.variacion, u.peso_patrimonio
          FROM utilidad_no_distribuida u
          JOIN companias c USING (expediente)
         WHERE ${where.join(' AND ')}
-        ORDER BY u.netas DESC
+        ORDER BY u.base_anticipo DESC
         LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
 
     const [total] = await this.dataSource.query(
       `SELECT count(*)::int AS filas,
-              sum(u.netas) AS suma,
+              count(*) FILTER (WHERE u.financiera)::int AS financieras,
+              sum(u.base_anticipo) AS suma_base,
+              sum(u.anticipo_provisional) AS suma_anticipo,
               sum(coalesce(u.niif, 0)) AS suma_niif
          FROM utilidad_no_distribuida u
          JOIN companias c USING (expediente)
@@ -211,8 +229,16 @@ export class TributarioService {
       anio: ejercicio,
       datos,
       total: total.filas,
-      suma: total.suma,
+      financieras: total.financieras,
+      sumaBase: total.suma_base,
+      sumaAnticipo: total.suma_anticipo,
       sumaNiif: total.suma_niif,
+      // La escala real todavía no está cargada. Se manda tal cual para que la
+      // pantalla pueda decir con qué tarifa se calculó en vez de presentar el
+      // número como si fuera definitivo.
+      tarifa: await this.dataSource
+        .query(`SELECT tramo, desde, hasta, tarifa, nota FROM tarifa_pago_a_cuenta ORDER BY tramo`)
+        .then(t => ({ tramos: t, completa: t.length > 1 })),
       movimiento,
       limit,
       offset,
@@ -258,6 +284,35 @@ export class TributarioService {
       `SELECT anio, resolucion, suscrita, registro FROM resolucion_presuntiva ORDER BY anio`,
     );
 
-    return { empresa, ejercicios, resoluciones };
+    // El crédito tributario NO sale de las vistas de presuntiva: aquellas sólo
+    // cubren los ejercicios con resolución (2021-2024) y esto interesa hasta el
+    // último balance. Es un activo —impuesto ya pagado— y por tanto la
+    // devolución a la que la compañía tiene derecho.
+    const credito = await this.dataSource.query(
+      `SELECT anio,
+              (magnitudes->>'creditoIva')::numeric AS iva,
+              (magnitudes->>'creditoIr')::numeric  AS ir,
+              coalesce((magnitudes->>'creditoIva')::numeric, 0)
+                + coalesce((magnitudes->>'creditoIr')::numeric, 0) AS total
+         FROM balance_magnitud
+        WHERE expediente = $1
+        ORDER BY anio`,
+      [expediente],
+    );
+
+    const noDistribuidas = await this.dataSource.query(
+      `SELECT anio, netas, niif, utilidad_ejercicio, base_anticipo, anticipo_provisional,
+              origen, financiera
+         FROM utilidad_no_distribuida
+        WHERE expediente = $1
+        ORDER BY anio`,
+      [expediente],
+    );
+
+    const [tarifa] = await this.dataSource.query(
+      `SELECT tramo, tarifa FROM tarifa_pago_a_cuenta ORDER BY tramo LIMIT 1`,
+    );
+
+    return { empresa, ejercicios, credito, noDistribuidas, tarifa, resoluciones };
   }
 }

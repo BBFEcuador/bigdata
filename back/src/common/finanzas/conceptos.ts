@@ -64,6 +64,15 @@ export const CONCEPTOS: Concepto[] = [
   // entran en el total y no deberían leerse como dividendos pendientes.
   { clave: 'resultadosNiif', etiqueta: 'Resultados acumulados por adopción de NIIF', bloque: 'situacion', codigos: { 1: '30603', 3: '614' } },
 
+  // Crédito tributario: impuesto ya pagado que la empresa puede recuperar. Es
+  // un ACTIVO, no un gasto — y es la devolución a la que tiene derecho.
+  //
+  // El plan fiscal los llama distinto ("a favor del sujeto pasivo") y les da
+  // otro código, así que sin este mapeo los ejercicios declarados en el
+  // formulario 3 saldrían en blanco y parecería que nadie tenía crédito.
+  { clave: 'creditoIva', etiqueta: 'Crédito tributario a favor de la empresa (IVA)', bloque: 'situacion', codigos: { 1: '1010501', 3: '336' } },
+  { clave: 'creditoIr', etiqueta: 'Crédito tributario a favor de la empresa (impuesto a la renta)', bloque: 'situacion', codigos: { 1: '1010502', 3: '337' } },
+
   { clave: 'ingresos', etiqueta: 'Ingresos de actividades ordinarias', bloque: 'resultados', codigos: { 1: '401', 3: '1005' } },
   { clave: 'gananciaBruta', etiqueta: 'Ganancia bruta', bloque: 'resultados', codigos: { 1: '402', 3: '1025' } },
   { clave: 'costoVentas', etiqueta: 'Costo de ventas y producción', bloque: 'resultados', codigos: { 1: '501', 3: '7991' } },

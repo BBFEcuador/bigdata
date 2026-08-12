@@ -58,6 +58,19 @@
   font-size: 0.76rem;
 }
 
+/* La cifra provisional se marca como tal: en cuanto se carguen los tramos,
+   deja de serlo y este color desaparece con ella. */
+.tributario .tarjeta.provisional {
+  border-color: #c9a227;
+  border-style: dashed;
+  background: #fffdf5;
+}
+
+.tributario td.anticipo {
+  color: #9a6b1f;
+  font-weight: 600;
+}
+
 .tributario td.fuerte {
   font-weight: 600;
   color: #22303c;
@@ -339,6 +352,18 @@
   color: #8b97a3;
 }
 
+.tributario .ficha .informe-link {
+  position: absolute;
+  top: 0.9rem;
+  right: 2.6rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 4px;
+  background: #051129;
+  color: #fff;
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
 .tributario .ficha h3 {
   margin: 0 0 0.2rem;
   padding-right: 2rem;
@@ -388,6 +413,19 @@
   display: block;
   font-size: 0.66rem;
   color: #9a6b1f;
+}
+
+.tributario .ficha .sub-titulo {
+  margin: 1.6rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: #22303c;
+}
+
+.tributario .ficha .sub-titulo span {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #8b97a3;
 }
 
 .tributario .ficha .fuente {

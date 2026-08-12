@@ -36,6 +36,16 @@ export const MARCA = {
   subtituloInforme: 'Informe informativo sobre estados financieros publicados',
 
   /**
+   * El informe tributario es otro documento, no una sección del financiero: se
+   * entrega a otro interlocutor y responde a otra pregunta. Por eso lleva su
+   * propio título — y el subtítulo insiste en que son estimaciones sobre datos
+   * publicados, no una liquidación del SRI.
+   */
+  tituloInformeTributario: 'Radiografía tributaria',
+  subtituloInformeTributario:
+    'Estimaciones informativas sobre obligaciones y créditos, a partir de estados financieros publicados',
+
+  /**
    * Paleta del manual.
    *
    * `primario` es el azul marino de la marca y `acento` el dorado del

@@ -314,6 +314,14 @@ export default function Tributario() {
             <button className="cerrar" onClick={() => setFicha(null)}>
               ×
             </button>
+            <a
+              className="informe-link"
+              href={`/informe-tributario/${ficha.empresa.expediente}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Informe en PDF
+            </a>
             <h3>{ficha.empresa.nombre}</h3>
             <p className="sub">
               RUC {ficha.empresa.ruc} · {ficha.empresa.grupo_ciiu}
@@ -427,6 +435,52 @@ export default function Tributario() {
                 </tr>
               </tbody>
             </table>
+
+            {ficha.credito?.length > 0 && (
+              <>
+                <h4 className="sub-titulo">
+                  Crédito tributario · devolución potencial
+                  <span>
+                    Impuesto ya pagado que sigue en el activo. Va hasta el último balance, así que
+                    cubre más ejercicios que la presuntiva.
+                  </span>
+                </h4>
+                <table className="tabla ficha-tabla">
+                  <thead>
+                    <tr>
+                      <th>Ejercicio</th>
+                      {ficha.credito.map(c => (
+                        <th key={c.anio} className="num">
+                          {c.anio}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Crédito por IVA</td>
+                      {ficha.credito.map(c => (
+                        <td key={c.anio} className="num">{dinero(c.iva)}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td>Crédito por impuesto a la renta</td>
+                      {ficha.credito.map(c => (
+                        <td key={c.anio} className="num">{dinero(c.ir)}</td>
+                      ))}
+                    </tr>
+                    <tr className="separador">
+                      <td>
+                        <strong>Devolución potencial</strong>
+                      </td>
+                      {ficha.credito.map(c => (
+                        <td key={c.anio} className="num fuerte">{dinero(c.total)}</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            )}
 
             <p className="fuente">
               Respaldo normativo:{' '}

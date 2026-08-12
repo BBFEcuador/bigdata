@@ -532,3 +532,53 @@
 .tabla-sector .relleno {
   background: var(--acento);
 }
+
+/* ------------------------------------------------------ informe tributario
+   Cuatro reglas nuevas y ninguna tabla nueva: el informe tributario usa la
+   misma hoja, la misma tipografía y las mismas clases de tabla que el
+   financiero. Lo único propio es lo que el financiero no necesita — texto
+   introductorio por sección y advertencias pegadas a cada cifra. */
+
+.informe .intro {
+  margin: 0 0 0.9rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--tenue);
+  max-width: 78ch;
+}
+
+.informe .seccion .nota.aviso {
+  border-left: 3px solid var(--acento);
+  padding-left: 0.7rem;
+  color: var(--tinta);
+}
+
+.informe .aviso-portada {
+  margin: 0.9rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--acento);
+  background: var(--arena);
+  font-size: 0.75rem;
+  color: var(--tinta);
+}
+
+/* La base que determina la presunción. Marcarla es la mitad del argumento:
+   no es lo mismo que mande el activo que que manden los costos. */
+.informe td.manda {
+  background: var(--arena);
+  font-weight: 600;
+}
+
+/* La primera columna lleva el nombre del concepto y necesita el ancho; las
+   demás son cifras de un año y caben en lo que sobre. */
+.informe .tabla-tributaria td:first-child,
+.informe .tabla-tributaria th:first-child {
+  width: 38%;
+}
+
+.informe .tabla-tributaria em {
+  display: block;
+  font-style: normal;
+  font-size: 0.66rem;
+  color: var(--tenue);
+}

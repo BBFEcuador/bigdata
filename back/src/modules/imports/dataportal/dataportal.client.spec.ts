@@ -58,13 +58,18 @@ describe('DataportalClient · ritmo', () => {
   });
 
   it('no acumula deuda: tras una pausa larga la siguiente sale enseguida', async () => {
-    const client = new DataportalClient(token, { rps: 20 });
+    // Ritmo lento a propósito: 4/s son 250 ms de hueco, y la prueba es que la
+    // espera sea muy inferior a eso. Con 20/s el margen quedaba en 35 ms y el
+    // test fallaba al correr la suite entera en paralelo — no por el código,
+    // sino porque el temporizador de Node no es puntual con la máquina cargada.
+    // Un test que sólo pasa con el equipo ocioso no prueba nada.
+    const client = new DataportalClient(token, { rps: 4 });
     await client.consultar('1790013731001');
     await new Promise((r) => setTimeout(r, 300)); // el trabajo de guardar en base
 
     const antes = Date.now();
     await client.consultar('0992111585001');
     // La primera del segundo RUC no debe esperar por huecos ya vencidos.
-    expect(momentos[5] - antes).toBeLessThan(35);
+    expect(momentos[5] - antes).toBeLessThan(120);
   });
 });

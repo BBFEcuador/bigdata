@@ -89,9 +89,14 @@ describe('conceptos financieros', () => {
       expect(c.codigos).toHaveProperty('3');
       expect(c.codigos[3] === null || typeof c.codigos[3] === 'string').toBe(true);
     }
-    // Los dos que hoy sólo existen en IFRS.
+    // Los que hoy sólo existen en IFRS, en orden de declaración.
+    //
+    // `resultadosAcumulados` es la cuenta 306, el total del grupo. El plan
+    // fiscal no tiene un total equivalente: reparte lo mismo en 611, 612 y 614,
+    // y sumarlos aquí sería fabricar una cuenta que el contribuyente nunca
+    // declaró. Los sumandos sí están mapeados por separado.
     const soloIfrs = CONCEPTOS.filter((c) => c.codigos[3] === null).map((c) => c.clave);
-    expect(soloIfrs).toEqual(['inventarios', 'gastosFinancieros']);
+    expect(soloIfrs).toEqual(['resultadosAcumulados', 'inventarios', 'gastosFinancieros']);
   });
 
   it('no repite un código dentro del mismo formulario', () => {
