@@ -131,6 +131,38 @@ export class Compania {
   @Column({ type: 'uuid', name: 'sri_job_id', nullable: true })
   sriJobId: string | null;
 
+  // ------------------------------------------------ catastros públicos
+  //
+  // Resumen de los catastros del Ministerio de Turismo y del SRI, materializado
+  // por sus importadores. El detalle vive en `turismo_establecimiento` y
+  // `catastro_sri`; aquí sólo está lo que hace falta para filtrar un listado.
+  //
+  // Los años van en un array a propósito: "exportó hasta 2022 y dejó de
+  // hacerlo" es una señal distinta de "no exportó nunca", y un booleano las
+  // confundiría.
+
+  @Column({ type: 'smallint', name: 'turismo_registros', nullable: true })
+  turismoRegistros: number | null;
+
+  @Column({ type: 'text', name: 'turismo_actividades', array: true, nullable: true })
+  turismoActividades: string[] | null;
+
+  @Column({ type: 'text', name: 'turismo_clasificaciones', array: true, nullable: true })
+  turismoClasificaciones: string[] | null;
+
+  /** ¿Alguno de sus registros turísticos está RATIFICADO (y no sólo pendiente)? */
+  @Column({ type: 'boolean', name: 'turismo_ratificado', nullable: true })
+  turismoRatificado: boolean | null;
+
+  @Column({ type: 'smallint', name: 'exportador_bienes_iva_anios', array: true, nullable: true })
+  exportadorBienesIvaAnios: number[] | null;
+
+  @Column({ type: 'smallint', name: 'exportador_servicios_iva_anios', array: true, nullable: true })
+  exportadorServiciosIvaAnios: number[] | null;
+
+  @Column({ type: 'smallint', name: 'exportador_bienes_ir_anios', array: true, nullable: true })
+  exportadorBienesIrAnios: number[] | null;
+
   @Column({ type: 'uuid', name: 'row_hash' })
   rowHash: string;
 

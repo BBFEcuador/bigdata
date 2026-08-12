@@ -1,0 +1,43 @@
+/* Marcas de catastro dentro de una celda de tabla. Se apilan en vertical
+   porque un RUC puede estar en cuatro catastros a la vez y en horizontal
+   ensancharían la fila más que cualquier otra columna. */
+.marcas-catastro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  white-space: normal;
+}
+
+.marcas-catastro .marca {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid #d7e3f5;
+  border-radius: 999px;
+  background: #f2f7ff;
+  color: #2a4d80;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  width: fit-content;
+}
+
+.marcas-catastro .marca.turismo {
+  border-color: #cfe8d8;
+  background: #f1faf4;
+  color: #1f6b43;
+}
+
+/* Ratificado = inspección superada. Es la diferencia entre un registro real y
+   uno pendiente, así que se distingue. */
+.marcas-catastro .marca.turismo.ratificado {
+  border-color: #7fc59b;
+  font-weight: 600;
+}
+
+.marcas-catastro .marca em {
+  font-style: normal;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 0.66rem;
+  color: #6b7c92;
+}

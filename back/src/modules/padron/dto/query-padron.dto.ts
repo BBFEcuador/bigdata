@@ -23,6 +23,24 @@ export class QueryPadronDto {
   @MaxLength(60)
   provincia?: string;
 
+  /**
+   * Pertenencia a un catastro público: `turismo`, `turismo_ratificado`,
+   * `exportador`, `exportador_bienes_ir`, `exportador_bienes_iva`,
+   * `exportador_servicios_iva` o `ninguno`.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  catastro?: string;
+
+  /** Año de aplicación; sólo aplica a los catastros de exportadores. */
+  @IsOptional()
+  @Transform(({ value }) => (value === '' || value === undefined ? undefined : parseInt(value, 10)))
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  catastroAnio?: number;
+
   /** Cursor de keyset: el último RUC de la página anterior. */
   @IsOptional()
   @IsString()

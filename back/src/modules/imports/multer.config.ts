@@ -23,8 +23,13 @@ export function ensureUploadDir(): void {
  *
  * @param extensiones extensiones aceptadas, en minúscula y con punto (`.xlsx`)
  * @param maxBytes    tamaño máximo del archivo
+ * @param ayuda       frase que se añade al error cuando la extensión no encaja
  */
-export function crearMulterConfig(extensiones: string[], maxBytes: number): MulterOptions {
+export function crearMulterConfig(
+  extensiones: string[],
+  maxBytes: number,
+  ayuda?: string,
+): MulterOptions {
   return {
     storage: diskStorage({
       destination: (_req, _file, cb) => {
@@ -46,7 +51,8 @@ export function crearMulterConfig(extensiones: string[], maxBytes: number): Mult
         cb(
           new BadRequestException(
             `Sólo se aceptan archivos ${extensiones.join(' o ')} ` +
-              `(recibido "${ext || 'sin extensión'}").`,
+              `(recibido "${ext || 'sin extensión'}").` +
+              (ayuda ? ` ${ayuda}` : ''),
           ),
           false,
         );
@@ -71,3 +77,20 @@ export const multerConfigBalances = crearMulterConfig(['.txt'], 800 * 1024 * 102
 
 /** Padrón del SRI: un CSV por provincia; Pichincha y Guayas rondan los 600 MB. */
 export const multerConfigSri = crearMulterConfig(['.csv', '.txt'], 1200 * 1024 * 1024);
+
+/** Catastro Nacional de Turismo: ~35.000 filas, unos 7 MB. */
+export const multerConfigTurismo = crearMulterConfig(['.xlsx'], 64 * 1024 * 1024);
+
+/**
+ * Catastros del SRI: unos pocos miles de filas por hoja.
+ *
+ * Sólo `.xlsx`. Tres de los cuatro se publican en el formato binario `.xls` de
+ * 1997, que la librería del proyecto no sabe leer; aceptarlos aquí daría un
+ * error críptico a mitad del parseo en vez de uno claro en la subida.
+ */
+export const multerConfigCatastros = crearMulterConfig(
+  ['.xlsx'],
+  64 * 1024 * 1024,
+  'El SRI publica varios catastros en el formato antiguo .xls: ábrelo en Excel o LibreOffice ' +
+    'y guárdalo como "Libro de Excel (.xlsx)" antes de subirlo.',
+);

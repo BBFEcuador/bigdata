@@ -24,6 +24,7 @@ const ICONO_ANALISIS = 'M3 3v18h18M7 15l4-5 3 3 5-7'
 const ICONO_SOCIEDAD = 'M3 21h18M6 21V8l6-4 6 4v13M10 12h4M10 16h4'
 const ICONO_PADRON = 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
 const ICONO_HISTORIAL = 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7L3 8'
+const ICONO_SEGMENTOS = 'M12 3v9l6.5 3.8M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'
 
 export const NAVEGACION = [
   {
@@ -39,6 +40,12 @@ export const NAVEGACION = [
     ],
   },
   {
+    titulo: 'Comercial',
+    items: [
+      { ruta: '/segmentos', etiqueta: 'Segmentos', icono: <Icono d={ICONO_SEGMENTOS} /> },
+    ],
+  },
+  {
     titulo: 'Importación',
     items: [
       { ruta: '/importar/companias', etiqueta: 'Importar compañías', icono: <Icono d={ICONO_SUBIR} /> },
@@ -46,6 +53,8 @@ export const NAVEGACION = [
       { ruta: '/importar/sri', etiqueta: 'Importar padrón SRI', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importar/catalogo', etiqueta: 'Importar catálogo', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importar/ciiu', etiqueta: 'Importar CIIU', icono: <Icono d={ICONO_SUBIR} /> },
+      { ruta: '/importar/turismo', etiqueta: 'Importar catastro turismo', icono: <Icono d={ICONO_SUBIR} /> },
+      { ruta: '/importar/catastros', etiqueta: 'Importar catastros SRI', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importaciones', etiqueta: 'Historial', icono: <Icono d={ICONO_HISTORIAL} /> },
     ],
   },

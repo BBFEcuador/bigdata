@@ -11,7 +11,10 @@ import ImportarBalances from './pages/ImportarBalances'
 import ImportarSri from './pages/ImportarSri'
 import ImportarCatalogo from './pages/ImportarCatalogo'
 import ImportarCiiu from './pages/ImportarCiiu'
+import ImportarTurismo from './pages/ImportarTurismo'
+import ImportarCatastros from './pages/ImportarCatastros'
 import Importaciones from './pages/Importaciones'
+import Segmentos from './pages/Segmentos'
 import { RUTA_INICIAL } from './routes'
 import './App.css'
 
@@ -28,11 +31,14 @@ function App() {
           <Route path="/analisis" element={<Analisis />} />
           <Route path="/padron/personas" element={<PadronLista tipo="personas" />} />
           <Route path="/padron/sociedades" element={<PadronLista tipo="sociedades" />} />
+          <Route path="/segmentos" element={<Segmentos />} />
           <Route path="/importar/companias" element={<ImportarCompanias />} />
           <Route path="/importar/balances" element={<ImportarBalances />} />
           <Route path="/importar/sri" element={<ImportarSri />} />
           <Route path="/importar/catalogo" element={<ImportarCatalogo />} />
           <Route path="/importar/ciiu" element={<ImportarCiiu />} />
+          <Route path="/importar/turismo" element={<ImportarTurismo />} />
+          <Route path="/importar/catastros" element={<ImportarCatastros />} />
           <Route path="/importaciones" element={<Importaciones />} />
           {/* Redirección de la ruta antigua, que estaba en el menú anterior. */}
           <Route path="/importar" element={<Navigate to="/importar/companias" replace />} />

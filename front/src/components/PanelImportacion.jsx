@@ -150,11 +150,24 @@ export default function PanelImportacion({
 
           {job.status === 'failed' && <div className="alerta error">{job.errorMessage}</div>}
 
+          {/* Un archivo ya cargado da 0 nuevas y 0 actualizadas, que a simple
+              vista se lee como "no ha hecho nada". Se dice explícitamente: la
+              reimportación es idempotente, no un fallo. */}
           {job.status === 'completed' && (
             <div className="alerta ok">
-              Importación completada.{' '}
-              {job.rowsUnchanged > 0 &&
-                `${num(job.rowsUnchanged)} ${etiquetaEntidad} no cambiaron y no se reescribieron.`}
+              {job.rowsInserted === 0 && job.rowsUpdated === 0 && job.rowsUnchanged > 0 ? (
+                <>
+                  Este archivo ya estaba cargado: las {num(job.rowsUnchanged)} {etiquetaEntidad}
+                  {' '}ya estaban en la base con los mismos datos, así que no se reescribió nada.
+                  Los datos SÍ están cargados.
+                </>
+              ) : (
+                <>
+                  Importación completada.{' '}
+                  {job.rowsUnchanged > 0 &&
+                    `${num(job.rowsUnchanged)} ${etiquetaEntidad} no cambiaron y no se reescribieron.`}
+                </>
+              )}
             </div>
           )}
 

@@ -41,10 +41,16 @@ export const KIND_COMPANIAS = 'supercias_companias'
 export const KIND_CATALOGO = 'catalogo_cuentas'
 export const KIND_CIIU = 'catalogo_ciiu'
 export const KIND_BALANCES = 'supercias_balances'
+export const KIND_SRI = 'sri_padron'
+export const KIND_TURISMO = 'catastro_turismo'
+export const KIND_CATASTROS = 'catastros_sri'
 
 export const ETIQUETA_KIND = {
   [KIND_COMPANIAS]: 'Compañías',
   [KIND_CATALOGO]: 'Catálogo de cuentas',
   [KIND_CIIU]: 'Catálogo CIIU',
   [KIND_BALANCES]: 'Balances',
+  [KIND_SRI]: 'Padrón del SRI',
+  [KIND_TURISMO]: 'Catastro de turismo',
+  [KIND_CATASTROS]: 'Catastros del SRI',
 }

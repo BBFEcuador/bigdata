@@ -12,21 +12,45 @@ móviles, nómina con sueldos y vehículos**. La fuente es la API REST de
 | `POST` | `/imports/dataportal/detener` | Para tras el RUC en curso. El avance queda guardado. |
 | `GET` | `/imports/dataportal/estado` | Reparto por estado y cuántos datos se llevan extraídos. |
 
-## El token
+## Las credenciales
 
-Va en `back/.env`, **nunca en el código**:
+Van en `back/.env`, **nunca en el código**:
 
 ```
-DATAPORTAL_TOKEN=...
+DATAPORTAL_USER=...
+DATAPORTAL_PASSWORD=...
 DATAPORTAL_RPS=5
 ```
 
-`.env` está en `.gitignore`. El cliente **relee el token en cada petición**, no
-lo captura al arrancar: una carga dura ~31 horas y el token puede caducar por el
-camino, así que se actualiza el archivo y el job sigue sin reiniciarse.
+`.env` está en `.gitignore`. El cliente **relee las credenciales en cada
+petición**, no las captura al arrancar: una carga dura ~31 horas y la contraseña
+puede revocarse por el camino, así que se actualiza el archivo y el job sigue
+sin reiniciarse.
 
 Un `401` o `403` **no se reintenta**: para la carga entera. Insistir 1,13 M de
-veces con un token muerto no lo revive.
+veces con una credencial muerta no la revive.
+
+### No hay ningún `?token=`
+
+Es el error que parece obvio y no lo es. La autenticación es la de WordPress:
+**contraseña de aplicación** por cabecera `Authorization: Basic`. Comprobable
+contra el propio servidor, sin credenciales:
+
+```bash
+curl https://dataportalsys.com/wp-json/datacenter/v1   # args de cada ruta: sólo "dni"
+curl https://dataportalsys.com/wp-json                 # authentication: application-passwords
+```
+
+Mandar un token por query string devuelve `401` **exactamente igual** que no
+mandar nada, así que el síntoma no distingue "valor equivocado" de "mecanismo
+equivocado". Si algún día vuelve a dar 401, empieza por esos dos `curl`.
+
+Y la contraseña **no es la de la cuenta**: WordPress sólo acepta por Basic las
+de aplicación, que se generan en `wp-admin/profile.php` y tienen la forma
+`abcd EFGH ijkl MNOP`. **Los espacios son parte del valor**, no se recortan.
+
+La cabecera se construye en base64 **latin1**, no UTF-8 (RFC 7617): con un
+usuario o contraseña acentuados, hacerlo en UTF-8 da un 401 desconcertante.
 
 ## Los cinco recursos por RUC
 

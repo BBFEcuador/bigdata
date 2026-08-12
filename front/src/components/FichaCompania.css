@@ -206,10 +206,11 @@
   color: #888;
 }
 
+/* Igual que en el listado: el nombre de la actividad se lee entero. */
 .ficha .tabla-locales .actividad {
   max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ficha .cargando,
@@ -220,4 +221,83 @@
 
 .ficha .error {
   color: #b3261e;
+}
+
+/* --- Catastros públicos ---
+   Marcas en línea en vez de una tabla: son cuatro pertenencias como mucho, y
+   cada una se resume en un nombre y una lista de años. */
+.ficha .catastros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+}
+
+.ficha .catastros .marca {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #d7e3f5;
+  border-radius: 999px;
+  background: #f2f7ff;
+  font-size: 0.78rem;
+  color: #2a4d80;
+}
+
+.ficha .catastros .marca.turismo {
+  border-color: #cfe8d8;
+  background: #f1faf4;
+  color: #1f6b43;
+}
+
+.ficha .catastros .marca em {
+  font-style: normal;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 0.72rem;
+  color: #6b7c92;
+}
+
+/* --- Qué ofrecerle ---
+   Lista ordenada porque el orden es el dato: es la prioridad con la que el
+   comercial debe abordar los productos, no una enumeración decorativa. */
+.ficha .oferta {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.ficha .oferta li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #e3e8ef;
+  border-left: 3px solid #3d6fb4;
+  border-radius: 4px;
+  background: #fbfcfe;
+}
+
+.ficha .oferta-producto {
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.ficha .oferta-unidad {
+  font-size: 0.72rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  background: #eef4fc;
+  color: #2a4d80;
+}
+
+.ficha .oferta-motivo {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #888;
 }

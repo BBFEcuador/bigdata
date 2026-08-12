@@ -10,6 +10,7 @@ import { CiiuModule } from './modules/ciiu/ciiu.module';
 import { BalancesModule } from './modules/balances/balances.module';
 import { PadronModule } from './modules/padron/padron.module';
 import { ImportsModule } from './modules/imports/imports.module';
+import { SegmentosModule } from './modules/segmentos/segmentos.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ImportsModule } from './modules/imports/imports.module';
     BalancesModule,
     PadronModule,
     ImportsModule,
+    SegmentosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

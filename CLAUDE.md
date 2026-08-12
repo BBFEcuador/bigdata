@@ -32,12 +32,17 @@ FRIDAY/
 │           ├── companias/             consulta de compañías
 │           ├── catalogo/              consulta del plan de cuentas
 │           ├── ciiu/                  consulta de actividades económicas
+│           ├── segmentos/             capa comercial         <- ver README.md
 │           └── imports/               base común de importación
 │               ├── pg/pg-copy.session.ts  COPY con contrapresión (compartido)
 │               ├── companias/         importador XLSX masivo <- ver README.md
 │               ├── catalogo/          importador TXT         <- ver README.md
 │               ├── ciiu/              importador XLSX        <- ver README.md
-│               └── balances/          importador TXT masivo  <- ver README.md
+│               ├── balances/          importador TXT masivo  <- ver README.md
+│               ├── sri/               padrón del SRI         <- ver README.md
+│               ├── dataportal/        enriquecimiento por API<- ver README.md
+│               ├── turismo/           catastro del Mintur    <- ver README.md
+│               └── catastros/         4 catastros del SRI    <- ver README.md
 │
 ├── db/init.sql                   SÓLO para un volumen nuevo (ver aviso abajo)
 └── docker-compose.yml            Postgres con tuning para carga masiva
@@ -92,6 +97,12 @@ npm run build
    viene en Latin-1, y leerlo mal no da error: entra con los acentos corruptos.
    Cualquier lector de texto plano nuevo debe pasar por `decodificarTexto()`.
 
+5. **Un RUC guardado como número ha perdido su cero inicial.** Los dos primeros
+   dígitos son el código de provincia, así que la mayoría empieza por cero, y
+   varios catastros del SRI se publican en `.xls` con esa columna numérica:
+   `0101384501001` llega como `101384501001` y no enlaza con nadie. Todo lector
+   de RUC nuevo debe pasar por `coerceRuc`, que rellena hasta 13 dígitos.
+
 ## Modelo de datos
 
 `companias` — 24 columnas del Excel con tipos reales (`date`, `numeric(18,2)`,
@@ -123,6 +134,43 @@ formulario, y cada uno trae su propio plan de cuentas. 33 códigos se repiten
 entre planes con significados distintos: el código `3` es PATRIMONIO NETO en el
 formulario 1 y ACTIVO CON PARTES RELACIONADAS LOCALES en el 3. Está explicado en
 `back/src/modules/imports/balances/README.md`.
+
+`turismo_establecimiento` — Catastro Nacional de Turismo, una fila por registro
+turístico (PK `numero_registro`) con dirección, categoría, teléfono y correo.
+35.569 registros de 29.871 RUC.
+
+**La PK no es (RUC, establecimiento)**: un mismo local puede tener varios
+registros y 796 pares (RUC, código) están repetidos en el archivo. Y el enlace
+alcanza a las **tres** poblaciones —5.323 compañías, 24.083 personas naturales,
+452 sociedades no supervisadas—, no sólo a `companias`.
+
+`catastro_sri` — exportadores habituales, una fila por (catastro, año, RUC).
+Tres listas distintas: rebaja de 3 puntos de IR (2020–2024), retenciones de IVA
+de bienes (2020–2026) y de servicios (2023–2026). 26.312 filas.
+
+`catastro_servicio_digital` — proveedores digitales no residentes (Netflix,
+Uber). **Sin RUC**: la clave es el texto con el que aparecen en el estado de
+cuenta, y las variantes de grafía del mismo proveedor son intencionales.
+
+El resumen de los cuatro catastros se materializa en las tres tablas de
+titulares (`turismo_*`, `exportador_*_anios`). Los años van en un array y no en
+un booleano: «exportó hasta 2022 y dejó de hacerlo» es una señal distinta de «no
+exportó nunca».
+
+`perfil_comercial` — **vista materializada**, una fila por sujeto (7,1 M:
+compañías, personas naturales y sociedades no supervisadas) con lo caro ya
+calculado: actividad, ubicación, contacto, catastros y los dos últimos
+ejercicios con balance. Reconstruirla cuesta ~30 s.
+
+**No guarda nada relativo a "hoy"** —ni antigüedad ni "reciente"—: en una vista
+materializada eso envejece hasta ser mentira. Guarda la fecha y es el segmento
+quien compara contra `current_date`.
+
+`segmento` / `segmento_miembro` / `segmento_evento` — la capa comercial.
+`segmento.condicion` es un fragmento SQL que **se puebla desde migraciones y
+jamás desde el API**. Se guardan los miembros actuales y el histórico de altas y
+bajas, porque lo que se trabaja a diario son las novedades, no la lista.
+Ver `back/src/modules/segmentos/README.md`.
 
 `import_job` — un registro por carga con contadores y progreso. Un índice único
 parcial garantiza **un solo import activo a la vez**.

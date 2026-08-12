@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Compania } from './entities/compania.entity';
 import { QueryCompaniasDto } from './dto/query-companias.dto';
+import { aniosPorCatastro, condicionCatastro } from '../../common/catastros/filtro-catastro';
 
 /** Cuánto está dispuesto a contar exactamente antes de dar un aproximado. */
 const TOPE_CONTEO_EXACTO = 10_000;
@@ -39,33 +40,7 @@ export class CompaniasService {
     const limit = q.limit ?? 50;
     const qb = this.repo.createQueryBuilder('c');
 
-    if (q.incluirAusentes !== 'true') {
-      qb.andWhere('c.ausenteDesdeJob IS NULL');
-    }
-    if (q.nombre) {
-      qb.andWhere('c.nombre ILIKE :nombre', { nombre: `%${q.nombre}%` });
-    }
-    if (q.ruc) {
-      qb.andWhere('c.ruc LIKE :ruc', { ruc: `${q.ruc}%` });
-    }
-    if (q.provincia) {
-      qb.andWhere('c.provincia = :provincia', { provincia: q.provincia });
-    }
-    if (q.canton) {
-      qb.andWhere('c.canton = :canton', { canton: q.canton });
-    }
-    if (q.situacionLegal) {
-      qb.andWhere('c.situacionLegal = :situacionLegal', { situacionLegal: q.situacionLegal });
-    }
-    if (q.tipo) {
-      qb.andWhere('c.tipo = :tipo', { tipo: q.tipo });
-    }
-    if (q.ciiuNivel1) {
-      qb.andWhere('c.ciiuNivel1 = :ciiu1', { ciiu1: q.ciiuNivel1 });
-    }
-    if (q.ciiu) {
-      aplicarFiltroCiiu(qb, q.ciiu);
-    }
+    this.aplicarFiltros(qb, q);
     if (q.cursor) {
       qb.andWhere('c.expediente > :cursor', { cursor: q.cursor });
     }
@@ -81,6 +56,30 @@ export class CompaniasService {
       hayMas,
       total: await this.contarAcotado(q),
     };
+  }
+
+  /**
+   * Filtros del listado, en un solo sitio.
+   *
+   * Los usan tanto la consulta como el recuento: cuando estaban duplicados,
+   * olvidarse de añadir un filtro nuevo aquí hacía que el total saliera como si
+   * no hubiera filtro y la UI mintiera.
+   */
+  private aplicarFiltros(qb: SelectQueryBuilder<Compania>, q: QueryCompaniasDto): void {
+    if (q.incluirAusentes !== 'true') qb.andWhere('c.ausenteDesdeJob IS NULL');
+    if (q.nombre) qb.andWhere('c.nombre ILIKE :nombre', { nombre: `%${q.nombre}%` });
+    if (q.ruc) qb.andWhere('c.ruc LIKE :ruc', { ruc: `${q.ruc}%` });
+    if (q.provincia) qb.andWhere('c.provincia = :provincia', { provincia: q.provincia });
+    if (q.canton) qb.andWhere('c.canton = :canton', { canton: q.canton });
+    if (q.situacionLegal) {
+      qb.andWhere('c.situacionLegal = :situacionLegal', { situacionLegal: q.situacionLegal });
+    }
+    if (q.tipo) qb.andWhere('c.tipo = :tipo', { tipo: q.tipo });
+    if (q.ciiuNivel1) qb.andWhere('c.ciiuNivel1 = :ciiu1', { ciiu1: q.ciiuNivel1 });
+    if (q.ciiu) aplicarFiltroCiiu(qb, q.ciiu);
+
+    const catastro = condicionCatastro('c', q.catastro, q.catastroAnio);
+    if (catastro) qb.andWhere(catastro.sql, catastro.params);
   }
 
   /**
@@ -117,8 +116,6 @@ export class CompaniasService {
    * "más de 10.000" en lugar de pagar un recuento completo en cada tecleo.
    */
   private async contarAcotado(q: QueryCompaniasDto): Promise<{ valor: number; exacto: boolean }> {
-    // Cualquier filtro nuevo debe añadirse AQUÍ además de en la consulta: si se
-    // olvida, el total sale como si no hubiera filtro y la UI miente.
     const sinFiltros =
       !q.nombre &&
       !q.ruc &&
@@ -127,7 +124,8 @@ export class CompaniasService {
       !q.situacionLegal &&
       !q.tipo &&
       !q.ciiuNivel1 &&
-      !q.ciiu;
+      !q.ciiu &&
+      !q.catastro;
 
     if (sinFiltros) {
       const r = await this.repo.query(
@@ -136,16 +134,10 @@ export class CompaniasService {
       return { valor: Math.max(0, Number(r?.[0]?.n ?? 0)), exacto: false };
     }
 
+    // Los mismos filtros que la consulta, por construcción: `aplicarFiltros` es
+    // el único sitio donde están escritos.
     const qb = this.repo.createQueryBuilder('c').select('1');
-    if (q.incluirAusentes !== 'true') qb.andWhere('c.ausenteDesdeJob IS NULL');
-    if (q.nombre) qb.andWhere('c.nombre ILIKE :nombre', { nombre: `%${q.nombre}%` });
-    if (q.ruc) qb.andWhere('c.ruc LIKE :ruc', { ruc: `${q.ruc}%` });
-    if (q.provincia) qb.andWhere('c.provincia = :provincia', { provincia: q.provincia });
-    if (q.canton) qb.andWhere('c.canton = :canton', { canton: q.canton });
-    if (q.situacionLegal) qb.andWhere('c.situacionLegal = :s', { s: q.situacionLegal });
-    if (q.tipo) qb.andWhere('c.tipo = :tipo', { tipo: q.tipo });
-    if (q.ciiuNivel1) qb.andWhere('c.ciiuNivel1 = :ciiu1', { ciiu1: q.ciiuNivel1 });
-    if (q.ciiu) aplicarFiltroCiiu(qb, q.ciiu);
+    this.aplicarFiltros(qb, q);
 
     const [sql, params] = qb.limit(TOPE_CONTEO_EXACTO).getQueryAndParameters();
     const r = await this.repo.query(`SELECT count(*)::bigint AS n FROM (${sql}) t`, params);
@@ -170,7 +162,7 @@ export class CompaniasService {
     const compania = await this.buscarUno(expediente);
     if (!compania) return null;
 
-    const [establecimientos, ejercicios] = await Promise.all([
+    const [establecimientos, ejercicios, turismo, catastros] = await Promise.all([
       compania.ruc
         ? this.repo.query(
             `SELECT numero, nombre_comercial, estado, provincia, canton, parroquia,
@@ -185,6 +177,31 @@ export class CompaniasService {
           ORDER BY anio`,
         [expediente],
       ),
+      // Registros del Catastro Nacional de Turismo. El detalle —dirección,
+      // categoría, contacto— sólo existe aquí: el directorio de la
+      // Superintendencia no lo tiene.
+      compania.ruc
+        ? this.repo.query(
+            `SELECT numero_registro, codigo_establecimiento, nombre_comercial, fecha_registro,
+                    actividad, clasificacion, categoria, provincia, canton, parroquia,
+                    direccion, referencia_direccion, telefono, correo, sitio_web,
+                    representante_legal, estado_registro
+               FROM turismo_establecimiento
+              WHERE ruc = $1 AND ausente_desde_job IS NULL
+              ORDER BY codigo_establecimiento, numero_registro`,
+            [compania.ruc],
+          )
+        : Promise.resolve([]),
+      compania.ruc
+        ? this.repo.query(
+            `SELECT catastro, anio, jurisdiccion, provincia, tipo_contribuyente,
+                    clase_contribuyente, obligado_contabilidad, anio_fiscal_analizado
+               FROM catastro_sri
+              WHERE ruc = $1 AND ausente_desde_job IS NULL
+              ORDER BY catastro, anio DESC`,
+            [compania.ruc],
+          )
+        : Promise.resolve([]),
     ]);
 
     // Misma resolución del nombre de actividad que en el listado: sin esto la
@@ -200,11 +217,13 @@ export class CompaniasService {
         anio: Number(e.anio),
         formulario: Number(e.formulario),
       })),
+      turismo,
+      catastros,
     };
   }
 
   async facetas() {
-    const [provincias, situaciones, tipos] = await Promise.all([
+    const [provincias, situaciones, tipos, aniosCatastro] = await Promise.all([
       this.repo.query(
         `SELECT provincia AS valor, count(*)::bigint AS n FROM companias
          WHERE provincia IS NOT NULL AND ausente_desde_job IS NULL
@@ -220,8 +239,14 @@ export class CompaniasService {
          WHERE tipo IS NOT NULL AND ausente_desde_job IS NULL
          GROUP BY tipo ORDER BY n DESC LIMIT 40`,
       ),
+      aniosPorCatastro((sql) => this.repo.query(sql)),
     ]);
     const map = (rows: any[]) => rows.map((r) => ({ valor: r.valor, n: Number(r.n) }));
-    return { provincias: map(provincias), situaciones: map(situaciones), tipos: map(tipos) };
+    return {
+      provincias: map(provincias),
+      situaciones: map(situaciones),
+      tipos: map(tipos),
+      aniosCatastro,
+    };
   }
 }

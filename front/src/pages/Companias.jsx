@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { listarCompanias, obtenerFacetas, obtenerFicha } from '../services/companias.service'
 import FichaCompania from '../components/FichaCompania'
 import SelectorCiiu from '../components/SelectorCiiu'
+import { MarcasCatastro, SelectorCatastro } from '../components/Catastros'
 import './Companias.css'
 
 const FILTROS_VACIOS = {
@@ -12,6 +13,8 @@ const FILTROS_VACIOS = {
   situacionLegal: '',
   tipo: '',
   ciiu: '',
+  catastro: '',
+  catastroAnio: '',
 }
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
@@ -133,6 +136,14 @@ export default function Companias() {
           ))}
         </select>
         <SelectorCiiu value={filtros.ciiu} onChange={v => set('ciiu', v)} />
+        <SelectorCatastro
+          catastro={filtros.catastro}
+          anio={filtros.catastroAnio}
+          aniosCatastro={facetas?.aniosCatastro}
+          onChange={({ catastro, anio }) =>
+            setFiltros(f => ({ ...f, catastro, catastroAnio: anio }))
+          }
+        />
         <button type="button" onClick={() => setFiltros(FILTROS_VACIOS)}>
           Limpiar
         </button>
@@ -167,6 +178,7 @@ export default function Companias() {
               <th className="der">Capital</th>
               <th>Constitución</th>
               <th className="der">Locales</th>
+              <th>Catastros</th>
               <th>Actividad económica</th>
               <th />
             </tr>
@@ -205,6 +217,10 @@ export default function Companias() {
                 </td>
                 <td>{c.fechaConstitucion ?? '—'}</td>
                 <td className="der mono">{c.sriNumEstablecimientos ?? '—'}</td>
+                {/* Turismo y exportadores habituales, enlazados por RUC. */}
+                <td className="catastros">
+                  <MarcasCatastro fila={c} />
+                </td>
                 {/* Un código que no esté en el catálogo se muestra tal cual, sin
                     descripción: hay unos pocos, incluido un ZZZZZ.ZZ de relleno. */}
                 <td className="actividad" title={c.ciiuNivel6 ?? ''}>
@@ -219,7 +235,7 @@ export default function Companias() {
             ))}
             {!cargando && datos.length === 0 && (
               <tr>
-                <td colSpan={17} className="vacio">
+                <td colSpan={18} className="vacio">
                   Sin resultados
                 </td>
               </tr>

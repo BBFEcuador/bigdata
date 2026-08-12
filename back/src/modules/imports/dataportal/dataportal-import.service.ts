@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { ImportJobsService } from '../import-jobs.service';
 import {
   DataportalClient,
-  TokenInvalidoError,
+  CredencialesInvalidasError,
   dormir,
 } from './dataportal.client';
 import { Parseado, parsearRespuestas } from './dataportal.parser';
@@ -77,13 +77,15 @@ export class DataportalImportService {
     this.cancelar = false;
     const t0 = Date.now();
     const client = new DataportalClient(() => {
-      const token = process.env.DATAPORTAL_TOKEN;
-      if (!token) {
-        throw new TokenInvalidoError(
-          'Falta DATAPORTAL_TOKEN en back/.env. Sin token no se puede consultar el portal.',
+      const usuario = process.env.DATAPORTAL_USER;
+      const clave = process.env.DATAPORTAL_PASSWORD;
+      if (!usuario || !clave) {
+        throw new CredencialesInvalidasError(
+          'Faltan DATAPORTAL_USER / DATAPORTAL_PASSWORD en back/.env. ' +
+            'La clave es una contraseña de aplicación de WordPress, no la de la cuenta.',
         );
       }
-      return token;
+      return { usuario, clave };
     });
 
     let hechos = 0;
@@ -121,7 +123,7 @@ export class DataportalImportService {
             if (vacio) sinDatos++;
             else conDatos++;
           } catch (err) {
-            if (err instanceof TokenInvalidoError) throw err; // para la carga entera
+            if (err instanceof CredencialesInvalidasError) throw err; // para la carga entera
             errores++;
             await this.marcarError(ruc, jobId, (err as Error).message);
           }

@@ -9,6 +9,8 @@ import { CiiuImportService } from './ciiu/ciiu-import.service';
 import { BalancesImportService } from './balances/balances-import.service';
 import { SriImportService } from './sri/sri-import.service';
 import { DataportalImportService } from './dataportal/dataportal-import.service';
+import { TurismoImportService } from './turismo/turismo-import.service';
+import { CatastrosImportService } from './catastros/catastros-import.service';
 import { ImportJob } from './entities/import-job.entity';
 import { ImportRowReject } from './entities/import-row-reject.entity';
 
@@ -24,6 +26,8 @@ import { ImportRowReject } from './entities/import-row-reject.entity';
     BalancesImportService,
     SriImportService,
     DataportalImportService,
+    TurismoImportService,
+    CatastrosImportService,
   ],
 })
 export class ImportsModule {}

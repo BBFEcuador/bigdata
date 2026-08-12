@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { QueryPadronDto } from './dto/query-padron.dto';
+import {
+  aniosPorCatastro,
+  condicionCatastroPosicional,
+} from '../../common/catastros/filtro-catastro';
 
 /**
  * Consulta del padrón del SRI.
@@ -24,12 +28,16 @@ export class PadronService {
         (SELECT count(*) FROM companias WHERE sri_job_id IS NOT NULL)::bigint AS companias_enriquecidas,
         (SELECT count(*) FROM persona_natural WHERE estado_contribuyente = 'ACTIVO')::bigint AS personas_activas
     `);
+    // Los años se envían con el resumen para que el desplegable de catastro
+    // ofrezca sólo ejercicios que existen de verdad.
+    const aniosCatastro = await aniosPorCatastro((sql) => this.dataSource.query(sql));
     return {
       personas: Number(r.personas),
       noSupervisadas: Number(r.no_supervisadas),
       establecimientos: Number(r.establecimientos),
       companiasEnriquecidas: Number(r.companias_enriquecidas),
       personasActivas: Number(r.personas_activas),
+      aniosCatastro,
     };
   }
 
@@ -62,6 +70,15 @@ export class PadronService {
         `EXISTS (SELECT 1 FROM establecimiento e WHERE e.ruc = p.ruc AND e.provincia = $${params.length})`,
       );
     }
+    // Catastros públicos, enlazados por RUC. Es el mismo filtro que usa el
+    // listado de compañías: las tres tablas llevan las mismas columnas porque
+    // el catastro reparte sus RUC entre las tres poblaciones.
+    const catastro = condicionCatastroPosicional('p', q.catastro, q.catastroAnio, params.length + 1);
+    if (catastro) {
+      if (catastro.usaAnio) params.push(q.catastroAnio);
+      where.push(catastro.sql);
+    }
+
     if (q.cursor) {
       params.push(q.cursor);
       where.push(`p.ruc > $${params.length}`);
@@ -78,6 +95,9 @@ export class PadronService {
               p.fecha_suspension_definitiva, p.fecha_reinicio_actividades,
               p.obligado_contabilidad, p.agente_retencion, p.contribuyente_especial,
               p.num_establecimientos,
+              p.turismo_registros, p.turismo_actividades, p.turismo_ratificado,
+              p.exportador_bienes_ir_anios, p.exportador_bienes_iva_anios,
+              p.exportador_servicios_iva_anios,
               (SELECT string_agg(DISTINCT e.provincia, ', ')
                  FROM establecimiento e WHERE e.ruc = p.ruc) AS provincias,
               (SELECT e.actividad FROM establecimiento e
@@ -109,20 +129,51 @@ export class PadronService {
       provincias: f.provincias,
       actividadPrincipal: f.actividad_principal,
       ciiuPrincipal: f.ciiu_principal,
+      turismoRegistros: f.turismo_registros,
+      turismoActividades: f.turismo_actividades,
+      turismoRatificado: f.turismo_ratificado,
+      exportadorBienesIrAnios: f.exportador_bienes_ir_anios,
+      exportadorBienesIvaAnios: f.exportador_bienes_iva_anios,
+      exportadorServiciosIvaAnios: f.exportador_servicios_iva_anios,
     }));
 
     return { datos, cursorSiguiente: hayMas ? datos[datos.length - 1].ruc : null };
   }
 
-  /** Establecimientos de un RUC, sea quien sea su titular. */
+  /**
+   * Todo lo que la base sabe de un RUC: sus locales del padrón, sus registros
+   * turísticos y los catastros de exportadores en los que aparece.
+   *
+   * Las tres cosas se enlazan por RUC y se piden a la vez porque la pantalla
+   * las enseña juntas; hacer tres viajes sólo añadiría parpadeo.
+   */
   async establecimientos(ruc: string) {
-    const filas = await this.dataSource.query(
-      `SELECT numero, tipo_titular, nombre_comercial, estado,
-              provincia, canton, parroquia, codigo_ciiu, actividad
-         FROM establecimiento WHERE ruc = $1 ORDER BY numero`,
-      [ruc],
-    );
-    return { ruc, establecimientos: filas };
+    const [establecimientos, turismo, catastros] = await Promise.all([
+      this.dataSource.query(
+        `SELECT numero, tipo_titular, nombre_comercial, estado,
+                provincia, canton, parroquia, codigo_ciiu, actividad
+           FROM establecimiento WHERE ruc = $1 ORDER BY numero`,
+        [ruc],
+      ),
+      this.dataSource.query(
+        `SELECT numero_registro, codigo_establecimiento, nombre_comercial, actividad,
+                clasificacion, categoria, provincia, canton, parroquia, direccion,
+                telefono, correo, sitio_web, representante_legal, estado_registro
+           FROM turismo_establecimiento
+          WHERE ruc = $1 AND ausente_desde_job IS NULL
+          ORDER BY codigo_establecimiento, numero_registro`,
+        [ruc],
+      ),
+      this.dataSource.query(
+        `SELECT catastro, anio, jurisdiccion, provincia, tipo_contribuyente,
+                clase_contribuyente, obligado_contabilidad, anio_fiscal_analizado
+           FROM catastro_sri
+          WHERE ruc = $1 AND ausente_desde_job IS NULL
+          ORDER BY catastro, anio DESC`,
+        [ruc],
+      ),
+    ]);
+    return { ruc, establecimientos, turismo, catastros };
   }
 
   /** Provincias con su número de establecimientos, para los desplegables. */

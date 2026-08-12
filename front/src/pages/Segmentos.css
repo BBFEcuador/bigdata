@@ -1,0 +1,251 @@
+.segmentos h2 {
+  margin-bottom: 0.75rem;
+}
+
+.segmentos .nota {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  background: #eef4fc;
+  border: 1px solid #cfe0f5;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #38546f;
+  max-width: 70ch;
+}
+
+.segmentos .acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.segmentos .acciones button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #3d6fb4;
+  border-radius: 4px;
+  background: #3d6fb4;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.segmentos .acciones button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.segmentos .error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+
+.segmentos .tarjetas {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.segmentos .tarjeta {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Un segmento bloqueado se muestra igual: el hueco de datos tiene que verse
+   dentro de la herramienta, no vivir en la cabeza de alguien. */
+.segmentos .tarjeta.inactiva {
+  background: #fafafa;
+  border-style: dashed;
+}
+
+.segmentos .tarjeta header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.segmentos .tarjeta h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.segmentos .miembros {
+  font-family: Consolas, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #3d6fb4;
+}
+
+.segmentos .desc {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #666;
+  max-width: 80ch;
+}
+
+.segmentos .bloqueo {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  background: #fdf3ee;
+  border: 1px solid #f0d3c4;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #9a4a25;
+}
+
+.segmentos .corrida {
+  margin: 0;
+  font-size: 0.79rem;
+  color: #888;
+}
+
+.segmentos .corrida .alta {
+  color: #1a7f4b;
+}
+
+.segmentos .corrida .baja {
+  color: #b3261e;
+}
+
+.segmentos .productos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.segmentos .producto {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid #d7e3f5;
+  border-radius: 999px;
+  background: #f2f7ff;
+  color: #2a4d80;
+  font-size: 0.73rem;
+}
+
+.segmentos .tarjeta footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.segmentos .tarjeta footer button,
+.segmentos .descarga {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f7f7f7;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: #333;
+  text-decoration: none;
+}
+
+.segmentos .tarjeta footer button:hover,
+.segmentos .descarga:hover {
+  background: #eef4fc;
+  border-color: #3d6fb4;
+}
+
+/* ------------------------------------------------------------- miembros */
+.segmentos .miembros-vacio {
+  color: #888;
+}
+
+.segmentos .filtros-miembros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  font-size: 0.82rem;
+  border-top: 1px solid #eee;
+}
+
+.segmentos .filtros-miembros label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.segmentos .filtros-miembros .cuenta {
+  margin-left: auto;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmentos .tabla-scroll {
+  overflow-x: auto;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.segmentos table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.segmentos th,
+.segmentos td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.segmentos thead th {
+  background: #fafafa;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+}
+
+.segmentos td.der,
+.segmentos th.der {
+  text-align: right;
+}
+
+.segmentos .mono {
+  font-family: Consolas, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.77rem;
+}
+
+.segmentos .acciones-fila {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.segmentos .acciones-fila button {
+  padding: 0.15rem 0.45rem;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.segmentos .acciones-fila button:hover {
+  border-color: #3d6fb4;
+  background: #eef4fc;
+}
+
+.segmentos .vacio {
+  text-align: center;
+  color: #999;
+  padding: 1.2rem;
+}
+
+.segmentos .cargando {
+  color: #888;
+  font-size: 0.85rem;
+}

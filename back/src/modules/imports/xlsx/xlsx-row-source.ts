@@ -27,13 +27,7 @@ export interface SourceRow {
  *   fechas. Los estilos son pocos KB, así que cachearlos no cuesta nada.
  */
 export async function* readRows(filePath: string): AsyncGenerator<SourceRow> {
-  const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
-    worksheets: 'emit',
-    sharedStrings: 'cache',
-    styles: 'cache',
-    hyperlinks: 'ignore',
-    entries: 'emit',
-  });
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, OPCIONES);
 
   let hojaProcesada = false;
 
@@ -47,4 +41,45 @@ export async function* readRows(filePath: string): AsyncGenerator<SourceRow> {
       yield { rowNumber: row.number as number, cells: row.values as unknown[] };
     }
   }
+}
+
+const OPCIONES = {
+  worksheets: 'emit',
+  sharedStrings: 'cache',
+  styles: 'cache',
+  hyperlinks: 'ignore',
+  entries: 'emit',
+} as const;
+
+export interface SourceSheet {
+  name: string;
+  rows: SourceRow[];
+}
+
+/**
+ * Lee TODAS las hojas, cada una con sus filas.
+ *
+ * Los catastros del SRI reparten un año fiscal por hoja ("LISTADO 2024",
+ * "Exp Serv 2026"), así que quedarse con la primera —lo que hace `readRows`—
+ * perdería en silencio todos los ejercicios anteriores.
+ *
+ * A diferencia de `readRows`, aquí las filas SÍ se materializan: son ficheros de
+ * unos pocos miles de filas por hoja y hay que agruparlas por hoja de todas
+ * formas. No se debe usar esto con el Excel de compañías.
+ */
+export async function readSheets(filePath: string): Promise<SourceSheet[]> {
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, OPCIONES);
+  const hojas: SourceSheet[] = [];
+
+  for await (const worksheet of reader as any) {
+    const rows: SourceRow[] = [];
+    for await (const row of worksheet) {
+      rows.push({ rowNumber: row.number as number, cells: row.values as unknown[] });
+    }
+    // El nombre es el año en estos archivos; sin él no se puede saber a qué
+    // ejercicio pertenece la hoja.
+    hojas.push({ name: String(worksheet.name ?? `Hoja${hojas.length + 1}`), rows });
+  }
+
+  return hojas;
 }

@@ -75,12 +75,14 @@
   font-family: Consolas, Menlo, monospace;
 }
 
-/* El nombre de la actividad puede ser muy largo: se acota y se ve entero en el
-   tooltip, para no romper el ancho de la tabla. */
+/* El nombre de la actividad puede ser muy largo. Se envuelve en varias líneas
+   en vez de recortarse con puntos suspensivos: es el dato por el que se filtra,
+   así que leerlo entero importa más que mantener la fila de una sola altura.
+   La tabla es `nowrap`, de ahí el `white-space: normal` explícito. */
 .companias td.actividad {
   max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .companias .tenue {
@@ -163,4 +165,10 @@
 .companias .ver:hover {
   background: #eef4fc;
   border-color: #3d6fb4;
+}
+
+/* La columna de catastros apila una marca por catastro; la tabla es `nowrap`,
+   de ahí el `white-space: normal` explícito. */
+.companias td.catastros {
+  white-space: normal;
 }

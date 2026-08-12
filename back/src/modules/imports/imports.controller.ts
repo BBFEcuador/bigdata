@@ -21,17 +21,27 @@ import { CiiuImportService } from './ciiu/ciiu-import.service';
 import { BalancesImportService } from './balances/balances-import.service';
 import { SriImportService } from './sri/sri-import.service';
 import { DataportalImportService } from './dataportal/dataportal-import.service';
+import { TurismoImportService } from './turismo/turismo-import.service';
+import { CatastrosImportService } from './catastros/catastros-import.service';
 import {
   multerConfigBalances,
+  multerConfigCatastros,
   multerConfigSri,
   multerConfigCatalogo,
   multerConfigCiiu,
   multerConfigCompanias,
+  multerConfigTurismo,
 } from './multer.config';
 import { IMPORT_KIND, IMPORT_KIND_CATALOGO, IMPORT_KIND_CIIU } from './imports.constants';
 import { IMPORT_KIND_BALANCES } from './balances/balances.constants';
 import { IMPORT_KIND_SRI } from './sri/sri.constants';
 import { IMPORT_KIND_DATAPORTAL } from './dataportal/dataportal.constants';
+import { IMPORT_KIND_TURISMO } from './turismo/turismo.constants';
+import {
+  IMPORT_KIND_CATASTROS,
+  TIPOS_CATASTRO,
+  TipoCatastro,
+} from './catastros/catastros.constants';
 import { ImportJob } from './entities/import-job.entity';
 
 @Controller('imports')
@@ -44,6 +54,8 @@ export class ImportsController {
     private readonly balances: BalancesImportService,
     private readonly sri: SriImportService,
     private readonly dataportal: DataportalImportService,
+    private readonly turismo: TurismoImportService,
+    private readonly catastros: CatastrosImportService,
   ) {}
 
   /**
@@ -119,6 +131,51 @@ export class ImportsController {
   }
 
   /**
+   * Catastro Nacional de Turismo (Ministerio de Turismo), en Excel.
+   *
+   * Trae una fila por establecimiento registrado y enlaza por RUC con las tres
+   * poblaciones del proyecto, no sólo con `companias`: cuatro de cada cinco
+   * establecimientos turísticos pertenecen a personas naturales.
+   */
+  @Post('turismo')
+  @HttpCode(202)
+  @UseInterceptors(FileInterceptor('file', multerConfigTurismo))
+  async subirTurismo(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+    const job = await this.crearJob(file, IMPORT_KIND_TURISMO, modo);
+    this.turismo.enqueue(job.id);
+    return this.respuesta(job);
+  }
+
+  /**
+   * Catastros del SRI: exportadores habituales (tres listas) y prestadores de
+   * servicios digitales no residentes.
+   *
+   * El tipo se detecta del título que llevan dentro las hojas. `tipo` sólo está
+   * para forzarlo cuando el SRI cambie los rótulos y la detección falle; no
+   * hace falta pasarlo, y pasarlo mal mezcla dos beneficios tributarios en la
+   * misma serie.
+   */
+  @Post('catastros')
+  @HttpCode(202)
+  @UseInterceptors(FileInterceptor('file', multerConfigCatastros))
+  async subirCatastros(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('modo') modo?: string,
+    @Query('tipo') tipo?: string,
+  ) {
+    if (tipo && !TIPOS_CATASTRO.includes(tipo as TipoCatastro)) {
+      if (file) await fs.unlink(file.path).catch(() => undefined);
+      throw new BadRequestException(
+        `Tipo de catastro desconocido "${tipo}". Valores válidos: ${TIPOS_CATASTRO.join(', ')}. ` +
+          'Lo normal es no pasar este parámetro: el tipo se deduce del archivo.',
+      );
+    }
+    const job = await this.crearJob(file, IMPORT_KIND_CATASTROS, modo);
+    this.catastros.enqueue(job.id, tipo as TipoCatastro | undefined);
+    return this.respuesta(job);
+  }
+
+  /**
    * Enriquecimiento desde DataPortal. No recibe archivo: la fuente es su API.
    *
    * Recorre las compañías con RUC y consulta cinco endpoints por cada una.
@@ -129,9 +186,9 @@ export class ImportsController {
   @Post('dataportal')
   @HttpCode(202)
   async lanzarDataportal() {
-    if (!process.env.DATAPORTAL_TOKEN) {
+    if (!process.env.DATAPORTAL_USER || !process.env.DATAPORTAL_PASSWORD) {
       throw new BadRequestException(
-        'Falta DATAPORTAL_TOKEN en back/.env. Añádelo y reinicia el backend.',
+        'Faltan DATAPORTAL_USER / DATAPORTAL_PASSWORD en back/.env. Añádelos y reinicia el backend.',
       );
     }
     const activo = await this.jobs.hayJobActivo(IMPORT_KIND_DATAPORTAL);

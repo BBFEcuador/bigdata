@@ -174,8 +174,20 @@
   border-color: #3d6fb4;
 }
 
+/* Fila desplegada bajo el contribuyente: el detalle se lee donde se pulsó, no
+   al final de la página. El fondo la separa visualmente de la tabla. */
+.padron .fila-detalle > td {
+  padding: 0;
+  background: #f7f9fc;
+  white-space: normal;
+}
+
+.padron tr.abierta > td {
+  background: #eef3fb;
+}
+
 .padron .panel {
-  margin-top: 1.25rem;
+  margin: 0;
   padding: 1rem;
   background: #fff;
   border: 1px solid #e0e0e0;
@@ -204,10 +216,14 @@
   font-size: 0.8rem;
 }
 
-.padron .actividad {
+/* El nombre de la actividad se lee entero: se envuelve en varias líneas en vez
+   de recortarse con puntos suspensivos. Es el mismo criterio que en el listado
+   de compañías y en la ficha. */
+.padron .tabla td.actividad {
+  min-width: 260px;
   max-width: 340px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .padron .vacio,
@@ -234,8 +250,36 @@
   border-radius: 0;
 }
 
-.padron .actividad {
+/* La de dentro de la tabla scrollable: mismo criterio, algo más estrecha.
+   El `min-width` es lo que impide que el reparto automático de la tabla la
+   estruje a 150 px y convierta el nombre en una columna de una palabra. */
+.padron .tabla-scroll .tabla td.actividad {
+  min-width: 240px;
   max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Bloques dentro del panel desplegado: catastros, registros turísticos y
+   locales del padrón, en ese orden. */
+.padron .bloque-detalle {
+  margin-bottom: 1rem;
+}
+
+.padron .bloque-detalle h4,
+.padron .titulo-locales {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+}
+
+/* En el panel hay sitio de sobra: las marcas van en fila y no apiladas. */
+.padron .marcas-catastro.fila {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+/* La columna de catastros no debe estirar la fila más que las demás. */
+.padron .tabla td.catastros {
+  white-space: normal;
 }
