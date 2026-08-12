@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: friday_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - friday_network
+    # /dev/shm por defecto son 64 MB, escasos para los workers paralelos que usa
+    # el CREATE INDEX de la primera carga.
+    shm_size: '1gb'
+    # Los valores de fábrica (shared_buffers=128MB, max_wal_size=1GB) provocan
+    # una tormenta de checkpoints durante el merge de un millón de filas, que
+    # acaba dominando el tiempo total de la carga.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=2GB
+      - -c
+      - effective_cache_size=6GB
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - max_wal_size=8GB
+      - -c
+      - min_wal_size=2GB
+      - -c
+      - checkpoint_timeout=30min
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_compression=on
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - max_parallel_workers_per_gather=4
+      - -c
+      - max_parallel_maintenance_workers=4
+      - -c
+      - autovacuum_vacuum_scale_factor=0.02
+      - -c
+      - autovacuum_analyze_scale_factor=0.01
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+
+networks:
+  friday_network:
+    driver: bridge

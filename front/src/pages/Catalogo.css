@@ -1,0 +1,148 @@
+.catalogo h2 {
+  margin-bottom: 1rem;
+}
+
+.resumen-cajas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.caja {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.caja-valor {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #282c34;
+}
+
+.caja-etiqueta {
+  display: block;
+  font-size: 0.72rem;
+  color: #777;
+  margin-top: 0.2rem;
+}
+
+.catalogo .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.catalogo .filtros input[type='text'],
+.catalogo .filtros input:not([type]),
+.catalogo .filtros select,
+.catalogo .filtros button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.catalogo .filtros input:not([type='checkbox']) {
+  min-width: 260px;
+}
+
+.catalogo .check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.83rem;
+  color: #444;
+}
+
+.catalogo .filtros button {
+  background: #f1f1f1;
+  cursor: pointer;
+}
+
+.catalogo .resumen {
+  margin: 0.9rem 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.catalogo .tabla-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.catalogo table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.catalogo th,
+.catalogo td {
+  text-align: left;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.catalogo thead th {
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  font-weight: 600;
+  color: #444;
+}
+
+.catalogo .mono {
+  font-family: Consolas, Menlo, monospace;
+}
+
+.catalogo .tenue {
+  color: #999;
+}
+
+/* Las cuentas que salieron del plan oficial siguen ahí, sólo atenuadas: pueden
+   seguir referenciadas por datos históricos. */
+.catalogo tr.ausente td {
+  color: #9aa0a6;
+  background: #fafafa;
+}
+
+.catalogo .etiqueta {
+  margin-left: 0.5rem;
+  font-size: 0.68rem;
+  background: #eceff1;
+  color: #607d8b;
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+}
+
+.catalogo .vacio-total {
+  padding: 2.5rem;
+  text-align: center;
+  color: #888;
+  background: #fff;
+  border: 1px dashed #ddd;
+  border-radius: 6px;
+}
+
+.catalogo .alerta.error {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #a4130a;
+  border: 1px solid #f5c2bd;
+  font-size: 0.9rem;
+}

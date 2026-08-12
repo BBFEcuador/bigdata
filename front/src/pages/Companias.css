@@ -1,0 +1,126 @@
+.companias h2 {
+  margin-bottom: 1rem;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.filtros input,
+.filtros select,
+.filtros button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.filtros input {
+  min-width: 200px;
+}
+
+.filtros button {
+  background: #f1f1f1;
+  cursor: pointer;
+}
+
+.resumen {
+  margin: 0.9rem 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* La tabla es ancha: debe desplazarse dentro de su caja y nunca desplazar la página. */
+.tabla-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.companias table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.companias th,
+.companias td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid #eee;
+}
+
+.companias thead th {
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  font-weight: 600;
+  color: #444;
+}
+
+.companias td.der,
+.companias th.der {
+  text-align: right;
+}
+
+.companias .mono {
+  font-family: Consolas, Menlo, monospace;
+}
+
+/* El nombre de la actividad puede ser muy largo: se acota y se ve entero en el
+   tooltip, para no romper el ancho de la tabla. */
+.companias td.actividad {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.companias .tenue {
+  color: #999;
+}
+
+.companias .vacio {
+  text-align: center;
+  color: #999;
+  padding: 2rem;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.paginacion button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.paginacion button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.alerta.error {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #a4130a;
+  border: 1px solid #f5c2bd;
+  font-size: 0.9rem;
+}

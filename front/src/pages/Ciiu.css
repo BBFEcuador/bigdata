@@ -1,0 +1,185 @@
+.ciiu h2 {
+  margin-bottom: 0.4rem;
+}
+
+.ciiu .ayuda {
+  color: #666;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.ciiu .resumen-cajas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.ciiu .caja {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.ciiu .caja-valor {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #282c34;
+}
+
+.ciiu .caja-etiqueta {
+  display: block;
+  font-size: 0.72rem;
+  color: #777;
+  margin-top: 0.2rem;
+}
+
+.ciiu .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.ciiu .filtros input:not([type='checkbox']),
+.ciiu .filtros select,
+.ciiu .filtros button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.ciiu .filtros input:not([type='checkbox']) {
+  min-width: 260px;
+}
+
+.ciiu .check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.83rem;
+  color: #444;
+}
+
+.ciiu .filtros button {
+  background: #f1f1f1;
+  cursor: pointer;
+}
+
+.ciiu .resumen {
+  margin: 0.9rem 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.ciiu .tabla-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.ciiu table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  table-layout: fixed;
+}
+
+.ciiu th,
+.ciiu td {
+  text-align: left;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.ciiu th:nth-child(1), .ciiu td:nth-child(1) { width: 110px; }
+.ciiu th:nth-child(3), .ciiu td:nth-child(3) { width: 150px; }
+.ciiu th:nth-child(4), .ciiu td:nth-child(4) { width: 100px; }
+.ciiu th:nth-child(5), .ciiu td:nth-child(5) { width: 220px; }
+
+.ciiu thead th {
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  font-weight: 600;
+  color: #444;
+  white-space: nowrap;
+}
+
+/* Los nombres de último nivel son larguísimos (alguno supera las 40 palabras),
+   así que esta celda SÍ debe partir línea. */
+.ciiu td.nombre {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.ciiu td.aplicacion {
+  white-space: normal;
+  font-size: 0.78rem;
+}
+
+.ciiu .der {
+  text-align: right;
+}
+
+.ciiu .mono {
+  font-family: Consolas, Menlo, monospace;
+  white-space: nowrap;
+}
+
+.ciiu .tenue {
+  color: #888;
+}
+
+.ciiu td a {
+  color: #2f6feb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ciiu td a:hover {
+  text-decoration: underline;
+}
+
+.ciiu tr.ausente td {
+  color: #9aa0a6;
+  background: #fafafa;
+}
+
+.ciiu .etiqueta {
+  margin-left: 0.5rem;
+  font-size: 0.68rem;
+  background: #eceff1;
+  color: #607d8b;
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+}
+
+.ciiu .vacio-total {
+  padding: 2.5rem;
+  text-align: center;
+  color: #888;
+  background: #fff;
+  border: 1px dashed #ddd;
+  border-radius: 6px;
+}
+
+.ciiu .alerta.error {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #a4130a;
+  border: 1px solid #f5c2bd;
+  font-size: 0.9rem;
+}

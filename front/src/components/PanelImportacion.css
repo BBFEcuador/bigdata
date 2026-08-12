@@ -1,0 +1,167 @@
+.importar {
+  max-width: 900px;
+}
+
+.importar h2 {
+  margin-bottom: 0.5rem;
+}
+
+.importar .ayuda {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.importar .formulario {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.importar .modo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.importar select,
+.importar button {
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 0.9rem;
+}
+
+.importar button {
+  background: #282c34;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.importar button:disabled {
+  background: #9aa0a6;
+  cursor: not-allowed;
+}
+
+.importar .archivo {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.barra-bloque {
+  margin-top: 1.5rem;
+}
+
+.barra-cabecera {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #444;
+  margin-bottom: 0.35rem;
+}
+
+.barra {
+  height: 10px;
+  background: #e6e6e6;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.barra-relleno {
+  height: 100%;
+  background: #2f6feb;
+  transition: width 0.4s ease;
+}
+
+.barra-relleno.error {
+  background: #c62828;
+}
+
+.contadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.dato {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.dato-valor {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #282c34;
+}
+
+.dato-etiqueta {
+  display: block;
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 0.2rem;
+}
+
+.alerta {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.alerta.error {
+  background: #fdecea;
+  color: #a4130a;
+  border: 1px solid #f5c2bd;
+}
+
+.alerta.ok {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border: 1px solid #c3e6c8;
+}
+
+.alerta.aviso {
+  background: #fff8e1;
+  color: #7a5300;
+  border: 1px solid #f2dfa8;
+}
+
+.rechazos {
+  margin-top: 1.5rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.rechazos summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.rechazos table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.rechazos th,
+.rechazos td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #eee;
+}
