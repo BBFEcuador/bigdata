@@ -1,0 +1,225 @@
+.balances h2 {
+  margin-bottom: 1rem;
+}
+
+.balances .resumen-cajas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.balances .caja {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.balances .caja-valor {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #282c34;
+}
+
+.balances .caja-etiqueta {
+  display: block;
+  font-size: 0.72rem;
+  color: #777;
+  margin-top: 0.2rem;
+}
+
+/* Selector de ejercicio: un chip por año, con su número de balances. */
+.balances .por-anio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.balances .chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 82px;
+  padding: 0.45rem 0.8rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.balances .chip strong {
+  font-size: 0.95rem;
+  color: #282c34;
+}
+
+.balances .chip:hover {
+  border-color: #b9c2cc;
+}
+
+.balances .chip.activo {
+  border-color: #3d6fb4;
+  background: #eef4fc;
+}
+
+.balances .chip.activo strong {
+  color: #3d6fb4;
+}
+
+.balances .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.balances .filtros input,
+.balances .filtros button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.balances .filtros input:first-child {
+  min-width: 260px;
+}
+
+.balances .filtros button {
+  background: #f1f1f1;
+  cursor: pointer;
+}
+
+.balances .tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+
+.balances .tabla th,
+.balances .tabla td {
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.balances .tabla th {
+  background: #fafafa;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+}
+
+.balances .tabla tbody tr:hover {
+  background: #fbfcfe;
+}
+
+.balances .derecha {
+  text-align: right;
+}
+
+/* Los importes se leen en columna: sin ancho fijo, las cifras no se alinean. */
+.balances .mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.balances .ver {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f7f7f7;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.balances .ver:hover {
+  background: #eef4fc;
+  border-color: #3d6fb4;
+}
+
+.balances .vacio,
+.balances .cargando {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.balances .error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+
+/* Panel del histórico comparativo. */
+.balances .panel {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.balances .panel-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.balances .panel-cabecera h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.balances .panel-cabecera button {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f1f1f1;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.balances .sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.balances .panel h4 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777;
+}
+
+.balances .comparativa td:first-child {
+  white-space: normal;
+  min-width: 220px;
+}
+
+.balances .sube {
+  color: #1a7f4b;
+}
+
+.balances .baja {
+  color: #b3261e;
+}

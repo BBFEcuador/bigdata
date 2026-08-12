@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { CompaniasModule } from './modules/companias/companias.module';
 import { CatalogoModule } from './modules/catalogo/catalogo.module';
 import { CiiuModule } from './modules/ciiu/ciiu.module';
+import { BalancesModule } from './modules/balances/balances.module';
 import { ImportsModule } from './modules/imports/imports.module';
 
 @Module({
@@ -37,6 +38,7 @@ import { ImportsModule } from './modules/imports/imports.module';
     CompaniasModule,
     CatalogoModule,
     CiiuModule,
+    BalancesModule,
     ImportsModule,
   ],
   controllers: [AppController],
