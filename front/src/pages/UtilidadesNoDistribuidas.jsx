@@ -177,6 +177,7 @@ export default function UtilidadesNoDistribuidas() {
               Anticipo provisional
             </th>
             <th className="num">Variación vs. año anterior</th>
+            <th className="acciones">Informe</th>
           </tr>
         </thead>
         <tbody>
@@ -197,11 +198,21 @@ export default function UtilidadesNoDistribuidas() {
               <td className={`num ${Number(d.variacion) < 0 ? 'baja' : 'sube'}`}>
                 {d.variacion === null ? '—' : `${Number(d.variacion) > 0 ? '+' : ''}${dinero(d.variacion)}`}
               </td>
+              <td className="acciones">
+                <a
+                  className="pdf"
+                  href={`/informe-tributario/${d.expediente}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  PDF
+                </a>
+              </td>
             </tr>
           ))}
           {!cargando && res?.datos.length === 0 && (
             <tr>
-              <td colSpan={8} className="vacio">
+              <td colSpan={9} className="vacio">
                 Ninguna compañía con esos filtros.
               </td>
             </tr>

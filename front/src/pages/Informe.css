@@ -582,3 +582,43 @@
   font-size: 0.66rem;
   color: var(--tenue);
 }
+
+/* Diagnóstico del crédito tributario en el informe. */
+
+.informe .diagnostico-titulo {
+  margin: 1.1rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--marca);
+}
+
+.informe .diagnostico {
+  margin: 0 0 0.8rem;
+}
+
+.informe .diagnostico .caso {
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--arena-borde);
+  margin-bottom: 0.5rem;
+}
+
+.informe .diagnostico .caso.recuperable {
+  border-left-color: var(--acento);
+  background: var(--arena);
+}
+
+.informe .diagnostico dt {
+  font-size: 0.8rem;
+  color: var(--tinta);
+}
+
+.informe .diagnostico dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--tenue);
+}
+
+.informe .diagnostico em {
+  font-style: normal;
+  color: var(--tinta);
+}

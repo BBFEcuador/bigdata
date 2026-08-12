@@ -7,5 +7,8 @@ export const listarRiesgo = params => api.get('/tributario/empresas', { params }
 export const listarUtilidadesNoDistribuidas = params =>
   api.get('/tributario/utilidades-no-distribuidas', { params }).then(r => r.data)
 
+export const listarCreditoTributario = params =>
+  api.get('/tributario/credito-tributario', { params }).then(r => r.data)
+
 export const obtenerFichaTributaria = expediente =>
   api.get(`/tributario/empresas/${encodeURIComponent(expediente)}`).then(r => r.data)

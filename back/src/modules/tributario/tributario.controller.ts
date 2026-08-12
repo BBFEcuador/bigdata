@@ -2,6 +2,7 @@ import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common
 import { TributarioService } from './tributario.service';
 import { QueryRiesgoDto } from './dto/query-riesgo.dto';
 import { QueryUtilidadesDto } from './dto/query-utilidades.dto';
+import { QueryCreditoDto } from './dto/query-credito.dto';
 
 @Controller('tributario')
 export class TributarioController {
@@ -27,6 +28,12 @@ export class TributarioController {
   @Get('utilidades-no-distribuidas')
   utilidadesNoDistribuidas(@Query() query: QueryUtilidadesDto) {
     return this.service.utilidadesNoDistribuidas(query);
+  }
+
+  /** Crédito tributario por compañía y ejercicio: la devolución potencial. */
+  @Get('credito-tributario')
+  creditoTributario(@Query() query: QueryCreditoDto) {
+    return this.service.creditoTributario(query);
   }
 
   /** Ficha de una compañía: los cuatro ejercicios con sus tres bases. */

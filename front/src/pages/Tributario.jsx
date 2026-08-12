@@ -5,6 +5,7 @@ import {
   obtenerResumenTributario,
 } from '../services/tributario.service'
 import UtilidadesNoDistribuidas from './UtilidadesNoDistribuidas'
+import CreditoTributario from './CreditoTributario'
 import './Tributario.css'
 
 /**
@@ -18,6 +19,7 @@ import './Tributario.css'
 const VISTAS = [
   { id: 'presuntiva', titulo: 'Estimación presuntiva' },
   { id: 'no-distribuidas', titulo: 'Utilidades no distribuidas' },
+  { id: 'credito', titulo: 'Crédito tributario' },
 ]
 
 const dinero = n =>
@@ -131,6 +133,8 @@ export default function Tributario() {
 
       {vista === 'no-distribuidas' ? (
         <UtilidadesNoDistribuidas />
+      ) : vista === 'credito' ? (
+        <CreditoTributario />
       ) : (
         <>
       <p className="nota">

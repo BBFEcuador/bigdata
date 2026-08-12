@@ -251,6 +251,114 @@ export class TributarioService {
     };
   }
 
+  /**
+   * Crédito tributario por compañía y ejercicio: la devolución potencial.
+   *
+   * Los años van en columnas —una fila por compañía— porque la pregunta es
+   * "¿cuánto lleva acumulado y desde cuándo?", y eso en formato largo obliga a
+   * leer cinco filas para responderla. El pivote se hace aquí y no en el
+   * cliente: son 150.000 compañías y el filtro por monto tiene que aplicarse
+   * antes de paginar.
+   *
+   * Por defecto sólo las **comparables** de la presuntiva: son las que
+   * declararon ingresos y utilidad, y por tanto las que tienen una devolución
+   * que reclamar de verdad.
+   */
+  async creditoTributario(q: {
+    soloComparables?: boolean;
+    minimo?: number;
+    rama?: string;
+    q?: string;
+    offset?: number;
+    limit?: number;
+  }) {
+    const limit = q.limit ?? 50;
+    const offset = q.offset ?? 0;
+    const soloComparables = q.soloComparables !== false;
+
+    const anios: { anio: number }[] = await this.dataSource.query(
+      `SELECT DISTINCT anio FROM balance_magnitud ORDER BY anio`,
+    );
+    const [{ ultimo }] = await this.dataSource.query(
+      `SELECT max(anio)::int AS ultimo FROM balance_magnitud`,
+    );
+
+    const where: string[] = [];
+    const params: unknown[] = [ultimo];
+
+    if (soloComparables) {
+      where.push(`EXISTS (SELECT 1 FROM riesgo_tributario_anio r
+                           WHERE r.expediente = m.expediente
+                             AND r.poblacion = 'comparable')`);
+    }
+    if (q.rama) {
+      params.push(`${q.rama.toUpperCase()}%`);
+      where.push(`c.ciiu_nivel_6 LIKE $${params.length}`);
+    }
+    if (q.q) {
+      params.push(`%${q.q.trim()}%`);
+      const i = params.length;
+      where.push(`(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR m.expediente = $${i})`);
+    }
+
+    // El mínimo se aplica al ejercicio más reciente, no a la suma de todos:
+    // un crédito de hace cuatro años que ya se compensó no es una devolución
+    // pendiente, y sumarlo inflaría la lista con saldos muertos.
+    let having = '';
+    if (q.minimo) {
+      params.push(q.minimo);
+      having = `HAVING sum(coalesce((m.magnitudes->>'creditoIva')::numeric, 0)
+                        + coalesce((m.magnitudes->>'creditoIr')::numeric, 0))
+                       FILTER (WHERE m.anio = $1) >= $${params.length}`;
+    }
+
+    params.push(limit, offset);
+    const datos = await this.dataSource.query(
+      `SELECT m.expediente, c.ruc, c.nombre,
+              substring(c.ciiu_nivel_6 from 1 for 4) AS grupo_ciiu,
+              jsonb_object_agg(m.anio, jsonb_build_object(
+                'iva', (m.magnitudes->>'creditoIva')::numeric,
+                'ir',  (m.magnitudes->>'creditoIr')::numeric
+              )) AS por_anio,
+              sum(coalesce((m.magnitudes->>'creditoIva')::numeric, 0)
+                + coalesce((m.magnitudes->>'creditoIr')::numeric, 0))
+                FILTER (WHERE m.anio = $1) AS ultimo_total,
+              min(d.diagnostico_iva) AS diagnostico_iva,
+              min(d.diagnostico_ir)  AS diagnostico_ir,
+              min(d.iva_sube) AS iva_sube, min(d.iva_baja) AS iva_baja,
+              min(d.ir_sube)  AS ir_sube,  min(d.ir_baja)  AS ir_baja
+         FROM balance_magnitud m
+         JOIN companias c USING (expediente)
+         LEFT JOIN credito_tributario_empresa d USING (expediente)
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        GROUP BY m.expediente, c.ruc, c.nombre, c.ciiu_nivel_6
+        ${having}
+        ORDER BY ultimo_total DESC NULLS LAST
+        LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+
+    const [totales] = await this.dataSource.query(
+      `SELECT count(*)::int AS companias,
+              sum(greatest((m.magnitudes->>'creditoIva')::numeric, 0)) AS suma_iva,
+              sum(greatest((m.magnitudes->>'creditoIr')::numeric, 0))  AS suma_ir
+         FROM balance_magnitud m
+         JOIN companias c USING (expediente)
+        WHERE m.anio = $1
+          ${where.length ? `AND ${where.join(' AND ')}` : ''}`,
+      params.slice(0, params.length - 2 - (q.minimo ? 1 : 0)),
+    );
+
+    return {
+      anios: anios.map(a => a.anio),
+      ultimo,
+      datos,
+      totales,
+      limit,
+      offset,
+    };
+  }
+
   /** Ficha: la serie completa de la compañía, ejercicio por ejercicio. */
   async ficha(expediente: string) {
     const [empresa] = await this.dataSource.query(
@@ -300,6 +408,17 @@ export class TributarioService {
       [expediente],
     );
 
+    // El diagnóstico de la trayectoria: un saldo que sólo crece es impuesto que
+    // nadie ha imputado contra nada.
+    const [diagnostico] = await this.dataSource.query(
+      `SELECT anios, ultimo_anio, iva_ini, iva_ult, iva_max, iva_sube, iva_baja,
+              ir_ini, ir_ult, ir_max, ir_sube, ir_baja,
+              diagnostico_iva, diagnostico_ir
+         FROM credito_tributario_empresa
+        WHERE expediente = $1`,
+      [expediente],
+    );
+
     const noDistribuidas = await this.dataSource.query(
       `SELECT anio, netas, niif, utilidad_ejercicio, base_anticipo, anticipo_provisional,
               origen, financiera
@@ -313,6 +432,6 @@ export class TributarioService {
       `SELECT tramo, tarifa FROM tarifa_pago_a_cuenta ORDER BY tramo LIMIT 1`,
     );
 
-    return { empresa, ejercicios, credito, noDistribuidas, tarifa, resoluciones };
+    return { empresa, ejercicios, credito, diagnostico, noDistribuidas, tarifa, resoluciones };
   }
 }

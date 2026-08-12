@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { obtenerFichaTributaria } from '../services/tributario.service'
 import { MARCA, NOTA_LEGAL } from '../marca'
+import { ADVERTENCIA_CREDITO, leer } from '../diagnosticoCredito'
 import './Informe.css'
 
 const dinero = n =>
@@ -65,7 +66,7 @@ export default function InformeTributario() {
   if (error) return <p className="informe-aviso error">{error}</p>
   if (!datos) return null
 
-  const { empresa, ejercicios, noDistribuidas, credito, tarifa, resoluciones } = datos
+  const { empresa, ejercicios, noDistribuidas, credito, diagnostico, tarifa, resoluciones } = datos
   const anios = [
     ...new Set([
       ...ejercicios.map(e => e.anio),
@@ -405,9 +406,41 @@ export default function InformeTributario() {
                 </tr>
               </tbody>
             </table>
+            {diagnostico && (
+              <>
+                <h3 className="diagnostico-titulo">Diagnóstico de la trayectoria</h3>
+                <dl className="diagnostico">
+                  {[
+                    ['Crédito por IVA', diagnostico.diagnostico_iva, diagnostico.iva_sube, diagnostico.iva_baja],
+                    ['Crédito por impuesto a la renta', diagnostico.diagnostico_ir, diagnostico.ir_sube, diagnostico.ir_baja],
+                  ].map(([etiqueta, clave, sube, baja]) => {
+                    const d = leer(clave)
+                    return (
+                      <div key={etiqueta} className={`caso ${d.tono}`}>
+                        <dt>
+                          {etiqueta}: <b>{d.titulo}</b>
+                        </dt>
+                        <dd>
+                          {d.texto}
+                          {(sube > 0 || baja > 0) && (
+                            <em>
+                              {' '}
+                              En los {diagnostico.anios} ejercicios analizados el saldo subió {sube}{' '}
+                              {sube === 1 ? 'vez' : 'veces'} y bajó {baja}.
+                            </em>
+                          )}
+                        </dd>
+                      </div>
+                    )
+                  })}
+                </dl>
+              </>
+            )}
+
             <p className="nota">
               Es el saldo contable declarado por la compañía, no una devolución aprobada: su
-              recuperación depende de la solicitud correspondiente y de la verificación del SRI.
+              recuperación depende de la solicitud correspondiente y de la verificación del SRI.{' '}
+              {ADVERTENCIA_CREDITO}
             </p>
           </section>
         )}
