@@ -1,0 +1,38 @@
+import { Transform } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+
+export class QueryPadronDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  nombre?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  ruc?: string;
+
+  /** ACTIVO, PASIVO o SUSPENDIDO. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  estado?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  provincia?: string;
+
+  /** Cursor de keyset: el último RUC de la página anterior. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cursor?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (value === '' || value === undefined ? undefined : parseInt(value, 10)))
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+}

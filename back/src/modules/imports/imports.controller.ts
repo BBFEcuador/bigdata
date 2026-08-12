@@ -19,14 +19,17 @@ import { CompaniasImportService } from './companias/companias-import.service';
 import { CatalogoImportService } from './catalogo/catalogo-import.service';
 import { CiiuImportService } from './ciiu/ciiu-import.service';
 import { BalancesImportService } from './balances/balances-import.service';
+import { SriImportService } from './sri/sri-import.service';
 import {
   multerConfigBalances,
+  multerConfigSri,
   multerConfigCatalogo,
   multerConfigCiiu,
   multerConfigCompanias,
 } from './multer.config';
 import { IMPORT_KIND, IMPORT_KIND_CATALOGO, IMPORT_KIND_CIIU } from './imports.constants';
 import { IMPORT_KIND_BALANCES } from './balances/balances.constants';
+import { IMPORT_KIND_SRI } from './sri/sri.constants';
 import { ImportJob } from './entities/import-job.entity';
 
 @Controller('imports')
@@ -37,6 +40,7 @@ export class ImportsController {
     private readonly catalogo: CatalogoImportService,
     private readonly ciiu: CiiuImportService,
     private readonly balances: BalancesImportService,
+    private readonly sri: SriImportService,
   ) {}
 
   /**
@@ -92,6 +96,22 @@ export class ImportsController {
   async subirBalances(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
     const job = await this.crearJob(file, IMPORT_KIND_BALANCES, modo);
     this.balances.enqueue(job.id);
+    return this.respuesta(job);
+  }
+
+  /**
+   * Padrón del SRI, un CSV por provincia.
+   *
+   * Se fuerza `modo=parcial` y no se acepta otra cosa: cada archivo es UNA
+   * provincia, así que tratarlo como foto completa marcaría como desaparecidos
+   * a los contribuyentes de las otras 23.
+   */
+  @Post('sri')
+  @HttpCode(202)
+  @UseInterceptors(FileInterceptor('file', multerConfigSri))
+  async subirSri(@UploadedFile() file: Express.Multer.File) {
+    const job = await this.crearJob(file, IMPORT_KIND_SRI, 'parcial');
+    this.sri.enqueue(job.id);
     return this.respuesta(job);
   }
 

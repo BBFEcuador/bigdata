@@ -8,6 +8,7 @@ import { CompaniasModule } from './modules/companias/companias.module';
 import { CatalogoModule } from './modules/catalogo/catalogo.module';
 import { CiiuModule } from './modules/ciiu/ciiu.module';
 import { BalancesModule } from './modules/balances/balances.module';
+import { PadronModule } from './modules/padron/padron.module';
 import { ImportsModule } from './modules/imports/imports.module';
 
 @Module({
@@ -39,6 +40,7 @@ import { ImportsModule } from './modules/imports/imports.module';
     CatalogoModule,
     CiiuModule,
     BalancesModule,
+    PadronModule,
     ImportsModule,
   ],
   controllers: [AppController],

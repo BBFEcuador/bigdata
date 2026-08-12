@@ -68,3 +68,6 @@ export const multerConfigCiiu = crearMulterConfig(['.xlsx'], 32 * 1024 * 1024);
 
 /** Balances: texto plano de ~250 MB por ejercicio; margen hasta 800 MB. */
 export const multerConfigBalances = crearMulterConfig(['.txt'], 800 * 1024 * 1024);
+
+/** Padrón del SRI: un CSV por provincia; Pichincha y Guayas rondan los 600 MB. */
+export const multerConfigSri = crearMulterConfig(['.csv', '.txt'], 1200 * 1024 * 1024);

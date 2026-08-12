@@ -1,0 +1,222 @@
+.padron h2 {
+  margin-bottom: 1rem;
+}
+
+.padron .resumen-cajas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.padron .caja {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.padron .caja-valor {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #282c34;
+}
+
+.padron .caja-etiqueta {
+  display: block;
+  font-size: 0.72rem;
+  color: #777;
+  margin-top: 0.2rem;
+}
+
+/* La nota explica la separación de poblaciones: no es decoración, evita que
+   alguien intente cruzar personas naturales con indicadores financieros. */
+.padron .nota {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  background: #eef4fc;
+  border: 1px solid #cfe0f5;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: #38546f;
+}
+
+.padron .pestanas {
+  display: flex;
+  gap: 0.4rem;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1rem;
+}
+
+.padron .pestanas button {
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.padron .pestanas button.activa {
+  color: #3d6fb4;
+  border-bottom-color: #3d6fb4;
+  font-weight: 600;
+}
+
+.padron .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.padron .filtros input,
+.padron .filtros select,
+.padron .filtros button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.padron .filtros input:first-child {
+  min-width: 260px;
+}
+
+.padron .filtros button {
+  background: #f1f1f1;
+  cursor: pointer;
+}
+
+.padron .tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.84rem;
+}
+
+.padron .tabla th,
+.padron .tabla td {
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid #f2f2f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.padron .tabla th {
+  background: #fafafa;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+}
+
+.padron .tabla tbody tr:hover {
+  background: #fbfcfe;
+}
+
+.padron .derecha {
+  text-align: right;
+}
+
+.padron .mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+/* El estado del contribuyente es el filtro comercial más usado: se ve de un
+   vistazo en vez de leerse. */
+.padron .estado {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.padron .estado.activo {
+  background: #e6f4ec;
+  color: #1a7f4b;
+}
+
+.padron .estado.suspendido {
+  background: #fdeeee;
+  color: #b3261e;
+}
+
+.padron .estado.pasivo {
+  background: #f1f1f1;
+  color: #666;
+}
+
+.padron .ver {
+  padding: 0.22rem 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f7f7f7;
+  cursor: pointer;
+  font-size: 0.76rem;
+}
+
+.padron .ver:hover {
+  background: #eef4fc;
+  border-color: #3d6fb4;
+}
+
+.padron .panel {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.padron .panel-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.padron .panel-cabecera h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.padron .panel-cabecera button {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f1f1f1;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.padron .actividad {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.padron .vacio,
+.padron .cargando {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.padron .error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}

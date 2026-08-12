@@ -21,6 +21,7 @@ const ICONO_ARBOL = 'M5 3v4h6M5 11h6M5 11v8h6M17 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM
 const ICONO_SUBIR = 'M12 16V4M6 10l6-6 6 6M4 20h16'
 const ICONO_BALANCE = 'M3 20h18M7 20V10M12 20V4M17 20v-7'
 const ICONO_ANALISIS = 'M3 3v18h18M7 15l4-5 3 3 5-7'
+const ICONO_PADRON = 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
 const ICONO_HISTORIAL = 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7L3 8'
 
 export const NAVEGACION = [
@@ -30,6 +31,7 @@ export const NAVEGACION = [
       { ruta: '/companias', etiqueta: 'Compañías', icono: <Icono d={ICONO_EMPRESA} /> },
       { ruta: '/balances', etiqueta: 'Balances', icono: <Icono d={ICONO_BALANCE} /> },
       { ruta: '/analisis', etiqueta: 'Análisis financiero', icono: <Icono d={ICONO_ANALISIS} /> },
+      { ruta: '/padron', etiqueta: 'Padrón SRI', icono: <Icono d={ICONO_PADRON} /> },
       { ruta: '/catalogo', etiqueta: 'Catálogo de cuentas', icono: <Icono d={ICONO_LISTA} /> },
       { ruta: '/ciiu', etiqueta: 'Catálogo CIIU', icono: <Icono d={ICONO_ARBOL} /> },
     ],
@@ -39,6 +41,7 @@ export const NAVEGACION = [
     items: [
       { ruta: '/importar/companias', etiqueta: 'Importar compañías', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importar/balances', etiqueta: 'Importar balances', icono: <Icono d={ICONO_SUBIR} /> },
+      { ruta: '/importar/sri', etiqueta: 'Importar padrón SRI', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importar/catalogo', etiqueta: 'Importar catálogo', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importar/ciiu', etiqueta: 'Importar CIIU', icono: <Icono d={ICONO_SUBIR} /> },
       { ruta: '/importaciones', etiqueta: 'Historial', icono: <Icono d={ICONO_HISTORIAL} /> },
