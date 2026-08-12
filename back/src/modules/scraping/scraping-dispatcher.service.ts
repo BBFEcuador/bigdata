@@ -156,7 +156,8 @@ export class ScrapingDispatcherService implements OnApplicationBootstrap, OnModu
 
       const ctx: ContextoScraping = {
         jobId: job.id,
-        expediente: job.expediente,
+        tipoSujeto: job.tipo_sujeto,
+        clave: job.clave,
         intento: job.intentos,
         parametros: job.parametros ?? {},
         checkpoint: job.checkpoint ?? {},
@@ -176,10 +177,11 @@ export class ScrapingDispatcherService implements OnApplicationBootstrap, OnModu
         guardar: doc =>
           this.jobs.guardarResultado({
             jobId: job.id,
-            expediente: job.expediente,
+            tipoSujeto: job.tipo_sujeto,
+            clave: job.clave,
             fuente: job.fuente,
             tipo: doc.tipo,
-            clave: doc.clave,
+            documento: doc.documento,
             contenido: doc.contenido,
           }),
       };

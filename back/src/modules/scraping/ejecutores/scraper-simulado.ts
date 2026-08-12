@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { ContextoScraping, ErrorPermanente, ResumenScraping, Scraper } from './scraper.interface';
 import { dormirInterrumpible } from '../scraping.tiempo';
+import { ETIQUETA_SUJETO, TipoSujeto } from '../scraping.sujetos';
 
 /**
  * Un scraper que no va a ninguna parte.
@@ -15,7 +16,7 @@ import { dormirInterrumpible } from '../scraping.tiempo';
  * 1. **Reanuda desde `ctx.checkpoint.pasoIndice`.** Si empezara siempre desde
  *    cero, pausar y cancelar serían lo mismo y el checkpoint no se probaría
  *    nunca.
- * 2. **El contenido es determinista** a partir del expediente. Así la segunda
+ * 2. **El contenido es determinista** a partir del sujeto. Así la segunda
  *    pasada da "sin cambios" por hash —que es el camino que interesa medir— y
  *    un test puede afirmar sobre el resultado.
  * 3. **Falla a propósito** (`SCRAPING_SIM_FALLO_PCT`). Sin fallos, ni el
@@ -33,11 +34,12 @@ export class ScraperSimulado implements Scraper {
   private readonly lentoPct = Number(process.env.SCRAPING_SIM_LENTO_PCT ?? 3);
 
   async ejecutar(ctx: ContextoScraping): Promise<ResumenScraping> {
-    const semilla = azarDe(`${ctx.expediente}:${ctx.intento}`);
+    const sujeto = `${ctx.tipoSujeto}:${ctx.clave}`;
+    const semilla = azarDe(`${sujeto}:${ctx.intento}`);
     const desde = Number(ctx.checkpoint.pasoIndice ?? 0);
     let documentos = Number(ctx.checkpoint.documentos ?? 0);
 
-    if (desde > 0) ctx.log.debug(`${ctx.expediente}: reanudando en el paso ${desde}`);
+    if (desde > 0) ctx.log.debug(`${sujeto}: reanudando en el paso ${desde}`);
 
     for (let i = desde; i < this.pasos.length; i++) {
       const paso = this.pasos[i];
@@ -58,7 +60,7 @@ export class ScraperSimulado implements Scraper {
       if (semilla(`fallo:${i}`) * 100 < this.falloPct) {
         // Uno de cada cuatro fallos es definitivo. Los otros tres se reintentan.
         if (semilla(`permanente:${i}`) < 0.25) {
-          throw new ErrorPermanente(`La fuente no tiene ficha de ${ctx.expediente}`);
+          throw new ErrorPermanente(`La fuente no tiene ficha de ${ctx.clave}`);
         }
         throw new Error(`Fallo transitorio simulado en el paso "${paso}"`);
       }
@@ -66,7 +68,7 @@ export class ScraperSimulado implements Scraper {
       if (paso === 'guardando') {
         const cambio = await ctx.guardar({
           tipo: 'ficha',
-          contenido: this.ficha(ctx.expediente),
+          contenido: this.ficha(ctx.tipoSujeto, ctx.clave),
         });
         documentos += cambio ? 1 : 0;
       }
@@ -85,13 +87,14 @@ export class ScraperSimulado implements Scraper {
     };
   }
 
-  /** Siempre la misma ficha para el mismo expediente. */
-  private ficha(expediente: string): Record<string, unknown> {
-    const r = azarDe(`ficha:${expediente}`);
+  /** Siempre la misma ficha para el mismo sujeto. */
+  private ficha(tipoSujeto: TipoSujeto, clave: string): Record<string, unknown> {
+    const r = azarDe(`ficha:${tipoSujeto}:${clave}`);
     const sectores = ['comercio', 'manufactura', 'servicios', 'construcción', 'transporte'];
     return {
-      expediente,
-      razonSocial: `Compañía simulada ${expediente}`,
+      tipoSujeto,
+      clave,
+      razonSocial: `${ETIQUETA_SUJETO[tipoSujeto]} simulada ${clave}`,
       sector: sectores[Math.floor(r('sector') * sectores.length)],
       empleados: 1 + Math.floor(r('empleados') * 500),
       actos: Math.floor(r('actos') * 12),
@@ -105,7 +108,7 @@ export class ScraperSimulado implements Scraper {
  *
  * `Math.random()` haría que el mismo job diera resultados distintos en cada
  * pasada, y entonces "esto falló" nunca se podría reproducir. Con el
- * expediente y el número de intento como semilla, un reintento sí cambia de
+ * sujeto y el número de intento como semilla, un reintento sí cambia de
  * suerte —que es lo que debe pasar— pero la secuencia completa es repetible.
  */
 function azarDe(semilla: string): (sufijo: string) => number {

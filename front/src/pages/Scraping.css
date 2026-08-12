@@ -125,6 +125,25 @@
   font-size: 0.83rem;
 }
 
+.scraping .filtros .buscador {
+  flex: 1;
+  min-width: 16rem;
+}
+
+.scraping .paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.9rem;
+  font-size: 0.83rem;
+  color: var(--text-soft);
+}
+
+.scraping .ruc {
+  color: var(--text-muted);
+}
+
 /* ------------------------------------------------------------------ tabla */
 .scraping .tabla-scroll {
   overflow-x: auto;

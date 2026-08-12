@@ -23,8 +23,8 @@ export const obtenerJob = id => api.get(`/scraping/${id}`).then(r => r.data)
 
 export const obtenerResultados = id => api.get(`/scraping/${id}/resultados`).then(r => r.data)
 
-export const jobsDeCompania = expediente =>
-  api.get(`/scraping/compania/${encodeURIComponent(expediente)}`).then(r => r.data)
+export const jobsDeSujeto = (tipoSujeto, clave) =>
+  api.get(`/scraping/sujeto/${tipoSujeto}/${encodeURIComponent(clave)}`).then(r => r.data)
 
 export const crearJob = datos => api.post('/scraping', datos, firma()).then(r => r.data)
 
@@ -46,6 +46,19 @@ function limpiar(params = {}) {
     Object.entries(params).filter(([, v]) => v !== '' && v !== null && v !== undefined),
   )
 }
+
+/**
+ * Las tres poblaciones rastreables, con la misma convención que la capa
+ * comercial: `clave` es el expediente para una compañía y el RUC para las otras
+ * dos, porque el SRI no conoce el expediente.
+ */
+export const ETIQUETA_SUJETO = {
+  compania: 'Compañía',
+  persona_natural: 'Persona natural',
+  sociedad_no_supervisada: 'Sociedad no supervisada',
+}
+
+export const TIPOS_SUJETO = Object.keys(ETIQUETA_SUJETO)
 
 export const ETIQUETA_ESTADO = {
   encolado: 'En cola',

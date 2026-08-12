@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, MaxLength, Max, Min } from 'class-validator';
 import { EstadoScraping, TRANSICIONES } from '../scraping.estados';
 import { LIMITE_LISTADO } from '../scraping.constants';
+import { TIPOS_SUJETO, TipoSujeto } from '../scraping.sujetos';
 
 const ESTADOS = Object.keys(TRANSICIONES) as EstadoScraping[];
 
@@ -16,9 +17,19 @@ export class QueryScrapingDto {
   fuente?: string;
 
   @IsOptional()
+  @IsIn(TIPOS_SUJETO)
+  tipoSujeto?: TipoSujeto;
+
+  @IsOptional()
   @IsString()
   @MaxLength(40)
-  expediente?: string;
+  clave?: string;
+
+  /** Búsqueda libre: clave exacta, RUC por prefijo o nombre por trozo. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  q?: string;
 
   /**
    * Cursor `creado_en|id` de la página anterior.

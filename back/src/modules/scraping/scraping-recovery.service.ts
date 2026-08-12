@@ -81,8 +81,8 @@ export class ScrapingRecoveryService {
         // fila haría que arrancar el backend tardara minutos.
         await qr.query(
           `INSERT INTO scraping_job_evento
-             (job_id, expediente, accion, estado_despues, usuario, detalle)
-           SELECT j.id, j.expediente, 'recuperado', j.estado, 'sistema',
+             (job_id, tipo_sujeto, clave, accion, estado_despues, usuario, detalle)
+           SELECT j.id, j.tipo_sujeto, j.clave, 'recuperado', j.estado, 'sistema',
                   'El proceso que lo ejecutaba ya no existe'
              FROM scraping_job j WHERE j.id = ANY($1::uuid[])`,
           [tocados.map(t => t.id)],

@@ -6,7 +6,9 @@ import {
   obtenerEstablecimientos,
   obtenerResumen,
 } from '../services/padron.service'
+import { Link } from 'react-router-dom'
 import { MarcasCatastro, NOMBRE_CATASTRO, SelectorCatastro } from '../components/Catastros'
+import BotonRastrear from '../components/BotonRastrear'
 import './Padron.css'
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
@@ -47,6 +49,7 @@ const PANTALLAS = {
   personas: {
     titulo: 'Personas naturales',
     cargar: listarPersonas,
+    tipoSujeto: 'persona_natural',
     etiquetaNombre: 'Nombre',
     nota:
       'Todos los contribuyentes registrados como persona natural en el SRI, sin ' +
@@ -64,6 +67,7 @@ const PANTALLAS = {
   'personas-obligadas': {
     titulo: 'Personas naturales obligadas a llevar contabilidad',
     cargar: listarPersonas,
+    tipoSujeto: 'persona_natural',
     etiquetaNombre: 'Nombre',
     nota:
       'Personas naturales ACTIVAS que el SRI marca como obligadas a llevar ' +
@@ -81,6 +85,7 @@ const PANTALLAS = {
   'personas-no-obligadas': {
     titulo: 'Personas naturales NO obligadas a llevar contabilidad',
     cargar: listarPersonas,
+    tipoSujeto: 'persona_natural',
     etiquetaNombre: 'Nombre',
     nota:
       'Personas naturales ACTIVAS que no están obligadas a llevar contabilidad. Son ' +
@@ -98,6 +103,7 @@ const PANTALLAS = {
   'personas-inactivas': {
     titulo: 'Personas naturales inactivas',
     cargar: listarPersonas,
+    tipoSujeto: 'persona_natural',
     etiquetaNombre: 'Nombre',
     nota:
       'Personas naturales cuyo RUC NO está activo: suspendidas o pasivas. No son ' +
@@ -116,6 +122,7 @@ const PANTALLAS = {
   sociedades: {
     titulo: 'Sociedades no supervisadas',
     cargar: listarSociedadesNoSupervisadas,
+    tipoSujeto: 'sociedad_no_supervisada',
     etiquetaNombre: 'Razón social',
     nota:
       'Sociedades con RUC activo en el SRI pero SIN expediente en la ' +
@@ -151,6 +158,8 @@ export default function PadronLista({ tipo }) {
   const [actividadAbierta, setActividadAbierta] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
+  // Resultado del último rastreo encolado desde la tabla.
+  const [mensaje, setMensaje] = useState(null)
 
   // Paginación por keyset: el backend sólo sabe avanzar (`ruc > cursor`), así
   // que se apila el cursor de cada página para poder volver atrás.
@@ -169,6 +178,7 @@ export default function PadronLista({ tipo }) {
     setFiltros(FILTROS_VACIOS)
     setDetalle(null)
     setActividadAbierta(null)
+    setMensaje(null)
     setCursores([null])
     setPagina(0)
   }, [tipo])
@@ -358,6 +368,12 @@ export default function PadronLista({ tipo }) {
       </div>
 
       {error && <p className="error">{error}</p>}
+
+      {mensaje && (
+        <div className={`alerta ${mensaje.tipo}`}>
+          {mensaje.texto} <Link to="/scraping">Ver rastreos →</Link>
+        </div>
+      )}
       {cargando && <p className="cargando">Cargando…</p>}
 
       {/* Todas las columnas que el padrón trae por contribuyente. La tabla
@@ -424,7 +440,7 @@ export default function PadronLista({ tipo }) {
                 >
                   {d.actividadPrincipal ?? '—'}
                 </td>
-                <td>
+                <td className="acciones-fila">
                   <button
                     type="button"
                     className="ver"
@@ -433,6 +449,12 @@ export default function PadronLista({ tipo }) {
                   >
                     Locales
                   </button>
+                  {/* La clave es el RUC: el SRI no conoce el expediente. */}
+                  <BotonRastrear
+                    tipoSujeto={config.tipoSujeto}
+                    clave={d.ruc}
+                    onResultado={setMensaje}
+                  />
                 </td>
               </tr>
               {detalle?.ruc === d.ruc && (

@@ -1,7 +1,14 @@
 # Jobs de scraping
 
-Un job por compañía, muchos a la vez, con estados propios, reintentos y
-acciones de pausar, reanudar y cancelar.
+Un job por sujeto, muchos a la vez, con estados propios, reintentos y acciones
+de pausar, reanudar y cancelar.
+
+**Un sujeto es un par `(tipo_sujeto, clave)`**, con los tres valores de siempre:
+`compania`, `persona_natural` y `sociedad_no_supervisada`. `clave` es el
+**expediente** para una compañía y el **RUC** para las otras dos, porque el SRI
+no conoce el expediente y nunca lo conocerá. No es una convención nueva: la
+usan `segmento_miembro`, `segmento_evento` y `sujeto_estado_comercial` desde la
+migración 9000, y `perfil_comercial` la expone con un índice único.
 
 Hoy el único ejecutor registrado es **simulado**: no va a ninguna página. Existe
 para que toda la maquinaria se pueda probar de punta a punta antes de que haya
@@ -127,14 +134,14 @@ promoverlo es otra decisión, y tiene que poder tomarla una persona.
 
 | verbo | ruta | |
 |---|---|---|
-| `POST` | `/scraping` | 201 · 404 si no existe la compañía · 409 si ya tiene un job vivo |
-| `POST` | `/scraping/masivo` | 202 → `{ creados, omitidos }` |
+| `POST` | `/scraping` | `{tipoSujeto, clave}` · 201 · 404 si no existe · 409 si ya tiene un job vivo |
+| `POST` | `/scraping/masivo` | 202 → `{ creados, omitidos }`. **Una población por llamada** |
 | `GET` | `/scraping` | lista paginada por cursor + resumen por estado |
 | `GET` | `/scraping/resumen` | contadores + estado del despachador |
 | `GET` | `/scraping/fuentes` | los scrapers registrados |
 | `GET` | `/scraping/:id` | job + últimos 20 eventos |
 | `GET` | `/scraping/:id/resultados` | los documentos guardados |
-| `GET` | `/scraping/compania/:expediente` | el historial de una compañía |
+| `GET` | `/scraping/sujeto/:tipo/:clave` | el historial de un sujeto |
 | `POST` | `/scraping/:id/pausar` · `/cancelar` | **202**: si ya corría, la orden la cumple el worker |
 | `POST` | `/scraping/:id/reanudar` · `/reintentar` | 200 |
 
@@ -164,6 +171,18 @@ sobrescribe.
 Los fallos del simulado no son ruido: sin ellos, ni el backoff, ni
 `max_intentos`, ni el estado `fallido` se ejercitan nunca, y se descubren rotos
 el día que entre el scraper de verdad.
+
+## Dónde se comprueba que el sujeto existe
+
+En el alta de **uno solo**, contra la tabla de origen —`companias`,
+`persona_natural`, `sociedad_no_supervisada`—, para que un sujeto importado hace
+diez minutos no se rechace. En el alta **masiva**, contra `perfil_comercial`, que
+es la única con las tres poblaciones en la misma forma y con provincia ya
+calculada; ahí sí da igual que sea materializada, porque un barrido de miles no
+necesita a los últimos que entraron.
+
+No hay clave foránea en ninguno de los dos casos: el historial de por qué se
+rastreó algo tiene que sobrevivir a que el sujeto desaparezca del padrón.
 
 ## Lo que no está acotado entre instancias
 

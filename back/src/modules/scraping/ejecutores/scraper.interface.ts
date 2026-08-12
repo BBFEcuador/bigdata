@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { TipoSujeto } from '../scraping.sujetos';
 
 /**
  * El contrato de un scraper.
@@ -42,7 +43,10 @@ export class ErrorPermanente extends Error {
 
 export interface ContextoScraping {
   readonly jobId: string;
-  readonly expediente: string;
+  /** Qué población: compañía, persona natural o sociedad no supervisada. */
+  readonly tipoSujeto: TipoSujeto;
+  /** El expediente si es compañía, el RUC en los otros dos casos. */
+  readonly clave: string;
   /** Qué número de intento es éste. Empieza en 1. */
   readonly intento: number;
   readonly parametros: Record<string, unknown>;
@@ -74,12 +78,14 @@ export interface ContextoScraping {
   }): Promise<void>;
 
   /**
-   * Guarda un documento. Idempotente por (expediente, fuente, tipo, clave):
-   * volver a guardar lo mismo no duplica nada y se nota como "sin cambios".
+   * Guarda un documento. Idempotente por (sujeto, fuente, tipo, documento):
+   * volver a guardar lo mismo no duplica nada y devuelve `false`, que es la
+   * señal de "se volvió a bajar y no había cambiado".
    */
   guardar(doc: {
     tipo: string;
-    clave?: string;
+    /** Sólo si el job produce varios documentos del mismo tipo. */
+    documento?: string;
     contenido: Record<string, unknown>;
   }): Promise<boolean>;
 }

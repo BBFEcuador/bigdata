@@ -1,0 +1,22 @@
+/* Mismo aspecto que el botón "Ficha" de Compañías y el "Locales" del padrón:
+   es una acción más de la fila, no algo que deba destacar sobre las otras. */
+.boton-rastrear {
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.boton-rastrear:hover:not(:disabled) {
+  background: var(--primary-light);
+  border-color: var(--secondary);
+}
+
+.boton-rastrear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

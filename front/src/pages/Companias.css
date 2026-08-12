@@ -127,6 +127,16 @@
   font-size: 0.9rem;
 }
 
+.alerta.ok {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+  font-size: 0.9rem;
+}
+
 /* Badge del estado ante el SRI: distinto de la situación legal en Supercias. */
 .companias .estado {
   display: inline-block;
@@ -166,6 +176,13 @@
   background: var(--primary-light);
   border-color: var(--secondary);
 }
+
+/* Los dos botones de la última columna, uno al lado del otro y sin partirse. */
+.companias .acciones-fila {
+  display: flex;
+  gap: 0.35rem;
+}
+
 
 /* La columna de catastros apila una marca por catastro; la tabla es `nowrap`,
    de ahí el `white-space: normal` explícito. */

@@ -9,7 +9,8 @@ function contexto(over: Partial<ContextoScraping> = {}) {
   const guardados: { tipo: string; contenido: Record<string, unknown> }[] = [];
   const ctx: ContextoScraping = {
     jobId: 'j1',
-    expediente: '001',
+    tipoSujeto: 'compania' as const,
+    clave: '001',
     intento: 1,
     parametros: {},
     checkpoint: {},
@@ -48,10 +49,10 @@ describe('ScraperSimulado', () => {
     expect(latidos.at(-1)?.pct).toBe(100);
   });
 
-  it('produce siempre la misma ficha para el mismo expediente', async () => {
+  it('produce siempre la misma ficha para el mismo sujeto', async () => {
     const s = new ScraperSimulado();
-    const a = contexto({ expediente: '77777' });
-    const b = contexto({ expediente: '77777' });
+    const a = contexto({ clave: '77777' });
+    const b = contexto({ clave: '77777' });
 
     await s.ejecutar(a.ctx);
     await s.ejecutar(b.ctx);
@@ -94,7 +95,7 @@ describe('ScraperSimulado', () => {
     // probar que un job imposible se rinde a la primera.
     const tipos = new Set<string>();
     for (let i = 0; i < 40; i++) {
-      const { ctx } = contexto({ expediente: `exp-${i}` });
+      const { ctx } = contexto({ clave: `exp-${i}` });
       await s.ejecutar(ctx).catch(e => tipos.add(e.constructor.name));
     }
 

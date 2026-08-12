@@ -4,6 +4,8 @@ import {
   ESTADOS,
   ETIQUETA_ACCION,
   ETIQUETA_ESTADO,
+  ETIQUETA_SUJETO,
+  TIPOS_SUJETO,
   accionar,
   encolarMasivo,
   esperaRestante,
@@ -17,14 +19,19 @@ import {
 import './Scraping.css'
 
 const INTERVALO_MS = 2000
+const POR_PAGINA = 50
 
 const fecha = v =>
   v ? new Date(v).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'medium' }) : '—'
 
-const FILTROS_VACIOS = { estado: '', fuente: '', expediente: '' }
+const FILTROS_VACIOS = { estado: '', fuente: '', tipoSujeto: '', q: '' }
 
 export default function Scraping() {
+  // `texto` es lo que se está tecleando; `filtros.q` es lo que ya se consultó.
+  // Separarlos es lo que permite el debounce sin que el input se sienta lento.
+  const [texto, setTexto] = useState('')
   const [filtros, setFiltros] = useState(FILTROS_VACIOS)
+
   const [jobs, setJobs] = useState([])
   const [resumen, setResumen] = useState({ porEstado: {} })
   const [despachador, setDespachador] = useState(null)
@@ -34,16 +41,37 @@ export default function Scraping() {
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
 
-  // Evita apilar peticiones si una tarda más que el intervalo: es el mismo
-  // guardia que usa el panel de importación.
+  // Paginación por cursor, no por número de página: la lista se mueve sola
+  // mientras el despachador trabaja, y con OFFSET cada refresco saltaría filas.
+  // Se apila el cursor de cada página para poder volver atrás.
+  const [cursores, setCursores] = useState([null])
+  const [pagina, setPagina] = useState(0)
+  const [hayMas, setHayMas] = useState(false)
+
   const enVuelo = useRef(false)
 
   const cargar = useCallback(async () => {
+    // Nunca dos peticiones a la vez: si una tarda más que el intervalo, se
+    // apilarían hasta ahogar al servidor.
     if (enVuelo.current) return
     enVuelo.current = true
     try {
-      const [lista, res] = await Promise.all([listarJobs(filtros), obtenerResumen()])
+      const [lista, res] = await Promise.all([
+        listarJobs({ ...filtros, desde: cursores[pagina], limite: POR_PAGINA }),
+        obtenerResumen(),
+      ])
       setJobs(lista.filas)
+      setHayMas(lista.hayMas)
+      // El cursor de la página siguiente se guarda al recibirla, no al pulsar:
+      // así "Siguiente" no tiene que adivinar dónde termina la actual.
+      if (lista.siguiente) {
+        setCursores(c => {
+          if (c[pagina + 1] === lista.siguiente) return c
+          const nuevo = c.slice(0, pagina + 1)
+          nuevo.push(lista.siguiente)
+          return nuevo
+        })
+      }
       setResumen(lista.resumen)
       setDespachador(res.despachador)
       setError(null)
@@ -52,11 +80,28 @@ export default function Scraping() {
     } finally {
       enVuelo.current = false
     }
-  }, [filtros])
+  }, [filtros, cursores, pagina])
 
   useEffect(() => {
     listarFuentes().then(setFuentes).catch(() => setFuentes([]))
   }, [])
+
+  // Debounce del tecleo: sin esto cada letra dispara un ILIKE contra la tabla.
+  const timer = useRef(null)
+  useEffect(() => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      setFiltros(f => (f.q === texto.trim() ? f : { ...f, q: texto.trim() }))
+    }, 350)
+    return () => clearTimeout(timer.current)
+  }, [texto])
+
+  // Cualquier cambio de filtro devuelve a la primera página: el cursor de la
+  // página 3 de la búsqueda anterior no significa nada en la nueva.
+  useEffect(() => {
+    setCursores([null])
+    setPagina(0)
+  }, [filtros])
 
   useEffect(() => {
     cargar()
@@ -69,6 +114,11 @@ export default function Scraping() {
   }, [cargar])
 
   const set = (campo, valor) => setFiltros(f => ({ ...f, [campo]: valor }))
+
+  const limpiar = () => {
+    setTexto('')
+    setFiltros(FILTROS_VACIOS)
+  }
 
   const guardarUsuario = v => {
     setUsuario(v)
@@ -104,14 +154,25 @@ export default function Scraping() {
       setError('Escribe tu usuario arriba: toda acción queda firmada.')
       return
     }
-    const cuantas = window.prompt('¿Cuántas compañías encolo?', '100')
+    // El alta masiva es de UNA población: encolar las tres de golpe serían 7,1
+    // millones de sujetos que no se trabajan igual. Se toma la del filtro, y si
+    // no hay ninguno puesto, compañías.
+    const tipoSujeto = filtros.tipoSujeto || 'compania'
+    const cuantas = window.prompt(
+      `¿Cuántos sujetos de «${ETIQUETA_SUJETO[tipoSujeto]}» encolo?`,
+      '100',
+    )
     if (!cuantas) return
     setOcupado('masivo')
     setError(null)
     try {
-      const r = await encolarMasivo({ limite: Number(cuantas), fuente: filtros.fuente || undefined })
+      const r = await encolarMasivo({
+        tipoSujeto,
+        limite: Number(cuantas),
+        fuente: filtros.fuente || undefined,
+      })
       setAviso(
-        `Encoladas ${r.creados}. ` +
+        `Encolados ${r.creados} de «${ETIQUETA_SUJETO[tipoSujeto]}». ` +
           (r.omitidos > 0 ? `${r.omitidos} ya tenían un job vivo y se saltaron.` : ''),
       )
       await cargar()
@@ -121,6 +182,8 @@ export default function Scraping() {
       setOcupado(null)
     }
   }
+
+  const hayFiltro = filtros.estado || filtros.fuente || filtros.q || filtros.tipoSujeto
 
   return (
     <div className="scraping">
@@ -151,7 +214,8 @@ export default function Scraping() {
       {aviso && <div className="alerta ok">{aviso}</div>}
 
       {/* Las fichas del resumen son a la vez el filtro por estado: es la lectura
-          que se hace todo el rato ("¿cuántos han fallado?" → clic → verlos). */}
+          que se hace todo el rato ("¿cuántos han fallado?" → clic → verlos).
+          Los números respetan la búsqueda, pero no el estado elegido. */}
       <div className="fichas">
         {ESTADOS.map(e => (
           <button
@@ -167,10 +231,19 @@ export default function Scraping() {
 
       <div className="filtros">
         <input
-          placeholder="Expediente"
-          value={filtros.expediente}
-          onChange={e => set('expediente', e.target.value.trim())}
+          className="buscador"
+          placeholder="Buscar por expediente, RUC o nombre"
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
         />
+        <select value={filtros.tipoSujeto} onChange={e => set('tipoSujeto', e.target.value)}>
+          <option value="">Todas las poblaciones</option>
+          {TIPOS_SUJETO.map(t => (
+            <option key={t} value={t}>
+              {ETIQUETA_SUJETO[t]}
+            </option>
+          ))}
+        </select>
         <select value={filtros.fuente} onChange={e => set('fuente', e.target.value)}>
           <option value="">Todas las fuentes</option>
           {fuentes.map(f => (
@@ -179,76 +252,99 @@ export default function Scraping() {
             </option>
           ))}
         </select>
-        <button onClick={() => setFiltros(FILTROS_VACIOS)}>Limpiar</button>
+        <button onClick={limpiar} disabled={!hayFiltro}>
+          Limpiar
+        </button>
       </div>
 
       {jobs.length === 0 && !error && (
         <div className="vacio-total">
-          No hay jobs que mostrar. Pulsa «Encolar compañías» para empezar.
+          {hayFiltro
+            ? 'Ningún job coincide con la búsqueda.'
+            : 'No hay jobs todavía. Pulsa «Encolar compañías», o lánzalos de uno en uno desde la pantalla de Compañías.'}
         </div>
       )}
 
       {jobs.length > 0 && (
-        <div className="tabla-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Compañía</th>
-                <th>Fuente</th>
-                <th>Estado</th>
-                <th className="der">Intentos</th>
-                <th>Último error</th>
-                <th>Actualizado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map(j => {
-                const espera = esperaRestante(j)
-                return (
-                  <tr key={j.id}>
-                    <td>
-                      <span className="mono">{j.expediente}</span>
-                      {j.nombre && <p className="nombre">{j.nombre}</p>}
-                    </td>
-                    <td className="tenue">{j.fuente}</td>
-                    <td>
-                      <span className={`estado ${j.estado}`}>{etiquetaViva(j)}</span>
-                      {j.estado === 'corriendo' && (
-                        <span className="barra">
-                          <i style={{ width: `${j.progreso_pct}%` }} />
-                          <em>
-                            {j.progreso_pct}% {j.paso}
-                          </em>
-                        </span>
-                      )}
-                      {espera && <p className="tenue">{espera}</p>}
-                    </td>
-                    <td className="der mono">
-                      {j.intentos}/{j.max_intentos}
-                    </td>
-                    <td className="motivo" title={j.ultimo_error ?? ''}>
-                      {j.ultimo_error ?? '—'}
-                    </td>
-                    <td className="tenue">{fecha(j.actualizado_en)}</td>
-                    <td className="acciones">
-                      {(ACCIONES_POR_ESTADO[j.estado] ?? []).map(a => (
-                        <button
-                          key={a}
-                          className={a}
-                          disabled={ocupado === `${j.id}:${a}`}
-                          onClick={() => accion(j.id, a)}
-                        >
-                          {ocupado === `${j.id}:${a}` ? '…' : ETIQUETA_ACCION[a]}
-                        </button>
-                      ))}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="tabla-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sujeto</th>
+                  <th>Población</th>
+                  <th>Fuente</th>
+                  <th>Estado</th>
+                  <th className="der">Intentos</th>
+                  <th>Último error</th>
+                  <th>Actualizado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.map(j => {
+                  const espera = esperaRestante(j)
+                  return (
+                    <tr key={j.id}>
+                      <td>
+                        <span className="mono">{j.clave}</span>
+                        {/* El RUC sólo si aporta: en el padrón la clave YA es
+                            el RUC y repetirlo sería ruido. */}
+                        {j.ruc && j.ruc !== j.clave && (
+                          <span className="mono ruc"> · {j.ruc}</span>
+                        )}
+                        {j.nombre && <p className="nombre">{j.nombre}</p>}
+                      </td>
+                      <td className="tenue">{ETIQUETA_SUJETO[j.tipo_sujeto] ?? j.tipo_sujeto}</td>
+                      <td className="tenue">{j.fuente}</td>
+                      <td>
+                        <span className={`estado ${j.estado}`}>{etiquetaViva(j)}</span>
+                        {j.estado === 'corriendo' && (
+                          <span className="barra">
+                            <i style={{ width: `${j.progreso_pct}%` }} />
+                            <em>
+                              {j.progreso_pct}% {j.paso}
+                            </em>
+                          </span>
+                        )}
+                        {espera && <p className="tenue">{espera}</p>}
+                      </td>
+                      <td className="der mono">
+                        {j.intentos}/{j.max_intentos}
+                      </td>
+                      <td className="motivo" title={j.ultimo_error ?? ''}>
+                        {j.ultimo_error ?? '—'}
+                      </td>
+                      <td className="tenue">{fecha(j.actualizado_en)}</td>
+                      <td className="acciones">
+                        {(ACCIONES_POR_ESTADO[j.estado] ?? []).map(a => (
+                          <button
+                            key={a}
+                            className={a}
+                            disabled={ocupado === `${j.id}:${a}`}
+                            onClick={() => accion(j.id, a)}
+                          >
+                            {ocupado === `${j.id}:${a}` ? '…' : ETIQUETA_ACCION[a]}
+                          </button>
+                        ))}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="paginacion">
+            <button type="button" onClick={() => setPagina(p => p - 1)} disabled={pagina === 0}>
+              ← Anterior
+            </button>
+            <span>Página {pagina + 1}</span>
+            <button type="button" onClick={() => setPagina(p => p + 1)} disabled={!hayMas}>
+              Siguiente →
+            </button>
+          </div>
+        </>
       )}
     </div>
   )

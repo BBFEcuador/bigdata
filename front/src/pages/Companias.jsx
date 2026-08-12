@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { listarCompanias, obtenerFacetas, obtenerFicha } from '../services/companias.service'
+import BotonRastrear from '../components/BotonRastrear'
 import FichaCompania from '../components/FichaCompania'
 import SelectorCiiu from '../components/SelectorCiiu'
 import { MarcasCatastro, SelectorCatastro } from '../components/Catastros'
@@ -34,6 +36,8 @@ export default function Companias() {
   const [facetas, setFacetas] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
+  // Resultado del último rastreo encolado desde la tabla.
+  const [mensaje, setMensaje] = useState(null)
 
   // Paginación por keyset: se apila el cursor de cada página para poder volver.
   const [cursores, setCursores] = useState([null])
@@ -159,6 +163,12 @@ export default function Companias() {
 
       {error && <div className="alerta error">{error}</div>}
 
+      {mensaje && (
+        <div className={`alerta ${mensaje.tipo}`}>
+          {mensaje.texto} <Link to="/scraping">Ver rastreos →</Link>
+        </div>
+      )}
+
       <div className="tabla-scroll">
         <table>
           <thead>
@@ -226,10 +236,15 @@ export default function Companias() {
                 <td className="actividad" title={c.ciiuNivel6 ?? ''}>
                   {c.actividad ?? (c.ciiuNivel6 ? <span className="tenue">{c.ciiuNivel6}</span> : '—')}
                 </td>
-                <td>
+                <td className="acciones-fila">
                   <button type="button" className="ver" onClick={() => setFicha(c.expediente)}>
                     Ficha
                   </button>
+                  <BotonRastrear
+                    tipoSujeto="compania"
+                    clave={c.expediente}
+                    onResultado={setMensaje}
+                  />
                 </td>
               </tr>
             ))}

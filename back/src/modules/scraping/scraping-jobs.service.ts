@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, QueryRunner } from 'typeorm';
 import {
@@ -15,6 +21,7 @@ import {
   EstadoScraping,
   ORIGENES_ACCION,
 } from './scraping.estados';
+import { ETIQUETA_SUJETO, ORIGEN_SUJETO, TipoSujeto } from './scraping.sujetos';
 
 /**
  * Todo el SQL de los jobs de scraping.
@@ -34,7 +41,8 @@ import {
 
 export interface JobReclamado {
   id: string;
-  expediente: string;
+  tipo_sujeto: TipoSujeto;
+  clave: string;
   fuente: string;
   parametros: Record<string, unknown>;
   checkpoint: Record<string, unknown>;
@@ -72,35 +80,38 @@ export class ScrapingJobsService {
   // ------------------------------------------------------------------- altas
 
   /**
-   * Un job para una compañía.
+   * Un job para un sujeto: compañía, persona natural o sociedad no supervisada.
    *
-   * La existencia de la compañía se comprueba aquí y no con una clave foránea:
-   * así el error es «no existe la compañía X» y no un 23503 opaco, y el
-   * historial de un job sobrevive a que la compañía desaparezca del padrón.
+   * La existencia se comprueba contra la tabla de origen de cada población y NO
+   * contra `perfil_comercial`: la vista es materializada y se reconstruye cada
+   * media hora larga, así que un sujeto recién importado no estaría en ella
+   * todavía y se rechazaría un job perfectamente válido.
+   *
+   * Tampoco hay clave foránea: así el error es «no existe la compañía X» y no
+   * un 23503 opaco, y el historial de un job sobrevive a que el sujeto
+   * desaparezca del padrón.
    */
   async crear(datos: {
-    expediente: string;
+    tipoSujeto: TipoSujeto;
+    clave: string;
     fuente: string;
     prioridad?: number;
     parametros?: Record<string, unknown>;
     maxIntentos?: number;
     usuario: string;
   }) {
-    const [compania] = await this.dataSource.query(
-      `SELECT expediente FROM companias WHERE expediente = $1`,
-      [datos.expediente],
-    );
-    if (!compania) throw new NotFoundException(`No existe la compañía ${datos.expediente}`);
+    await this.exigirSujeto(datos.tipoSujeto, datos.clave);
 
     try {
       const [job] = filas(
         await this.dataSource.query(
           `INSERT INTO scraping_job
-             (expediente, fuente, prioridad, parametros, max_intentos, solicitado_por)
-           VALUES ($1, $2, $3, $4::jsonb, $5, $6)
+             (tipo_sujeto, clave, fuente, prioridad, parametros, max_intentos, solicitado_por)
+           VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
            RETURNING *`,
           [
-            datos.expediente,
+            datos.tipoSujeto,
+            datos.clave,
             datos.fuente,
             datos.prioridad ?? 0,
             JSON.stringify(datos.parametros ?? {}),
@@ -110,7 +121,8 @@ export class ScrapingJobsService {
         ),
       );
       await this.evento(job.id, {
-        expediente: job.expediente,
+        tipoSujeto: job.tipo_sujeto,
+        clave: job.clave,
         accion: 'creado',
         estadoDespues: 'encolado',
         usuario: datos.usuario,
@@ -118,78 +130,104 @@ export class ScrapingJobsService {
       return job;
     } catch (e: any) {
       // 23505 = el índice único parcial `idx_scraping_job_activo`. Es la
-      // respuesta correcta y no un error nuestro: ya hay un job vivo para esa
-      // compañía y esa fuente, incluso si está pausado.
+      // respuesta correcta y no un error nuestro: ya hay un job vivo para ese
+      // sujeto y esa fuente, incluso si está pausado.
       if (e?.code === '23505') {
         throw new ConflictException(
-          `Ya hay un job activo de "${datos.fuente}" para la compañía ${datos.expediente}.`,
+          `Ya hay un job activo de "${datos.fuente}" para ${ETIQUETA_SUJETO[datos.tipoSujeto]} ` +
+            `${datos.clave}.`,
         );
       }
       throw e;
     }
   }
 
+  /** 404 con el nombre de la población, en vez de un error de integridad. */
+  private async exigirSujeto(tipo: TipoSujeto, clave: string) {
+    const origen = ORIGEN_SUJETO[tipo];
+    // Cinturón: el DTO ya valida el tipo, pero esto se interpola en el SQL y no
+    // puede depender de que el validador siga puesto dentro de seis meses.
+    if (!origen) throw new BadRequestException(`Tipo de sujeto desconocido: ${tipo}`);
+    const { tabla, columna } = origen;
+    const [fila] = await this.dataSource.query(
+      `SELECT 1 FROM ${tabla} WHERE ${columna} = $1`,
+      [clave],
+    );
+    if (!fila) {
+      throw new NotFoundException(`No existe ${ETIQUETA_SUJETO[tipo]} ${clave}`);
+    }
+  }
+
   /**
-   * Encola muchas compañías de golpe.
+   * Encola muchos sujetos de golpe, de UNA población.
    *
-   * `ON CONFLICT ... DO NOTHING` repitiendo el predicado del índice parcial: las
-   * compañías que ya tienen un job vivo se saltan en silencio, que es lo que
-   * hace que se pueda relanzar el barrido sin pensar.
+   * Se siembra desde `perfil_comercial` y no desde las tres tablas de origen:
+   * es la única que tiene a las tres poblaciones con la misma forma, con
+   * provincia y vigencia ya calculadas. Aquí sí compensa que sea materializada
+   * —un barrido masivo no necesita a los importados hace diez minutos—,
+   * mientras que el alta de uno solo sí, y por eso va contra el origen.
+   *
+   * `ON CONFLICT ... DO NOTHING` repitiendo el predicado del índice parcial:
+   * los sujetos que ya tienen un job vivo se saltan en silencio, que es lo que
+   * hace que se pueda relanzar el barrido sin pensar por dónde iba.
    */
   async crearMasivo(datos: {
+    tipoSujeto: TipoSujeto;
     fuente: string;
-    expedientes?: string[];
+    claves?: string[];
     provincia?: string;
     limite?: number;
     prioridad?: number;
     usuario: string;
   }) {
     const limite = Math.min(datos.limite ?? LIMITE_MASIVO, LIMITE_MASIVO);
+    // Los mismos parámetros para el INSERT y para el recuento de pedidos: si se
+    // separaran, un filtro añadido en un sitio y no en el otro daría un número
+    // de omitidos silenciosamente falso.
+    const filtro = `p.tipo_sujeto = $1
+                    AND ($2::text[] IS NULL OR p.clave = ANY($2::text[]))
+                    AND ($3::text IS NULL OR p.provincia = $3)`;
+    const paramsFiltro = [
+      datos.tipoSujeto,
+      datos.claves?.length ? datos.claves : null,
+      datos.provincia ?? null,
+      limite,
+    ];
+
     const creados = filas(
       await this.dataSource.query(
-        `INSERT INTO scraping_job (expediente, fuente, prioridad, max_intentos, solicitado_por)
-         SELECT c.expediente, $1, $2, $3, $4
-           FROM companias c
-          WHERE c.ausente_desde_job IS NULL
-            AND ($5::text[] IS NULL OR c.expediente = ANY($5::text[]))
-            AND ($6::text IS NULL OR c.provincia = $6)
-          ORDER BY c.expediente
-          LIMIT $7
-         ON CONFLICT (expediente, fuente) WHERE estado IN ('encolado','corriendo','pausado')
+        `INSERT INTO scraping_job (tipo_sujeto, clave, fuente, prioridad, max_intentos, solicitado_por)
+         SELECT p.tipo_sujeto, p.clave, $5, $6, $7, $8
+           FROM perfil_comercial p
+          WHERE ${filtro}
+          ORDER BY p.clave
+          LIMIT $4
+         ON CONFLICT (tipo_sujeto, clave, fuente)
+              WHERE estado IN ('encolado','corriendo','pausado')
          DO NOTHING
-         RETURNING id, expediente`,
-        [
-          datos.fuente,
-          datos.prioridad ?? 0,
-          MAX_INTENTOS,
-          datos.usuario,
-          datos.expedientes?.length ? datos.expedientes : null,
-          datos.provincia ?? null,
-          limite,
-        ],
+         RETURNING id`,
+        [...paramsFiltro, datos.fuente, datos.prioridad ?? 0, MAX_INTENTOS, datos.usuario],
       ),
     );
 
     if (creados.length > 0) {
       await this.dataSource.query(
-        `INSERT INTO scraping_job_evento (job_id, expediente, accion, estado_despues, usuario, detalle)
-         SELECT j.id, j.expediente, 'creado', 'encolado', $2, 'Alta masiva'
+        `INSERT INTO scraping_job_evento
+           (job_id, tipo_sujeto, clave, accion, estado_despues, usuario, detalle)
+         SELECT j.id, j.tipo_sujeto, j.clave, 'creado', 'encolado', $2, 'Alta masiva'
            FROM scraping_job j WHERE j.id = ANY($1::uuid[])`,
         [creados.map(c => c.id), datos.usuario],
       );
     }
 
-    // `pedidos` no es `creados`: la diferencia son las compañías que ya tenían
-    // un job vivo. Devolverla evita que quien lanza el barrido crea que se
-    // perdieron filas.
+    // `pedidos` no es `creados`: la diferencia son los que ya tenían un job
+    // vivo. Devolverla evita que quien lanza el barrido crea que se perdieron
+    // filas por el camino.
     const [{ pedidos }] = await this.dataSource.query(
       `SELECT count(*)::int AS pedidos
-         FROM (SELECT c.expediente FROM companias c
-                WHERE c.ausente_desde_job IS NULL
-                  AND ($1::text[] IS NULL OR c.expediente = ANY($1::text[]))
-                  AND ($2::text IS NULL OR c.provincia = $2)
-                ORDER BY c.expediente LIMIT $3) t`,
-      [datos.expedientes?.length ? datos.expedientes : null, datos.provincia ?? null, limite],
+         FROM (SELECT p.clave FROM perfil_comercial p
+                WHERE ${filtro} ORDER BY p.clave LIMIT $4) t`,
+      paramsFiltro,
     );
 
     return { creados: creados.length, omitidos: pedidos - creados.length };
@@ -207,53 +245,111 @@ export class ScrapingJobsService {
   async listar(q: {
     estado?: EstadoScraping;
     fuente?: string;
-    expediente?: string;
+    tipoSujeto?: TipoSujeto;
+    clave?: string;
+    q?: string;
     desde?: string;
     limite?: number;
   }) {
     const limite = Math.min(q.limite ?? 50, LIMITE_LISTADO);
     const cursor = q.desde ? q.desde.split('|') : null;
+    const busqueda = q.q?.trim() || null;
 
     const datos = await this.dataSource.query(
-      `SELECT j.id, j.expediente, c.nombre, j.fuente, j.estado, j.accion_solicitada,
+      `SELECT j.id, j.tipo_sujeto, j.clave, p.nombre, p.ruc,
+              j.fuente, j.estado, j.accion_solicitada,
               j.prioridad, j.intentos, j.max_intentos, j.proximo_intento_en,
               j.paso, j.progreso_pct, j.resumen, j.ultimo_error, j.reclamado_por,
               j.latido_en, j.iniciado_en, j.finalizado_en, j.solicitado_por,
-              j.creado_en, j.actualizado_en
+              j.creado_en, j.actualizado_en,
+              -- El cursor sale de aquí YA EN TEXTO, con los microsegundos que
+              -- guarda Postgres. Construirlo en JavaScript desde creado_en lo
+              -- pasaría por un Date, que sólo llega al milisegundo: el alta
+              -- masiva escribe cientos de filas con el mismo now(), y al
+              -- truncar, la página siguiente se saltaba todas las que caían
+              -- dentro del milisegundo redondeado.
+              --
+              -- Con 'T' y 'Z' en vez del formato por defecto, que lleva un
+              -- espacio y un '+00', para que viaje por la query string sin
+              -- depender de cómo escape cada capa.
+              to_char(j.creado_en AT TIME ZONE 'UTC',
+                      'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_ts
          FROM scraping_job j
-         LEFT JOIN companias c ON c.expediente = j.expediente
+         -- El nombre sale de perfil_comercial y no de companias: es la única
+         -- que tiene a las tres poblaciones. Aquí sí vale que sea
+         -- materializada —es texto para pintar, no una decisión—, y como mucho
+         -- un sujeto recién importado sale sin nombre durante un rato.
+         LEFT JOIN perfil_comercial p
+                ON p.tipo_sujeto = j.tipo_sujeto AND p.clave = j.clave
         WHERE ($1::scraping_job_estado IS NULL OR j.estado = $1)
           AND ($2::text IS NULL OR j.fuente = $2)
-          AND ($3::text IS NULL OR j.expediente = $3)
+          AND ($3::text IS NULL OR j.clave = $3)
+          AND ($8::text IS NULL OR j.tipo_sujeto = $8)
+          -- Clave exacta y RUC por prefijo antes que el nombre: los dos
+          -- primeros usan índice, y quien teclea dígitos casi siempre busca uno
+          -- de ellos. El ILIKE con comodín por delante no puede usar índice, y
+          -- por eso está el último de los tres.
+          AND ($6::text IS NULL OR j.clave = $6 OR p.ruc LIKE $6 || '%'
+               OR p.nombre ILIKE '%' || $6 || '%')
           AND ($4::timestamptz IS NULL OR (j.creado_en, j.id) < ($4::timestamptz, $5::uuid))
         ORDER BY j.creado_en DESC, j.id DESC
-        LIMIT $6`,
+        LIMIT $7`,
       [
         q.estado ?? null,
         q.fuente ?? null,
-        q.expediente ?? null,
+        q.clave ?? null,
         cursor?.[0] ?? null,
         cursor?.[1] ?? null,
+        busqueda,
         limite + 1,
+        q.tipoSujeto ?? null,
       ],
     );
 
+    // Se pide una fila de más que el límite: si vuelve, es que hay página
+    // siguiente. Es una comparación en vez de un `count(*)` sobre millones.
     const hayMas = datos.length > limite;
     const pagina = hayMas ? datos.slice(0, limite) : datos;
     const ultimo = pagina.at(-1);
 
     return {
-      filas: pagina,
+      // `cursor_ts` es de uso interno; fuera va sólo en `siguiente`.
+      filas: pagina.map(({ cursor_ts, ...fila }: Record<string, unknown>) => fila),
       hayMas,
-      siguiente: hayMas && ultimo ? `${ultimo.creado_en.toISOString()}|${ultimo.id}` : null,
-      resumen: await this.resumen(),
+      siguiente: hayMas && ultimo ? `${ultimo.cursor_ts}|${ultimo.id}` : null,
+      // El resumen respeta la búsqueda y la fuente, pero NO el estado: las
+      // fichas SON el selector de estado, y si se filtraran a sí mismas todas
+      // marcarían cero menos la elegida.
+      resumen: await this.resumen({
+        fuente: q.fuente,
+        clave: q.clave,
+        tipoSujeto: q.tipoSujeto,
+        q: busqueda,
+      }),
     };
   }
 
   /** Cuántos hay en cada estado. Alimenta las fichas del encabezado. */
-  async resumen() {
+  async resumen(
+    filtro: {
+      fuente?: string;
+      clave?: string;
+      tipoSujeto?: TipoSujeto;
+      q?: string | null;
+    } = {},
+  ) {
     const filasResumen = await this.dataSource.query(
-      `SELECT estado, count(*)::int AS n FROM scraping_job GROUP BY estado`,
+      `SELECT j.estado, count(*)::int AS n
+         FROM scraping_job j
+         LEFT JOIN perfil_comercial p
+                ON p.tipo_sujeto = j.tipo_sujeto AND p.clave = j.clave
+        WHERE ($1::text IS NULL OR j.fuente = $1)
+          AND ($2::text IS NULL OR j.clave = $2)
+          AND ($4::text IS NULL OR j.tipo_sujeto = $4)
+          AND ($3::text IS NULL OR j.clave = $3 OR p.ruc LIKE $3 || '%'
+               OR p.nombre ILIKE '%' || $3 || '%')
+        GROUP BY j.estado`,
+      [filtro.fuente ?? null, filtro.clave ?? null, filtro.q ?? null, filtro.tipoSujeto ?? null],
     );
     const porEstado: Record<string, number> = {
       encolado: 0,
@@ -269,9 +365,10 @@ export class ScrapingJobsService {
 
   async obtener(id: string) {
     const [job] = await this.dataSource.query(
-      `SELECT j.*, c.nombre
+      `SELECT j.*, p.nombre, p.ruc
          FROM scraping_job j
-         LEFT JOIN companias c ON c.expediente = j.expediente
+         LEFT JOIN perfil_comercial p
+                ON p.tipo_sujeto = j.tipo_sujeto AND p.clave = j.clave
         WHERE j.id = $1`,
       [id],
     );
@@ -288,20 +385,22 @@ export class ScrapingJobsService {
 
   async resultados(id: string) {
     return this.dataSource.query(
-      `SELECT r.tipo, r.clave, r.contenido, r.hash, r.obtenido_en
+      `SELECT r.tipo, r.documento, r.contenido, r.hash, r.obtenido_en
          FROM scraping_resultado r
         WHERE r.job_id = $1
-        ORDER BY r.tipo, r.clave`,
+        ORDER BY r.tipo, r.documento`,
       [id],
     );
   }
 
-  /** El historial de rastreo de una compañía, para su ficha. */
-  async porCompania(expediente: string) {
+  /** El historial de rastreo de un sujeto, para su ficha. */
+  async porSujeto(tipoSujeto: TipoSujeto, clave: string) {
     return this.dataSource.query(
       `SELECT id, fuente, estado, intentos, progreso_pct, ultimo_error, creado_en, finalizado_en
-         FROM scraping_job WHERE expediente = $1 ORDER BY creado_en DESC LIMIT 20`,
-      [expediente],
+         FROM scraping_job
+        WHERE tipo_sujeto = $1 AND clave = $2
+        ORDER BY creado_en DESC LIMIT 20`,
+      [tipoSujeto, clave],
     );
   }
 
@@ -343,7 +442,7 @@ export class ScrapingJobsService {
                 actualizado_en = now()
            FROM siguiente s
           WHERE j.id = s.id
-        RETURNING j.id, j.expediente, j.fuente, j.parametros, j.checkpoint,
+        RETURNING j.id, j.tipo_sujeto, j.clave, j.fuente, j.parametros, j.checkpoint,
                   j.intentos, j.max_intentos`,
         [cuantos, identidad],
       ),
@@ -417,7 +516,8 @@ export class ScrapingJobsService {
       [job.id, error, String(esperaMs)],
     );
     await this.evento(job.id, {
-      expediente: job.expediente,
+      tipoSujeto: job.tipo_sujeto,
+      clave: job.clave,
       accion: 'reintento_programado',
       estadoAntes: 'corriendo',
       estadoDespues: 'encolado',
@@ -469,7 +569,8 @@ export class ScrapingJobsService {
       ],
     );
     await this.evento(job.id, {
-      expediente: job.expediente,
+      tipoSujeto: job.tipo_sujeto,
+      clave: job.clave,
       accion,
       estadoAntes: 'corriendo',
       estadoDespues: estado,
@@ -506,7 +607,8 @@ export class ScrapingJobsService {
 
     const job = afectadas[0];
     await this.evento(id, {
-      expediente: job.expediente,
+      tipoSujeto: job.tipo_sujeto,
+      clave: job.clave,
       accion: this.nombreEvento(accion, job.estado),
       estadoAntes: job.estado_antes,
       estadoDespues: job.estado,
@@ -590,26 +692,37 @@ export class ScrapingJobsService {
    */
   async guardarResultado(datos: {
     jobId: string;
-    expediente: string;
+    tipoSujeto: TipoSujeto;
+    clave: string;
     fuente: string;
     tipo: string;
-    clave?: string;
+    /** Desambigua varios documentos del mismo tipo. '' si sólo hay uno. */
+    documento?: string;
     contenido: Record<string, unknown>;
   }): Promise<boolean> {
     const json = JSON.stringify(datos.contenido);
     const res = filas(
       await this.dataSource.query(
-        // El JSON viaja como texto y se castea en cada sitio: si `$6` se usara
-        // primero como `::jsonb`, Postgres deduciría ese tipo para el parámetro
-        // y `md5($6)` fallaría con "function md5(jsonb) does not exist".
-        `INSERT INTO scraping_resultado (job_id, expediente, fuente, tipo, clave, contenido, hash)
-         VALUES ($1, $2, $3, $4, $5, $6::text::jsonb, md5($6::text))
-         ON CONFLICT (expediente, fuente, tipo, clave) DO UPDATE
+        // El JSON viaja como texto y se castea en cada sitio: si el parámetro
+        // se usara primero como ::jsonb, Postgres deduciría ese tipo para él y
+        // el md5 fallaría con "function md5(jsonb) does not exist".
+        `INSERT INTO scraping_resultado
+           (job_id, tipo_sujeto, clave, fuente, tipo, documento, contenido, hash)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::text::jsonb, md5($7::text))
+         ON CONFLICT (tipo_sujeto, clave, fuente, tipo, documento) DO UPDATE
             SET contenido = EXCLUDED.contenido, hash = EXCLUDED.hash,
                 job_id = EXCLUDED.job_id, obtenido_en = now()
           WHERE scraping_resultado.hash IS DISTINCT FROM EXCLUDED.hash
         RETURNING id`,
-        [datos.jobId, datos.expediente, datos.fuente, datos.tipo, datos.clave ?? '', json],
+        [
+          datos.jobId,
+          datos.tipoSujeto,
+          datos.clave,
+          datos.fuente,
+          datos.tipo,
+          datos.documento ?? '',
+          json,
+        ],
       ),
     );
     return res.length > 0;
@@ -620,7 +733,8 @@ export class ScrapingJobsService {
   async evento(
     jobId: string,
     e: {
-      expediente: string;
+      tipoSujeto: TipoSujeto;
+      clave: string;
       accion: string;
       estadoAntes?: EstadoScraping | null;
       estadoDespues?: EstadoScraping | null;
@@ -630,11 +744,13 @@ export class ScrapingJobsService {
     runner?: QueryRunner,
   ) {
     const sql = `INSERT INTO scraping_job_evento
-                   (job_id, expediente, accion, estado_antes, estado_despues, usuario, detalle)
-                 VALUES ($1,$2,$3,$4::scraping_job_estado,$5::scraping_job_estado,$6,$7)`;
+                   (job_id, tipo_sujeto, clave, accion, estado_antes, estado_despues,
+                    usuario, detalle)
+                 VALUES ($1,$2,$3,$4,$5::scraping_job_estado,$6::scraping_job_estado,$7,$8)`;
     const params = [
       jobId,
-      e.expediente,
+      e.tipoSujeto,
+      e.clave,
       e.accion,
       e.estadoAntes ?? null,
       e.estadoDespues ?? null,

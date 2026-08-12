@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -8,6 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { esTipoSujeto } from './scraping.sujetos';
 import { Usuario } from '../../common/http/usuario.decorator';
 import { CrearMasivoDto } from './dto/crear-masivo.dto';
 import { CrearScrapingDto } from './dto/crear-scraping.dto';
@@ -57,10 +59,17 @@ export class ScrapingController {
     return this.jobs.listar(q);
   }
 
-  /** El historial de rastreo de una compañía, para su ficha. */
-  @Get('compania/:expediente')
-  porCompania(@Param('expediente') expediente: string) {
-    return this.jobs.porCompania(expediente);
+  /**
+   * El historial de rastreo de un sujeto, para su ficha.
+   *
+   * El tipo va en la ruta y no se deduce de la clave: un expediente y un RUC
+   * son los dos texto, y adivinar cuál es cuál acertaría casi siempre, que es
+   * justo lo que hace difícil descubrir el caso en que no.
+   */
+  @Get('sujeto/:tipo/:clave')
+  porSujeto(@Param('tipo') tipo: string, @Param('clave') clave: string) {
+    if (!esTipoSujeto(tipo)) throw new BadRequestException(`Tipo de sujeto desconocido: ${tipo}`);
+    return this.jobs.porSujeto(tipo, clave);
   }
 
   @Get(':id')
@@ -73,11 +82,12 @@ export class ScrapingController {
     return this.jobs.resultados(id);
   }
 
-  /** Un job para una compañía. 404 si no existe; 409 si ya tiene uno vivo. */
+  /** Un job para un sujeto. 404 si no existe; 409 si ya tiene uno vivo. */
   @Post()
   crear(@Body() dto: CrearScrapingDto, @Usuario() usuario: string) {
     return this.jobs.crear({
-      expediente: dto.expediente,
+      tipoSujeto: dto.tipoSujeto,
+      clave: dto.clave,
       fuente: dto.fuente ?? this.registry.fuentePorDefecto(),
       prioridad: dto.prioridad,
       parametros: dto.parametros,
@@ -96,8 +106,9 @@ export class ScrapingController {
   @HttpCode(202)
   masivo(@Body() dto: CrearMasivoDto, @Usuario() usuario: string) {
     return this.jobs.crearMasivo({
+      tipoSujeto: dto.tipoSujeto,
       fuente: dto.fuente ?? this.registry.fuentePorDefecto(),
-      expedientes: dto.expedientes,
+      claves: dto.claves,
       provincia: dto.provincia,
       limite: dto.limite,
       prioridad: dto.prioridad,
