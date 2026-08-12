@@ -40,6 +40,30 @@ export const CONCEPTOS: Concepto[] = [
   { clave: 'pasivoNoCorriente', etiqueta: 'Pasivo no corriente', bloque: 'situacion', codigos: { 1: '202', 3: '589' } },
   { clave: 'patrimonio', etiqueta: 'Patrimonio neto', bloque: 'situacion', codigos: { 1: '3', 3: '698' } },
 
+  // Utilidades de ejercicios anteriores que siguen en el patrimonio. Es la
+  // magnitud sobre la que gira el pago a cuenta de la Resolución
+  // NAC-DGERCGC26-00000026, y por eso no se aproxima con `patrimonio`: las
+  // reservas (304 / 604-606) NO son distribuibles y quedan fuera a propósito.
+  //
+  // El nombre de la cuenta fiscal es literalmente el de la obligación:
+  // "UTILIDAD NO DISTRIBUIDA EJERCICIOS ANTERIORES".
+  { clave: 'utilidadesAcumuladas', etiqueta: 'Utilidades acumuladas de ejercicios anteriores', bloque: 'situacion', codigos: { 1: '30601', 3: '611' } },
+  { clave: 'perdidasAcumuladas', etiqueta: 'Pérdidas acumuladas de ejercicios anteriores', bloque: 'situacion', codigos: { 1: '30602', 3: '612' } },
+
+  // El total del grupo, que es la cifra que se lee en el balance. Alcanza a
+  // 21.000 compañías más que `utilidadesAcumuladas` porque netea las pérdidas
+  // y arrastra la adopción NIIF; en 4.048 casos cuelgan además reservas.
+  //
+  // El formulario fiscal NO tiene un total equivalente: reparte lo mismo en
+  // 611, 612 y 614, y sumarlos aquí sería inventar una cuenta que el
+  // contribuyente no declaró. Va a `null` y el dato falta en los ejercicios
+  // declarados en ese plan, que es la regla de la casa.
+  { clave: 'resultadosAcumulados', etiqueta: 'Resultados acumulados (total)', bloque: 'situacion', codigos: { 1: '306', 3: null } },
+
+  // Se separa porque NO es utilidad repartible: son 4.215 millones en 2025 que
+  // entran en el total y no deberían leerse como dividendos pendientes.
+  { clave: 'resultadosNiif', etiqueta: 'Resultados acumulados por adopción de NIIF', bloque: 'situacion', codigos: { 1: '30603', 3: '614' } },
+
   { clave: 'ingresos', etiqueta: 'Ingresos de actividades ordinarias', bloque: 'resultados', codigos: { 1: '401', 3: '1005' } },
   { clave: 'gananciaBruta', etiqueta: 'Ganancia bruta', bloque: 'resultados', codigos: { 1: '402', 3: '1025' } },
   { clave: 'costoVentas', etiqueta: 'Costo de ventas y producción', bloque: 'resultados', codigos: { 1: '501', 3: '7991' } },

@@ -25,6 +25,7 @@ const ICONO_SOCIEDAD = 'M3 21h18M6 21V8l6-4 6 4v13M10 12h4M10 16h4'
 const ICONO_PADRON = 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'
 const ICONO_HISTORIAL = 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7L3 8'
 const ICONO_SEGMENTOS = 'M12 3v9l6.5 3.8M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'
+const ICONO_TRIBUTARIO = 'M3 6h18M6 6v13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6M9 6V4h6v2M9 11h6M9 15h4'
 
 export const NAVEGACION = [
   {
@@ -33,6 +34,7 @@ export const NAVEGACION = [
       { ruta: '/companias', etiqueta: 'Compañías', icono: <Icono d={ICONO_EMPRESA} /> },
       { ruta: '/balances', etiqueta: 'Balances', icono: <Icono d={ICONO_BALANCE} /> },
       { ruta: '/analisis', etiqueta: 'Análisis financiero', icono: <Icono d={ICONO_ANALISIS} /> },
+      { ruta: '/tributario', etiqueta: 'Análisis tributario', icono: <Icono d={ICONO_TRIBUTARIO} /> },
       // Las personas naturales se parten en tres: las dos poblaciones activas
       // —que son mundos comerciales distintos— y las inactivas, que no son
       // prospecto de nada. Una sola entrada con un desplegable haría demasiado

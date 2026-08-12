@@ -1,4 +1,41 @@
-# Riesgo tributario: estimación presuntiva
+# Análisis tributario
+
+Dos aristas, y la pantalla las mantiene separadas a propósito: la estimación
+presuntiva es un ranking que hay que interpretar, y el pago a cuenta es una
+lista de avisos donde no hay nada que interpretar.
+
+## Pago a cuenta sobre utilidades no distribuidas
+
+Resolución **NAC-DGERCGC26-00000026** (14 de julio de 2026). Las sociedades
+residentes y los establecimientos permanentes que hasta el **31 de julio** del
+ejercicio corriente no distribuyan las utilidades acumuladas de ejercicios
+anteriores deben declarar y pagar: una cuota en agosto (código **1077**) o tres
+—agosto, septiembre, octubre— por noveno dígito del RUC (código **1078**).
+Elegida la modalidad no se cambia con sustitutiva, y no hay convenio de pago.
+
+Vive en `utilidad_no_distribuida`, una fila por ejercicio y compañía.
+
+**No se usa el patrimonio.** La obligación recae sobre las utilidades
+acumuladas, y las reservas —legal, facultativa, de capital— están dentro del
+patrimonio pero **no son distribuibles**. Se usa la cuenta propia: `30601` en el
+plan IFRS, `611` en el fiscal, que se llama literalmente "UTILIDAD NO
+DISTRIBUIDA EJERCICIOS ANTERIORES".
+
+**Las pérdidas acumuladas se declaran en negativo** (`30602`), así que las netas
+se suman. Restarlas habría duplicado la pérdida y dejado fuera del aviso a
+compañías que sí tienen utilidades que distribuir.
+
+**No se puede saber si distribuyeron.** Los casilleros de dividendos declarados
+y pagados (626 y 627) sólo existen en el formulario fiscal, y desde 2023 todos
+los balances vienen en el formulario 1. Lo que sí se ve es la caída de las
+acumuladas de un año al siguiente, que es la huella que deja una distribución:
+va en `variacion` y es un indicio, no una prueba — una pérdida del ejercicio las
+baja igual.
+
+En el ejercicio 2025: **60.426 compañías** con acumuladas netas positivas por
+18.427 millones; 42.089 las subieron respecto a 2024 y sólo 9.374 las bajaron.
+
+## Riesgo tributario: estimación presuntiva
 
 Aplica los coeficientes de estimación presuntiva del impuesto a la renta que el
 SRI publica por rama de actividad, y compara la base imponible que saldría de

@@ -5,6 +5,7 @@ import Catalogo from './pages/Catalogo'
 import Ciiu from './pages/Ciiu'
 import Balances from './pages/Balances'
 import Analisis from './pages/Analisis'
+import Tributario from './pages/Tributario'
 import Informe from './pages/Informe'
 import PadronLista from './pages/PadronLista'
 import ImportarCompanias from './pages/ImportarCompanias'
@@ -34,6 +35,7 @@ function App() {
           <Route path="/ciiu" element={<Ciiu />} />
           <Route path="/balances" element={<Balances />} />
           <Route path="/analisis" element={<Analisis />} />
+          <Route path="/tributario" element={<Tributario />} />
           {/* Las personas naturales van partidas en tres pantallas. La ruta
               general se conserva sin entrada de menú para no romper enlaces
               guardados. */}

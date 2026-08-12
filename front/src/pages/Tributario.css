@@ -1,0 +1,404 @@
+.tributario h2 {
+  margin-bottom: 0.75rem;
+}
+
+.tributario .nota {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  background: #fdf3e7;
+  border: 1px solid #f0d9bd;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #6b4f2c;
+  max-width: 90ch;
+  line-height: 1.5;
+}
+
+.tributario .nota.aviso {
+  background: #fdecea;
+  border-color: #f5c6c0;
+  color: #7a2e26;
+}
+
+.tributario .vistas {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid #dde3ea;
+}
+
+.tributario .vistas button {
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 0.9rem;
+  color: #55636f;
+  cursor: pointer;
+}
+
+.tributario .vistas button.activa {
+  color: #22303c;
+  font-weight: 600;
+  border-bottom-color: #3d6fb4;
+}
+
+.tributario .sube {
+  color: #8a4b3f;
+}
+
+.tributario .baja {
+  color: #2f6b4f;
+}
+
+/* Lo que está dentro del total pero no se puede repartir: se atenúa para que
+   no se lea como dividendo pendiente. */
+.tributario td.niif {
+  color: #9a6b1f;
+  font-size: 0.76rem;
+}
+
+.tributario td.fuerte {
+  font-weight: 600;
+  color: #22303c;
+}
+
+/* ------------------------------------------------------------- panorama */
+
+.tributario .panorama {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-bottom: 1.1rem;
+}
+
+.tributario .tarjeta {
+  flex: 1 1 150px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #dde3ea;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.tributario .tarjeta.destacada {
+  border-color: #c9a227;
+  background: #fffdf5;
+}
+
+.tributario .tarjeta .anio {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #7b8794;
+}
+
+.tributario .tarjeta .cifra {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #22303c;
+}
+
+.tributario .tarjeta .pie {
+  font-size: 0.72rem;
+  color: #7b8794;
+}
+
+.tributario .tarjeta .reparto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  color: #55636f;
+}
+
+.tributario .tarjeta .manda {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: #9a6b1f;
+}
+
+/* -------------------------------------------------------------- filtros */
+
+.tributario .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tributario .poblaciones {
+  display: flex;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tributario .poblaciones button {
+  padding: 0.45rem 0.8rem;
+  border: 0;
+  background: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: #3f4c59;
+}
+
+.tributario .poblaciones button + button {
+  border-left: 1px solid #cbd5e0;
+}
+
+.tributario .poblaciones button.activa {
+  background: #3d6fb4;
+  color: #fff;
+}
+
+.tributario .filtros input,
+.tributario .filtros select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+.tributario .filtros input[type='search'] {
+  min-width: 15rem;
+}
+
+.tributario .filtros input.rama {
+  width: 11rem;
+}
+
+.tributario .ayuda {
+  margin: 0 0 0.6rem;
+  font-size: 0.76rem;
+  color: #6b7885;
+}
+
+.tributario .error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+
+.tributario .resultado {
+  font-size: 0.78rem;
+  color: #55636f;
+  margin-bottom: 0.4rem;
+}
+
+.tributario .cargando {
+  color: #3d6fb4;
+}
+
+/* --------------------------------------------------------------- tabla */
+
+.tributario .tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  background: #fff;
+}
+
+.tributario .tabla th,
+.tributario .tabla td {
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid #edf1f5;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tributario .tabla th {
+  background: #f5f8fb;
+  font-weight: 600;
+  color: #43525f;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.tributario .tabla td.num,
+.tributario .tabla th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tributario .tabla tbody tr:hover {
+  background: #f7fafd;
+  cursor: pointer;
+}
+
+.tributario .tabla .nombre {
+  max-width: 26rem;
+}
+
+.tributario .tabla .nombre .ruc {
+  display: block;
+  font-size: 0.7rem;
+  color: #8b97a3;
+}
+
+.tributario .tabla .rama {
+  color: #55636f;
+  font-variant-numeric: tabular-nums;
+}
+
+/* El percentil es el número que se lee primero: se colorea sólo el decil
+   alto y el cuartil superior. Colorear todo sería no señalar nada. */
+.tributario .percentil.alto {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.tributario .percentil.medio {
+  color: #9a6b1f;
+}
+
+.tributario .percentil .pares {
+  display: block;
+  font-size: 0.66rem;
+  color: #9aa5b1;
+  font-weight: 400;
+}
+
+.tributario .brecha {
+  color: #8a4b3f;
+}
+
+.tributario .persist {
+  font-weight: 600;
+  color: #9aa5b1;
+}
+
+.tributario .persist.p3 {
+  color: #9a6b1f;
+}
+
+.tributario .persist.p4 {
+  color: #b3261e;
+}
+
+.tributario .vacio {
+  padding: 1.5rem;
+  text-align: center;
+  color: #8b97a3;
+}
+
+.tributario .paginacion {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.tributario .paginacion button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tributario .paginacion button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- ficha */
+
+.tributario .modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 28, 36, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  overflow-y: auto;
+  z-index: 40;
+}
+
+.tributario .ficha {
+  position: relative;
+  width: min(1100px, 100%);
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem 1.4rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.tributario .ficha .cerrar {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.8rem;
+  border: 0;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #8b97a3;
+}
+
+.tributario .ficha h3 {
+  margin: 0 0 0.2rem;
+  padding-right: 2rem;
+}
+
+.tributario .ficha .sub {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  color: #6b7885;
+}
+
+.tributario .ficha .rimpe {
+  margin-left: 0.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: #fdecea;
+  color: #b3261e;
+  font-size: 0.7rem;
+}
+
+/* La tabla de la ficha se lee por filas (conceptos), no por columnas. */
+.tributario .ficha-tabla td:first-child {
+  color: #43525f;
+}
+
+.tributario .ficha-tabla .separador td {
+  border-top: 2px solid #dde3ea;
+}
+
+/* Cuál de las tres bases manda es la mitad del argumento: se marca. */
+.tributario .ficha-tabla td.manda {
+  background: #fff6e0;
+  font-weight: 600;
+}
+
+.tributario .ficha-tabla td.fuerte {
+  font-weight: 700;
+  color: #22303c;
+}
+
+.tributario .ficha-tabla .coefs {
+  font-size: 0.72rem;
+  color: #6b7885;
+}
+
+.tributario .ficha-tabla .general {
+  display: block;
+  font-size: 0.66rem;
+  color: #9a6b1f;
+}
+
+.tributario .ficha .fuente {
+  margin: 1rem 0 0;
+  font-size: 0.7rem;
+  color: #8b97a3;
+}
+
+.tributario .ficha-tabla .pares {
+  display: block;
+  font-size: 0.64rem;
+  color: #9aa5b1;
+  font-weight: 400;
+}
