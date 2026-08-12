@@ -28,9 +28,14 @@ export default function Segmentos() {
   const [ocupado, setOcupado] = useState(null)
   const [error, setError] = useState(null)
 
+  // Sólo se pintan los activos. Un segmento retirado no es trabajo pendiente ni
+  // un aviso: es ruido en la única pantalla que se mira para saber a quién
+  // llamar hoy. Sigue existiendo entero —definición, miembros e histórico— y el
+  // API lo devuelve con su `activo` y su `bloqueo`; lo que desaparece es la
+  // tarjeta. Reactivarlo lo devuelve a la lista sin tocar nada de aquí.
   const cargar = useCallback(async () => {
     try {
-      setSegmentos(await listarSegmentos())
+      setSegmentos((await listarSegmentos()).filter(s => s.activo))
     } catch (e) {
       setError(e?.response?.data?.message ?? e.message)
     }
@@ -80,26 +85,22 @@ export default function Segmentos() {
 
       <div className="tarjetas">
         {segmentos.map(s => (
-          <article className={`tarjeta${s.activo ? '' : ' inactiva'}`} key={s.codigo}>
+          <article className="tarjeta" key={s.codigo}>
             <header>
               <h3>{s.nombre}</h3>
               <span className="miembros">{num(s.miembros)}</span>
             </header>
             <p className="desc">{s.descripcion}</p>
 
-            {!s.activo && <p className="bloqueo">Bloqueado · {s.bloqueo}</p>}
-
-            {s.activo && (
-              <p className="corrida">
-                Última corrida: {fecha(s.ultima_corrida)}
-                {s.ultima_corrida && (
-                  <>
-                    {' '}· <b className="alta">+{num(s.ultimas_altas)}</b>{' '}
-                    <b className="baja">−{num(s.ultimas_bajas)}</b>
-                  </>
-                )}
-              </p>
-            )}
+            <p className="corrida">
+              Última corrida: {fecha(s.ultima_corrida)}
+              {s.ultima_corrida && (
+                <>
+                  {' '}· <b className="alta">+{num(s.ultimas_altas)}</b>{' '}
+                  <b className="baja">−{num(s.ultimas_bajas)}</b>
+                </>
+              )}
+            </p>
 
             <div className="productos">
               {s.productos.map(p => (
@@ -109,26 +110,24 @@ export default function Segmentos() {
               ))}
             </div>
 
-            {s.activo && (
-              <footer>
-                <button
-                  type="button"
-                  disabled={!!ocupado}
-                  onClick={() => accion(s.codigo, () => correrSegmento(s.codigo))}
-                >
-                  {ocupado === s.codigo ? 'Corriendo…' : 'Correr'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAbierto(abierto === s.codigo ? null : s.codigo)}
-                >
-                  {abierto === s.codigo ? 'Ocultar lista' : 'Ver lista'}
-                </button>
-                <a className="descarga" href={urlCsv(s.codigo)}>
-                  CSV
-                </a>
-              </footer>
-            )}
+            <footer>
+              <button
+                type="button"
+                disabled={!!ocupado}
+                onClick={() => accion(s.codigo, () => correrSegmento(s.codigo))}
+              >
+                {ocupado === s.codigo ? 'Corriendo…' : 'Correr'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAbierto(abierto === s.codigo ? null : s.codigo)}
+              >
+                {abierto === s.codigo ? 'Ocultar lista' : 'Ver lista'}
+              </button>
+              <a className="descarga" href={urlCsv(s.codigo)}>
+                CSV
+              </a>
+            </footer>
 
             {abierto === s.codigo && <Miembros codigo={s.codigo} />}
           </article>
