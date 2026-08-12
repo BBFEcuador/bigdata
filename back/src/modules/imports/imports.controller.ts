@@ -20,6 +20,7 @@ import { CatalogoImportService } from './catalogo/catalogo-import.service';
 import { CiiuImportService } from './ciiu/ciiu-import.service';
 import { BalancesImportService } from './balances/balances-import.service';
 import { SriImportService } from './sri/sri-import.service';
+import { DataportalImportService } from './dataportal/dataportal-import.service';
 import {
   multerConfigBalances,
   multerConfigSri,
@@ -30,6 +31,7 @@ import {
 import { IMPORT_KIND, IMPORT_KIND_CATALOGO, IMPORT_KIND_CIIU } from './imports.constants';
 import { IMPORT_KIND_BALANCES } from './balances/balances.constants';
 import { IMPORT_KIND_SRI } from './sri/sri.constants';
+import { IMPORT_KIND_DATAPORTAL } from './dataportal/dataportal.constants';
 import { ImportJob } from './entities/import-job.entity';
 
 @Controller('imports')
@@ -41,6 +43,7 @@ export class ImportsController {
     private readonly ciiu: CiiuImportService,
     private readonly balances: BalancesImportService,
     private readonly sri: SriImportService,
+    private readonly dataportal: DataportalImportService,
   ) {}
 
   /**
@@ -113,6 +116,54 @@ export class ImportsController {
     const job = await this.crearJob(file, IMPORT_KIND_SRI, 'parcial');
     this.sri.enqueue(job.id);
     return this.respuesta(job);
+  }
+
+  /**
+   * Enriquecimiento desde DataPortal. No recibe archivo: la fuente es su API.
+   *
+   * Recorre las compañías con RUC y consulta cinco endpoints por cada una.
+   * Es una carga de ~31 horas, así que la lista de trabajo y el avance viven en
+   * `dataportal_consulta`: relanzar continúa por los pendientes en vez de
+   * empezar de cero.
+   */
+  @Post('dataportal')
+  @HttpCode(202)
+  async lanzarDataportal() {
+    if (!process.env.DATAPORTAL_TOKEN) {
+      throw new BadRequestException(
+        'Falta DATAPORTAL_TOKEN en back/.env. Añádelo y reinicia el backend.',
+      );
+    }
+    const activo = await this.jobs.hayJobActivo(IMPORT_KIND_DATAPORTAL);
+    if (activo) {
+      throw new ConflictException(
+        `Ya hay un enriquecimiento en curso (job ${activo.id}). Detenlo antes de lanzar otro.`,
+      );
+    }
+    const job = await this.jobs.create({
+      kind: IMPORT_KIND_DATAPORTAL,
+      status: 'pending',
+      modo: 'parcial',
+      originalFilename: 'dataportalsys.com (API)',
+      storedPath: '',
+      fileSizeBytes: 0,
+    });
+    this.dataportal.enqueue(job.id);
+    return this.respuesta(job);
+  }
+
+  /** Detiene el enriquecimiento tras el RUC en curso; el avance queda guardado. */
+  @Post('dataportal/detener')
+  @HttpCode(202)
+  detenerDataportal() {
+    this.dataportal.detener();
+    return { detenido: true };
+  }
+
+  /** Avance del enriquecimiento: cuántos RUC van por estado. */
+  @Get('dataportal/estado')
+  estadoDataportal() {
+    return this.dataportal.estado();
   }
 
   /**
