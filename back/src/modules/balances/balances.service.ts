@@ -12,6 +12,29 @@ import {
   calcularIndicadores,
 } from '../../common/finanzas/indicadores';
 
+/**
+ * Orden contable: cada cuenta justo encima de sus hijas.
+ *
+ *     1          ACTIVO
+ *     101          ACTIVO CORRIENTE
+ *     10101          EFECTIVO Y EQUIVALENTES
+ *     10102          ACTIVOS FINANCIEROS
+ *     102          ACTIVOS NO CORRIENTES
+ *     2          PASIVO
+ *
+ * Se compara como TEXTO, nunca como número. En este plan de cuentas el padre es
+ * siempre prefijo de sus hijas, así que la comparación lexicográfica reproduce
+ * el árbol exactamente.
+ *
+ * Comparar como número —que es lo que hacía `localeCompare(..., {numeric:true})`—
+ * ordena 1, 2, 3, 101, 102, 10101: saca primero TODAS las cuentas madre y deja
+ * las hijas agrupadas al final, que es justo lo que no se quiere leer en un
+ * estado financiero.
+ */
+export function porOrdenContable(a: { codigo: string }, b: { codigo: string }): number {
+  return a.codigo < b.codigo ? -1 : a.codigo > b.codigo ? 1 : 0;
+}
+
 /** Todos los códigos clave de todos los formularios, para pedirlos de una vez. */
 function todosLosCodigosClave(): string[] {
   const codigos = new Set<string>();
@@ -246,7 +269,7 @@ export class BalancesService {
       // Un cero explícito donde no hay fila: en `balance_cuenta` la ausencia de
       // fila ES el cero, y la tabla necesita la celda.
       cuentas: [...cuentas.values()]
-        .sort((a, b) => a.codigo.localeCompare(b.codigo, 'en', { numeric: true }))
+        .sort(porOrdenContable)
         .map((c) => ({
           codigo: c.codigo,
           nombre: c.nombre,
@@ -321,7 +344,10 @@ export class BalancesService {
          JOIN categoria_cuenta cc
            ON cc.codigo = bc.codigo_cuenta AND cc.formulario = bc.formulario
         WHERE bc.expediente = $1 AND bc.anio = $2 AND bc.formulario = $3
-        ORDER BY bc.codigo_cuenta`,
+        -- Orden contable: como TEXTO, para que cada cuenta salga encima de sus
+        -- hijas. El COLLATE de bytes lo hace independiente de la configuracion
+        -- regional del servidor.
+        ORDER BY bc.codigo_cuenta COLLATE "C"`,
       [expediente, anio, formulario],
     );
 
