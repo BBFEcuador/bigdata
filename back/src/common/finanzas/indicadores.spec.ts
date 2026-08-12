@@ -1,4 +1,5 @@
-import { INDICADORES, calcularIndicadores } from './indicadores';
+import { INDICADORES, calcularIndicadores, sqlDeFormula } from './indicadores';
+import { CONCEPTOS } from './conceptos';
 
 /** Balance de juguete, con números que hacen los ratios fáciles de comprobar. */
 const M = {
@@ -98,5 +99,58 @@ describe('indicadores financieros', () => {
   it('calcula todos los indicadores declarados', () => {
     const r = ind(M);
     for (const i of INDICADORES) expect(r).toHaveProperty(i.clave);
+  });
+});
+
+/**
+ * La fórmula se declara una vez y de ahí salen dos implementaciones: la de
+ * TypeScript, que calcula la ficha de una compañía, y la de SQL, que saca los
+ * percentiles sectoriales de 670.000 balances de una pasada.
+ *
+ * Estos tests cuidan la costura entre las dos. No pueden ejecutar el SQL —eso
+ * necesita la base—, pero sí comprueban lo que sí puede divergir en silencio:
+ * que la fórmula nombre magnitudes que existen, y que el SQL generado use
+ * exactamente esas y proteja el denominador.
+ */
+describe('fórmulas de indicador', () => {
+  const conceptos = new Set(CONCEPTOS.map((c) => c.clave));
+
+  it('sólo nombra magnitudes que el diccionario de conceptos produce', () => {
+    for (const i of INDICADORES) {
+      for (const clave of [...i.formula.num, ...(i.formula.menos ?? []), ...(i.formula.den ?? [])]) {
+        expect(conceptos).toContain(clave);
+      }
+    }
+  });
+
+  it('genera SQL con las mismas magnitudes que la fórmula', () => {
+    for (const i of INDICADORES) {
+      const sql = sqlDeFormula(i.formula, 'm');
+      const usadas = [...sql.matchAll(/->> '([a-zA-Z]+)'/g)].map((x) => x[1]);
+      const esperadas = [
+        ...i.formula.num,
+        ...(i.formula.menos ?? []),
+        ...(i.formula.den ?? []),
+      ];
+      expect(usadas.sort()).toEqual(esperadas.sort());
+    }
+  });
+
+  it('protege el denominador en SQL, que es la regla del cero', () => {
+    for (const i of INDICADORES) {
+      const sql = sqlDeFormula(i.formula, 'm');
+      // Sin denominador (capital de trabajo) no hay nada que proteger.
+      expect(sql.includes('nullif')).toBe(Boolean(i.formula.den));
+    }
+  });
+
+  it('rechaza una clave que no podría interpolarse sin riesgo', () => {
+    expect(() => sqlDeFormula({ num: ["activo'; DROP TABLE balance --"] }, 'm')).toThrow();
+  });
+
+  it('todos los indicadores dicen hacia dónde es mejor estar', () => {
+    for (const i of INDICADORES) {
+      expect(['alto', 'bajo', 'neutro']).toContain(i.mejor);
+    }
   });
 });

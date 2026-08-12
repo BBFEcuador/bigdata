@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'node:fs';
 import { ImportJobsService } from '../import-jobs.service';
+import { PercentilesService } from '../../balances/percentiles.service';
 import { serializeCopyRow } from '../transform/copy-text';
 import { huellaDeFila } from '../../../common/text/hash';
 import { abrirLectorDeLineas } from '../../../common/text/lineas';
@@ -28,7 +29,10 @@ import { BalancesPgSession } from './balances-pg.session';
 export class BalancesImportService {
   private readonly logger = new Logger(BalancesImportService.name);
 
-  constructor(private readonly jobsService: ImportJobsService) {}
+  constructor(
+    private readonly jobsService: ImportJobsService,
+    private readonly percentiles: PercentilesService,
+  ) {}
 
   enqueue(jobId: string): void {
     void this.run(jobId).catch((err) => {
@@ -292,6 +296,16 @@ export class BalancesImportService {
           `${totales.inserted} nuevos, ${totales.updated} actualizados, ` +
           `${Math.max(0, copiadas - cambiadas)} sin cambios, ${marcadas} ausentes`,
       );
+
+      // Los percentiles sectoriales se calculan sobre TODAS las empresas, así
+      // que cualquier balance nuevo mueve la mediana de su sector. Si no se
+      // rehacen aquí, envejecen en silencio: la pantalla seguiría enseñando un
+      // percentil creíble, calculado contra una población que ya no es.
+      //
+      // Va después de dar el job por completado y sin esperarlo: son ~4 minutos
+      // y el import ya terminó bien. Si llegan varios jobs seguidos —cargar
+      // cinco ejercicios son cinco jobs— se funden en un solo recálculo.
+      this.percentiles.solicitar(`import de balances ${anio}/formulario ${formulario}`);
     } catch (err) {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);

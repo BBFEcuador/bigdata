@@ -231,3 +231,116 @@
   color: #b07d2b;
   font-weight: 600;
 }
+
+/* ------------------------------------------------- comparación sectorial --
+ *
+ * Cada celda es un bloque de tres líneas —valor, barra de posición y mediana
+ * del sector— y no una sola cifra: el percentil sin la mediana no tiene escala.
+ */
+
+.analisis .sectorial .pares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.analisis .sectorial .par {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.35rem 0.6rem;
+  background: #f5f7fa;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.analisis .sectorial .par .nombre {
+  color: #555;
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analisis .sectorial .par .nivel {
+  color: #6b7280;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* La sección es el repliegue: se marca para que no se confunda con la división. */
+.analisis .sectorial .par .nivel.seccion {
+  color: #b07d2b;
+}
+
+.analisis .comparacion td.celda {
+  padding: 0.4rem 0.6rem;
+  min-width: 9.5rem;
+  vertical-align: top;
+}
+
+.analisis .comparacion .linea {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.analisis .comparacion .valor {
+  font-size: 0.82rem;
+}
+
+.analisis .comparacion .pct {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.analisis .comparacion .pct.bien {
+  color: #1e7c46;
+}
+
+.analisis .comparacion .pct.mal {
+  color: #b3261e;
+}
+
+.analisis .comparacion .barra {
+  position: relative;
+  height: 5px;
+  margin: 0.25rem 0 0.2rem;
+  background: #eceff3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.analisis .comparacion .barra .relleno {
+  display: block;
+  height: 100%;
+  background: #9aa7b5;
+}
+
+.analisis .comparacion .barra .relleno.bien {
+  background: #2f9e5f;
+}
+
+.analisis .comparacion .barra .relleno.mal {
+  background: #d3564b;
+}
+
+/* La mediana del sector, para leer la barra sin buscar el 50 a ojo. */
+.analisis .comparacion .barra .mediana {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #fff;
+}
+
+.analisis .comparacion .sector {
+  font-size: 0.68rem;
+  color: #888;
+}

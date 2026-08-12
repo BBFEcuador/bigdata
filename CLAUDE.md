@@ -68,6 +68,7 @@ npm run start:dev                          # desarrollo (heap de 4 GB)
 npm test                                   # tests de coerción y escapado
 npm run migration:run                      # aplicar migraciones
 npm run migration:revert                   # deshacer la última
+npm run percentiles                        # percentiles sectoriales (~3 min)
 npm run fixture -- --filas 1000000 --shared  # .xlsx de prueba
 
 # front
@@ -134,6 +135,17 @@ formulario, y cada uno trae su propio plan de cuentas. 33 códigos se repiten
 entre planes con significados distintos: el código `3` es PATRIMONIO NETO en el
 formulario 1 y ACTIVO CON PARTES RELACIONADAS LOCALES en el 3. Está explicado en
 `back/src/modules/imports/balances/README.md`.
+
+`balance_magnitud` / `indicador_percentil` / `indicador_empresa` — la comparación
+sectorial. La vista traduce las cuentas de cada formulario a **conceptos** (una
+fila por año y expediente, un `jsonb` de magnitudes), y sobre eso se precalculan
+los cortes de cada sector y el percentil exacto de cada empresa.
+
+**La fórmula de cada indicador se declara una sola vez**, como datos, y de ahí
+salen la versión de TypeScript y la de SQL. Escribirlas por separado sería servir
+el ROE de una empresa comparado contra el percentil de otra cosa, sin que nada
+falle. El grupo de pares es la división CIIU, con repliegue a la sección por
+debajo de 30 empresas. Ver `back/src/common/finanzas/README.md`.
 
 `turismo_establecimiento` — Catastro Nacional de Turismo, una fila por registro
 turístico (PK `numero_registro`) con dirección, categoría, teléfono y correo.

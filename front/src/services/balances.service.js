@@ -29,3 +29,11 @@ export const obtenerEstados = (expediente, formulario) =>
 /** Indicadores financieros de todos los ejercicios. */
 export const obtenerIndicadores = expediente =>
   api.get(`/balances/${expediente}/indicadores`).then(r => r.data)
+
+/** Posición de la compañía dentro de su sector, con los cortes del sector. */
+export const obtenerSectorial = expediente =>
+  api.get(`/balances/${expediente}/sectorial`).then(r => r.data)
+
+/** Cortes de un sector completo, sin mirar a ninguna empresa. */
+export const obtenerSector = (anio, codigo) =>
+  api.get(`/balances/sectores/${anio}/${codigo}`).then(r => r.data)

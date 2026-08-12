@@ -5,6 +5,7 @@ import {
   obtenerComparativo,
   obtenerEstados,
   obtenerIndicadores,
+  obtenerSectorial,
 } from '../services/balances.service'
 import './Analisis.css'
 
@@ -40,6 +41,7 @@ const textoVar = v => (v === null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}
 const PESTANAS = [
   { id: 'estados', titulo: 'Estados financieros' },
   { id: 'indicadores', titulo: 'Indicadores' },
+  { id: 'sector', titulo: 'Comparación sectorial' },
   { id: 'resumen', titulo: 'Resumen comparable' },
 ]
 
@@ -53,6 +55,7 @@ export default function Analisis() {
 
   const [estados, setEstados] = useState(null)
   const [indicadores, setIndicadores] = useState(null)
+  const [sectorial, setSectorial] = useState(null)
   const [resumen, setResumen] = useState(null)
   const [cargando, setCargando] = useState(false)
 
@@ -85,14 +88,18 @@ export default function Analisis() {
     setError(null)
     setCandidatas([])
     try {
-      const [e, i, r] = await Promise.all([
+      const [e, i, r, s] = await Promise.all([
         obtenerEstados(exp),
         obtenerIndicadores(exp),
         obtenerComparativo(exp),
+        // Una compañía sin percentiles calculados no es un error de la ficha:
+        // el resto del análisis se muestra igual y la pestaña sectorial avisa.
+        obtenerSectorial(exp).catch(() => null),
       ])
       setEstados(e)
       setIndicadores(i)
       setResumen(r)
+      setSectorial(s)
       setEmpresa({ expediente: exp, nombre: i.nombre, ruc: i.ruc, rama: i.descripcionRama })
     } catch (err) {
       setError(err?.response?.data?.message ?? err.message)
@@ -161,6 +168,7 @@ export default function Analisis() {
 
           {pestana === 'estados' && <Estados datos={estados} />}
           {pestana === 'indicadores' && <Indicadores datos={indicadores} />}
+          {pestana === 'sector' && <Sectorial datos={sectorial} />}
           {pestana === 'resumen' && <Resumen datos={resumen} />}
         </>
       )}
@@ -331,6 +339,142 @@ function Indicadores({ datos }) {
         Un guion significa que el indicador no se puede calcular ese año: o el
         denominador es cero, o el formulario de ese ejercicio no desglosa la cuenta que
         hace falta. No se aproxima.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Color del percentil según hacia dónde es mejor estar.
+ *
+ * El percentil por sí solo no dice si algo va bien: estar en el 90 de
+ * «endeudamiento del activo» es lo contrario de estar en el 90 de ROE. La
+ * dirección la trae el indicador desde el back, y los que no tienen dirección
+ * clara —el apalancamiento— se quedan sin color a propósito.
+ */
+function claseP(p, mejor) {
+  if (p === null || p === undefined || mejor === 'neutro') return ''
+  const bueno = mejor === 'alto' ? p >= 75 : p <= 25
+  const malo = mejor === 'alto' ? p <= 25 : p >= 75
+  return bueno ? 'bien' : malo ? 'mal' : ''
+}
+
+/** Barra de posición dentro del sector: 0 a la izquierda, 100 a la derecha. */
+function BarraPercentil({ p, mejor }) {
+  if (p === null || p === undefined) return null
+  return (
+    <div className="barra" title={`Percentil ${p} del sector`}>
+      <span className={`relleno ${claseP(p, mejor)}`} style={{ width: `${p}%` }} />
+      <span className="mediana" />
+    </div>
+  )
+}
+
+/**
+ * Comparación sectorial: dónde está la empresa respecto de sus pares.
+ *
+ * Cada celda lleva tres cosas y las tres hacen falta: el valor de la empresa, el
+ * percentil que ocupa y la mediana del sector. Sin la mediana el percentil es un
+ * número sin escala —el percentil 60 puede significar 1,1 o 11—, y sin el
+ * percentil la mediana no dice si estar por encima es raro o es lo normal.
+ */
+function Sectorial({ datos }) {
+  if (!datos) {
+    return (
+      <div className="bloque">
+        <p className="aviso">
+          Esta compañía todavía no tiene percentiles calculados. Se calculan por lote
+          después de importar balances, no en cada consulta.
+        </p>
+      </div>
+    )
+  }
+  if (datos.anios.length === 0) {
+    return (
+      <div className="bloque">
+        <p className="aviso">
+          No hay comparación sectorial para esta compañía: o no tiene actividad
+          registrada, o ninguno de sus indicadores se pudo calcular.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bloque sectorial">
+      <div className="pares">
+        {datos.sectores.map(s => (
+          <div key={s.anio} className="par">
+            <strong>{s.anio}</strong>
+            <span className="codigo">{s.codigo}</span>
+            <span className="nombre">{s.nombre ?? '—'}</span>
+            <span className={`nivel ${s.nivel}`}>
+              {s.nivel === 'division' ? 'división CIIU' : 'sección CIIU'}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {datos.grupos.map(g => {
+        const filas = datos.indicadores.filter(i => i.grupo === g.id)
+        if (filas.length === 0) return null
+        return (
+          <div key={g.id}>
+            <h4>{g.titulo}</h4>
+            <div className="scroll">
+              <table className="tabla comparacion">
+                <thead>
+                  <tr>
+                    <th>Indicador</th>
+                    {datos.anios.map(a => (
+                      <th key={a} className="derecha">
+                        {a}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filas.map(i => (
+                    <tr key={i.clave}>
+                      <td>{i.etiqueta}</td>
+                      {datos.anios.map((a, k) => {
+                        const p = i.percentiles[k]
+                        const c = i.cortes[k]
+                        return (
+                          <td key={a} className="celda">
+                            <div className="linea">
+                              <span className="mono valor">
+                                {formatear(i.valores[k], i.formato)}
+                              </span>
+                              <span className={`pct ${claseP(p, i.mejor)}`}>
+                                {p === null || p === undefined ? '—' : `p${p}`}
+                              </span>
+                            </div>
+                            <BarraPercentil p={p} mejor={i.mejor} />
+                            <div className="sector">
+                              {c
+                                ? `mediana ${formatear(c.p50, i.formato)} · n ${c.n.toLocaleString('es-EC')}`
+                                : 'sin sector'}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })}
+
+      <p className="aviso">
+        El percentil es el porcentaje de empresas del sector que quedan por debajo,
+        repartiendo los empates por la mitad. Sólo cuentan las que tienen ese indicador
+        calculado: una empresa sin ingresos no tiene margen neto y no entra en la
+        mediana del margen. El grupo de pares es la
+        división CIIU del año; cuando la división tiene menos de 30 empresas se compara
+        contra la sección, y la cabecera dice cuál se usó.
       </p>
     </div>
   )

@@ -13,9 +13,13 @@ import { TurismoImportService } from './turismo/turismo-import.service';
 import { CatastrosImportService } from './catastros/catastros-import.service';
 import { ImportJob } from './entities/import-job.entity';
 import { ImportRowReject } from './entities/import-row-reject.entity';
+import { BalancesModule } from '../balances/balances.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ImportJob, ImportRowReject])],
+  // BalancesModule entra por `PercentilesService`: al terminar un import de
+  // balances hay que rehacer los percentiles sectoriales, o quedan calculados
+  // contra una población que ya cambió.
+  imports: [TypeOrmModule.forFeature([ImportJob, ImportRowReject]), BalancesModule],
   controllers: [ImportsController],
   providers: [
     ImportJobsService,
