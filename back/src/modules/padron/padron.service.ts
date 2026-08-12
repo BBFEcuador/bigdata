@@ -20,23 +20,58 @@ export class PadronService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async resumen() {
+    // El desglose de personas naturales se saca en UNA pasada con FILTER, no
+    // en cinco subconsultas: son 6,5 M de filas y cada `count` extra sería
+    // otro recorrido completo de la tabla.
+    //
+    // Los tres tramos se calculan de forma que sumen siempre el total:
+    // `IS NOT TRUE` cubre a la vez el `false` y el `null`, así que nadie puede
+    // caerse entre las obligadas y las no obligadas.
     const [r] = await this.dataSource.query(`
-      SELECT
-        (SELECT count(*) FROM persona_natural)::bigint          AS personas,
-        (SELECT count(*) FROM sociedad_no_supervisada)::bigint  AS no_supervisadas,
-        (SELECT count(*) FROM establecimiento)::bigint          AS establecimientos,
-        (SELECT count(*) FROM companias WHERE sri_job_id IS NOT NULL)::bigint AS companias_enriquecidas,
-        (SELECT count(*) FROM persona_natural WHERE estado_contribuyente = 'ACTIVO')::bigint AS personas_activas
+      WITH pn AS (
+        SELECT
+          count(*)::bigint AS total,
+          count(*) FILTER (WHERE estado_contribuyente = 'ACTIVO')::bigint AS activas,
+          count(*) FILTER (
+            WHERE estado_contribuyente = 'ACTIVO' AND obligado_contabilidad IS TRUE
+          )::bigint AS obligadas_activas,
+          count(*) FILTER (
+            WHERE estado_contribuyente = 'ACTIVO' AND obligado_contabilidad IS NOT TRUE
+          )::bigint AS no_obligadas_activas,
+          count(*) FILTER (WHERE estado_contribuyente IS DISTINCT FROM 'ACTIVO')::bigint AS inactivas,
+          count(*) FILTER (WHERE estado_contribuyente = 'SUSPENDIDO')::bigint AS suspendidas,
+          count(*) FILTER (WHERE estado_contribuyente = 'PASIVO')::bigint AS pasivas,
+          count(*) FILTER (
+            WHERE estado_contribuyente = 'ACTIVO' AND agente_retencion IS TRUE
+          )::bigint AS agentes_activas,
+          count(*) FILTER (
+            WHERE estado_contribuyente = 'ACTIVO' AND obligado_contabilidad IS NOT TRUE
+              AND (turismo_registros IS NOT NULL)
+          )::bigint AS no_obligadas_en_turismo
+        FROM persona_natural
+      )
+      SELECT pn.*,
+        (SELECT count(*) FROM sociedad_no_supervisada)::bigint AS no_supervisadas,
+        (SELECT count(*) FROM establecimiento)::bigint         AS establecimientos,
+        (SELECT count(*) FROM companias WHERE sri_job_id IS NOT NULL)::bigint AS companias_enriquecidas
+      FROM pn
     `);
     // Los años se envían con el resumen para que el desplegable de catastro
     // ofrezca sólo ejercicios que existen de verdad.
     const aniosCatastro = await aniosPorCatastro((sql) => this.dataSource.query(sql));
     return {
-      personas: Number(r.personas),
+      personas: Number(r.total),
       noSupervisadas: Number(r.no_supervisadas),
       establecimientos: Number(r.establecimientos),
       companiasEnriquecidas: Number(r.companias_enriquecidas),
-      personasActivas: Number(r.personas_activas),
+      personasActivas: Number(r.activas),
+      personasObligadasActivas: Number(r.obligadas_activas),
+      personasNoObligadasActivas: Number(r.no_obligadas_activas),
+      personasInactivas: Number(r.inactivas),
+      personasSuspendidas: Number(r.suspendidas),
+      personasPasivas: Number(r.pasivas),
+      personasAgentesActivas: Number(r.agentes_activas),
+      personasNoObligadasEnTurismo: Number(r.no_obligadas_en_turismo),
       aniosCatastro,
     };
   }
@@ -64,12 +99,29 @@ export class PadronService {
       params.push(q.estado);
       where.push(`p.estado_contribuyente = $${params.length}`);
     }
+    if (q.estadoInactivo === 'true') {
+      where.push(`p.estado_contribuyente IS DISTINCT FROM 'ACTIVO'`);
+    }
     if (q.provincia) {
       params.push(q.provincia);
       where.push(
         `EXISTS (SELECT 1 FROM establecimiento e WHERE e.ruc = p.ruc AND e.provincia = $${params.length})`,
       );
     }
+    // Los tres indicadores tributarios. `IS TRUE` / `IS FALSE` y no `= false`:
+    // 104.645 personas tienen `agente_retencion` en NULL, y con `=` esas filas
+    // se caerían de los dos lados del filtro sin que nadie lo note.
+    for (const [campo, columna] of [
+      ['obligadoContabilidad', 'obligado_contabilidad'],
+      ['agenteRetencion', 'agente_retencion'],
+      ['contribuyenteEspecial', 'contribuyente_especial'],
+    ] as const) {
+      const v = q[campo];
+      if (v === 'true' || v === 'false') {
+        where.push(`p.${columna} IS ${v === 'true' ? 'TRUE' : 'FALSE'}`);
+      }
+    }
+
     // Catastros públicos, enlazados por RUC. Es el mismo filtro que usa el
     // listado de compañías: las tres tablas llevan las mismas columnas porque
     // el catastro reparte sus RUC entre las tres poblaciones.

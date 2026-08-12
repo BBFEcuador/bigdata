@@ -146,11 +146,23 @@ export default function Analisis() {
       {empresa && !cargando && (
         <>
           <div className="ficha">
-            <h3>{empresa.nombre}</h3>
-            <p className="sub">
-              RUC {empresa.ruc} · Expediente {empresa.expediente}
-              {empresa.rama ? ` · ${empresa.rama}` : ''}
-            </p>
+            <div>
+              <h3>{empresa.nombre}</h3>
+              <p className="sub">
+                RUC {empresa.ruc} · Expediente {empresa.expediente}
+                {empresa.rama ? ` · ${empresa.rama}` : ''}
+              </p>
+            </div>
+            {/* El informe se abre en una pestaña propia: quien lo genera suele
+                querer seguir consultando el análisis mientras tanto. */}
+            <a
+              className="boton-informe"
+              href={`/informe/${empresa.expediente}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Informe PDF
+            </a>
           </div>
 
           <div className="pestanas">

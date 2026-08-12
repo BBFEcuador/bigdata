@@ -23,6 +23,7 @@ import { SriImportService } from './sri/sri-import.service';
 import { DataportalImportService } from './dataportal/dataportal-import.service';
 import { TurismoImportService } from './turismo/turismo-import.service';
 import { CatastrosImportService } from './catastros/catastros-import.service';
+import { WebImportService } from './web/web-import.service';
 import {
   multerConfigBalances,
   multerConfigCatastros,
@@ -37,6 +38,7 @@ import { IMPORT_KIND_BALANCES } from './balances/balances.constants';
 import { IMPORT_KIND_SRI } from './sri/sri.constants';
 import { IMPORT_KIND_DATAPORTAL } from './dataportal/dataportal.constants';
 import { IMPORT_KIND_TURISMO } from './turismo/turismo.constants';
+import { IMPORT_KIND_WEB } from './web/web.constants';
 import {
   IMPORT_KIND_CATASTROS,
   TIPOS_CATASTRO,
@@ -56,6 +58,7 @@ export class ImportsController {
     private readonly dataportal: DataportalImportService,
     private readonly turismo: TurismoImportService,
     private readonly catastros: CatastrosImportService,
+    private readonly web: WebImportService,
   ) {}
 
   /**
@@ -182,13 +185,21 @@ export class ImportsController {
    * Es una carga de ~31 horas, así que la lista de trabajo y el avance viven en
    * `dataportal_consulta`: relanzar continúa por los pendientes en vez de
    * empezar de cero.
+   *
+   * Con `?segmento=<codigo>` se acota a los miembros de un segmento comercial.
+   * El parámetro es un **código**, nunca un fragmento SQL: la condición del
+   * segmento vive en la tabla, poblada desde migraciones.
+   *
+   * El ámbito no se guarda en el job: para reanudar una carga acotada hay que
+   * volver a pasar el mismo `?segmento=`. Sin él continuaría por todos los
+   * pendientes, que son 226.191.
    */
   @Post('dataportal')
   @HttpCode(202)
-  async lanzarDataportal() {
-    if (!process.env.DATAPORTAL_USER || !process.env.DATAPORTAL_PASSWORD) {
+  async lanzarDataportal(@Query('segmento') segmento?: string) {
+    if (!process.env.DATAPORTAL_TOKEN) {
       throw new BadRequestException(
-        'Faltan DATAPORTAL_USER / DATAPORTAL_PASSWORD en back/.env. Añádelos y reinicia el backend.',
+        'Falta DATAPORTAL_TOKEN en back/.env. Añádelo y reinicia el backend.',
       );
     }
     const activo = await this.jobs.hayJobActivo(IMPORT_KIND_DATAPORTAL);
@@ -197,16 +208,66 @@ export class ImportsController {
         `Ya hay un enriquecimiento en curso (job ${activo.id}). Detenlo antes de lanzar otro.`,
       );
     }
+    const ambito = segmento ? await this.dataportal.resolverSegmento(segmento) : null;
+
     const job = await this.jobs.create({
       kind: IMPORT_KIND_DATAPORTAL,
       status: 'pending',
       modo: 'parcial',
-      originalFilename: 'dataportalsys.com (API)',
+      originalFilename: segmento
+        ? `dataportalsys.com (API) · segmento ${segmento}`
+        : 'dataportalsys.com (API)',
       storedPath: '',
       fileSizeBytes: 0,
     });
-    this.dataportal.enqueue(job.id);
+    this.dataportal.enqueue(job.id, segmento);
+    return { ...this.respuesta(job), segmento: ambito && { codigo: segmento, ...ambito } };
+  }
+
+  /**
+   * Rastreo de presencia digital. No recibe archivo ni consulta ninguna API de
+   * pago: conjetura dominios a partir del nombre de cada compañía, comprueba
+   * cuáles existen y lee de su portada el título y los enlaces a redes.
+   *
+   * **Nada de lo que encuentra queda como bueno.** Todo entra en
+   * `presencia_canal` como propuesta, y se valida a mano desde `/presencia`.
+   *
+   * Es un recorrido de horas contra servidores ajenos, así que el avance vive
+   * en `web_consulta`: relanzar continúa por las pendientes.
+   */
+  @Post('web')
+  @HttpCode(202)
+  async lanzarWeb() {
+    const activo = await this.jobs.hayJobActivo(IMPORT_KIND_WEB);
+    if (activo) {
+      throw new ConflictException(
+        `Ya hay un rastreo de presencia digital en curso (job ${activo.id}). Detenlo antes de lanzar otro.`,
+      );
+    }
+    const job = await this.jobs.create({
+      kind: IMPORT_KIND_WEB,
+      status: 'pending',
+      modo: 'parcial',
+      originalFilename: 'rastreo de dominios (sin archivo)',
+      storedPath: '',
+      fileSizeBytes: 0,
+    });
+    this.web.enqueue(job.id);
     return this.respuesta(job);
+  }
+
+  /** Detiene el rastreo tras la compañía en curso; el avance queda guardado. */
+  @Post('web/detener')
+  @HttpCode(202)
+  detenerWeb() {
+    this.web.detener();
+    return { detenido: true };
+  }
+
+  /** Avance del rastreo y cuánto queda por revisar a mano. */
+  @Get('web/estado')
+  estadoWeb() {
+    return this.web.estado();
   }
 
   /** Detiene el enriquecimiento tras el RUC en curso; el avance queda guardado. */

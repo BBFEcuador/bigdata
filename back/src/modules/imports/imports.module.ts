@@ -11,6 +11,7 @@ import { SriImportService } from './sri/sri-import.service';
 import { DataportalImportService } from './dataportal/dataportal-import.service';
 import { TurismoImportService } from './turismo/turismo-import.service';
 import { CatastrosImportService } from './catastros/catastros-import.service';
+import { WebImportService } from './web/web-import.service';
 import { ImportJob } from './entities/import-job.entity';
 import { ImportRowReject } from './entities/import-row-reject.entity';
 import { BalancesModule } from '../balances/balances.module';
@@ -32,6 +33,7 @@ import { BalancesModule } from '../balances/balances.module';
     DataportalImportService,
     TurismoImportService,
     CatastrosImportService,
+    WebImportService,
   ],
 })
 export class ImportsModule {}

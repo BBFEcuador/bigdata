@@ -216,12 +216,19 @@
   font-size: 0.8rem;
 }
 
-/* El nombre de la actividad se lee entero: se envuelve en varias líneas en vez
-   de recortarse con puntos suspensivos. Es el mismo criterio que en el listado
-   de compañías y en la ficha. */
+/* La actividad va plegada a una línea y con ancho fijo. Envuelta en varias
+   líneas era la columna que descuadraba la tabla: con 18 columnas y sin
+   `table-layout: fixed`, cada nombre largo repartía de nuevo todos los anchos y
+   la tabla cambiaba de forma en cada página. Se lee entera al pulsarla. */
 .padron .tabla td.actividad {
-  min-width: 260px;
-  max-width: 340px;
+  width: 260px;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.padron .tabla td.actividad.abierta {
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -250,12 +257,38 @@
   border-radius: 0;
 }
 
-/* La de dentro de la tabla scrollable: mismo criterio, algo más estrecha.
-   El `min-width` es lo que impide que el reparto automático de la tabla la
-   estruje a 150 px y convierta el nombre en una columna de una palabra. */
+/* Sólo la del listado se despliega al pulsarla; las de los paneles de detalle
+   se recortan igual, pero no son un control. */
 .padron .tabla-scroll .tabla td.actividad {
-  min-width: 240px;
-  max-width: 300px;
+  cursor: pointer;
+}
+
+.padron .panel .tabla td.actividad {
+  cursor: default;
+}
+
+/* Paginación: las mismas reglas que en el listado de compañías, prefijadas
+   aquí para no depender de que aquella hoja esté cargada. */
+.padron .paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.padron .paginacion button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.padron .paginacion button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Bloques dentro del panel desplegado: catastros, registros turísticos y

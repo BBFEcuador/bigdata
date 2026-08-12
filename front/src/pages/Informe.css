@@ -1,0 +1,534 @@
+/*
+ * Informe financiero imprimible.
+ *
+ * Dos presentaciones del mismo marcado: en pantalla se ve la hoja sobre un
+ * fondo gris, como una previsualización; en papel desaparece todo lo que no es
+ * el documento. Los colores de marca entran por las variables `--marca` y
+ * `--acento`, que pone el componente desde `marca.jsx`: aquí no hay ni un color
+ * de empresa escrito a mano.
+ */
+
+.informe {
+  /* --marca, --acento, --tinta, --tenue, --arena y --tipo los pone el
+     componente desde marca.jsx. Aquí sólo lo que no depende de la marca. */
+  --linea: #d9dde1;
+  background: #eceef0;
+  min-height: 100vh;
+  padding: 1.5rem 1rem 4rem;
+}
+
+/* ------------------------------------------------ controles (sólo pantalla) */
+.barra-informe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  max-width: 210mm;
+  margin: 0 auto 0.75rem;
+  padding: 0.7rem 0.9rem;
+  background: #fff;
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  font-size: 0.84rem;
+}
+
+.barra-informe .volver {
+  color: var(--marca);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.barra-informe .volver:hover {
+  text-decoration: underline;
+}
+
+.barra-informe .control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--tenue);
+}
+
+.barra-informe select {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+.barra-informe .descargar {
+  margin-left: auto;
+  padding: 0.45rem 1.1rem;
+  border: 0;
+  border-radius: 5px;
+  background: var(--marca);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.barra-informe .descargar:hover {
+  filter: brightness(1.12);
+}
+
+.barra-informe .descargar:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.pista-impresion {
+  max-width: 210mm;
+  margin: 0 auto 1.2rem;
+  padding: 0.6rem 0.9rem;
+  background: #fff8e6;
+  border: 1px solid #f0dfae;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #6b5b28;
+}
+
+.informe-aviso {
+  padding: 2rem;
+  color: #666;
+}
+
+.informe-aviso.error {
+  color: #b3261e;
+}
+
+/* ------------------------------------------------------------ la hoja */
+.hoja {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 16mm 14mm;
+  background: #fff;
+  color: var(--tinta);
+  border: 1px solid var(--linea);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------------------------- portada */
+.portada {
+  border-bottom: 3px solid var(--marca);
+  padding-bottom: 1rem;
+  margin-bottom: 1.4rem;
+}
+
+.portada .emisor {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.6rem;
+}
+
+.portada .emisor .descripcion {
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--tenue);
+  border-left: 1px solid var(--linea);
+  padding-left: 0.8rem;
+}
+
+.portada .tipo-doc {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--marca);
+  font-weight: 600;
+}
+
+.portada h1 {
+  margin: 0 0 0.25rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.portada .identificacion {
+  margin: 0;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--tenue);
+}
+
+.portada .rama {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--tenue);
+}
+
+.portada .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.2rem;
+  margin: 1.2rem 0 0;
+}
+
+.portada .meta dt {
+  font-size: 0.66rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--tenue);
+}
+
+.portada .meta dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------- secciones */
+.seccion {
+  margin-bottom: 1.6rem;
+}
+
+.seccion h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin: 0 0 0.7rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--linea);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--marca);
+}
+
+.seccion h2 .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--marca);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.seccion .grupo {
+  margin-bottom: 0.9rem;
+}
+
+.seccion h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--tenue);
+}
+
+.seccion .nota {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--tenue);
+}
+
+.sector-pares {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  color: var(--tenue);
+}
+
+/* ------------------------------------------------------------ tablas */
+.informe table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.informe th,
+.informe td {
+  padding: 0.22rem 0.4rem;
+  border-bottom: 1px solid #eceef0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.informe thead th {
+  border-bottom: 1px solid var(--linea);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tenue);
+  font-weight: 600;
+}
+
+.informe .der {
+  text-align: right;
+}
+
+.informe .mono {
+  font-family: Consolas, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.73rem;
+}
+
+.informe .codigo {
+  font-family: Consolas, Menlo, monospace;
+  font-size: 0.68rem;
+  color: var(--tenue);
+  margin-right: 0.25rem;
+}
+
+.informe tr.destacada td {
+  font-weight: 700;
+  background: #f6f8fa;
+}
+
+/* La variación es contexto, no dato principal: va más pequeña y más clara. */
+.informe .var {
+  font-size: 0.68rem;
+  color: var(--tenue);
+}
+
+.informe td.var.sube {
+  color: #1a7f4b;
+}
+
+.informe td.var.baja {
+  color: #b3261e;
+}
+
+.informe .tenue {
+  color: var(--tenue);
+}
+
+/* --------------------------------------------------- tabla sectorial */
+.tabla-sector .posicion {
+  width: 26%;
+}
+
+.tabla-sector .barra {
+  display: block;
+  position: relative;
+  height: 0.45rem;
+  background: #eef1f4;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tabla-sector .relleno {
+  display: block;
+  height: 100%;
+  background: var(--tenue);
+}
+
+.tabla-sector .relleno.bien {
+  background: #1a7f4b;
+}
+
+.tabla-sector .relleno.mal {
+  background: #b3261e;
+}
+
+.tabla-sector .pct.bien {
+  color: #1a7f4b;
+  font-weight: 700;
+}
+
+.tabla-sector .pct.mal {
+  color: #b3261e;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------- pie */
+.pie-documento {
+  margin-top: 1.8rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--linea);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--tenue);
+}
+
+.pie-documento .firma {
+  margin-top: 0.4rem;
+  font-weight: 600;
+  color: var(--marca);
+}
+
+/* ============================================================ IMPRESIÓN */
+@media print {
+  /*
+   * A4 con márgenes de imprenta. El navegador añade además su encabezado y su
+   * pie con la URL; eso se quita desde el diálogo, no desde aquí — ninguna
+   * hoja de estilo puede desactivarlo.
+   */
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
+  .informe {
+    background: #fff;
+    padding: 0;
+  }
+
+  /* Lo que sirve para operar la pantalla no es parte del documento. */
+  .barra-informe,
+  .pista-impresion {
+    display: none !important;
+  }
+
+  .hoja {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 9.5px;
+  }
+
+  /*
+   * Sin esto los fondos y los colores de marca salen en blanco: los
+   * navegadores no imprimen fondos por defecto, y la banda de cabecera y las
+   * filas destacadas perderían justamente lo que las distingue.
+   */
+  .informe * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* La cabecera de una tabla larga se repite en cada página. */
+  .informe thead {
+    display: table-header-group;
+  }
+
+  /* Una fila no se parte por la mitad entre dos páginas. */
+  .informe tr,
+  .informe .grupo > h3 {
+    break-inside: avoid;
+  }
+
+  /* Un título nunca se queda solo al final de una página. */
+  .seccion h2 {
+    break-after: avoid;
+  }
+
+  .seccion {
+    break-inside: auto;
+  }
+
+  .portada {
+    break-after: avoid;
+  }
+
+  .pie-documento {
+    break-inside: avoid;
+  }
+}
+
+/* El marco existe sólo para el scroll en pantalla estrecha; en papel estorba. */
+.marco-tabla {
+  overflow-x: auto;
+}
+
+@media print {
+  .marco-tabla {
+    overflow: visible;
+  }
+}
+
+/* ==================================================== línea gráfica ASCENDRA
+   El manual trabaja sobre azul marino con dorado y arena. En un informe
+   financiero el dorado NO se usa para texto largo —no contrasta lo suficiente
+   sobre blanco— sino como filete: la banda de la portada, la línea bajo cada
+   título y la marca de las filas totales. */
+
+.hoja {
+  font-family: var(--tipo);
+}
+
+/* Filete dorado sobre la banda marino: es el gesto del logotipo, la flecha que
+   sube, traducido a una regla horizontal. */
+.portada {
+  border-bottom: 0;
+  position: relative;
+  padding-bottom: 1.1rem;
+}
+
+.portada::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(to right, var(--marca) 0 62%, var(--acento) 62% 100%);
+}
+
+.portada .emisor .descripcion {
+  color: var(--tenue);
+  letter-spacing: 0.16em;
+  font-size: 0.62rem;
+}
+
+.portada .tipo-doc {
+  font-family: var(--tipo);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--marca);
+}
+
+.portada .tipo-doc-sub {
+  margin: 0 0 0.9rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--acento-oscuro);
+  font-weight: 600;
+}
+
+.portada h1 {
+  font-family: var(--tipo);
+  font-weight: 300;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--tinta);
+}
+
+/* La numeración de sección hereda el dorado; el título, el marino. */
+.seccion h2 {
+  font-family: var(--tipo);
+  font-weight: 500;
+  font-size: 0.98rem;
+  border-bottom: 1px solid var(--arena-borde);
+  color: var(--marca);
+}
+
+.seccion h2 .num {
+  background: var(--acento);
+  color: var(--marca);
+}
+
+.informe tr.destacada td {
+  background: var(--arena);
+}
+
+.informe thead th {
+  border-bottom: 1px solid var(--arena-borde);
+}
+
+.pie-documento {
+  border-top: 1px solid var(--arena-borde);
+}
+
+.pie-documento .firma {
+  color: var(--marca);
+}
+
+.tabla-sector .relleno {
+  background: var(--acento);
+}

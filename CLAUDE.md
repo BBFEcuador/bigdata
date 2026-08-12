@@ -33,6 +33,7 @@ FRIDAY/
 │           ├── catalogo/              consulta del plan de cuentas
 │           ├── ciiu/                  consulta de actividades económicas
 │           ├── segmentos/             capa comercial         <- ver README.md
+│           ├── presencia/             web y redes, validadas a mano
 │           └── imports/               base común de importación
 │               ├── pg/pg-copy.session.ts  COPY con contrapresión (compartido)
 │               ├── companias/         importador XLSX masivo <- ver README.md
@@ -42,6 +43,7 @@ FRIDAY/
 │               ├── sri/               padrón del SRI         <- ver README.md
 │               ├── dataportal/        enriquecimiento por API<- ver README.md
 │               ├── turismo/           catastro del Mintur    <- ver README.md
+│               ├── web/               rastreo de dominios    <- ver README.md
 │               └── catastros/         4 catastros del SRI    <- ver README.md
 │
 ├── db/init.sql                   SÓLO para un volumen nuevo (ver aviso abajo)
@@ -183,6 +185,19 @@ quien compara contra `current_date`.
 jamás desde el API**. Se guardan los miembros actuales y el histórico de altas y
 bajas, porque lo que se trabaja a diario son las novedades, no la lista.
 Ver `back/src/modules/segmentos/README.md`.
+
+`presencia_canal` / `presencia_evento` — sitio web y redes sociales (web,
+Facebook, Instagram, LinkedIn, TikTok, X, YouTube, WhatsApp, Telegram), **una
+fila por canal y no una columna por red**: la auditoría es por dato, una empresa
+puede tener dos cuentas en la misma red, y añadir una red nueva no debería ser
+un `ALTER TABLE`. La vista `presencia_digital` lo pivota a forma ancha con lo ya
+confirmado.
+
+**Lo que trae el rastreador no vale hasta que una persona lo confirma.** Entra
+como `propuesto` y se valida desde `/presencia`, firmado con la cabecera
+`X-Usuario` — sin ella no se escribe. El rastreador **jamás sobrescribe una fila
+existente**: si lo hiciera, cada pasada desharía la revisión de la anterior.
+Ver `back/src/modules/imports/web/README.md`.
 
 `import_job` — un registro por carga con contadores y progreso. Un índice único
 parcial garantiza **un solo import activo a la vez**.

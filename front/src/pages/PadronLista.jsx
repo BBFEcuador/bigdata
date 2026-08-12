@@ -20,46 +20,143 @@ const FILTROS_VACIOS = {
   provincia: '',
   catastro: '',
   catastroAnio: '',
+  obligadoContabilidad: '',
+  agenteRetencion: '',
+  contribuyenteEspecial: '',
+}
+
+/**
+ * Configuración de cada pantalla del padrón.
+ *
+ * Las personas naturales se parten en TRES pantallas, no en una con filtros:
+ * obligadas a llevar contabilidad, no obligadas e inactivas. Son tres realidades
+ * comerciales que no se parecen en nada —33.396 frente a 2,7 millones frente a
+ * 3,8 millones— y tenerlas en una sola lista con un desplegable hace que sea
+ * fácil mirar la cifra equivocada.
+ *
+ * `fijos` son los filtros que DEFINEN la pantalla: se envían siempre y no se
+ * enseñan, porque poder quitarlos sería poder salirse de la pantalla en la que
+ * uno cree estar. `ocultar` esconde los controles que ya no significan nada
+ * dentro de ella.
+ *
+ * Los tres tramos son exhaustivos y no se solapan: `IS NOT TRUE` en el backend
+ * cubre el `false` y el `null` a la vez, así que las tres cifras suman siempre
+ * el total de la tabla.
+ */
+const PANTALLAS = {
+  personas: {
+    titulo: 'Personas naturales',
+    cargar: listarPersonas,
+    etiquetaNombre: 'Nombre',
+    nota:
+      'Todos los contribuyentes registrados como persona natural en el SRI, sin ' +
+      'separar por estado. No presentan balances ni tienen indicadores financieros, y ' +
+      'por eso viven en su propia tabla, separados de las compañías.',
+    fijos: {},
+    ocultar: [],
+    cajas: r => [
+      { k: 'Personas naturales', v: r?.personas },
+      { k: '…de ellas activas', v: r?.personasActivas },
+      { k: 'Establecimientos (todos)', v: r?.establecimientos },
+    ],
+  },
+
+  'personas-obligadas': {
+    titulo: 'Personas naturales obligadas a llevar contabilidad',
+    cargar: listarPersonas,
+    etiquetaNombre: 'Nombre',
+    nota:
+      'Personas naturales ACTIVAS que el SRI marca como obligadas a llevar ' +
+      'contabilidad, por superar los umbrales de ingresos, capital o costos. Necesitan ' +
+      'contador todos los meses y presentan más obligaciones que el resto.',
+    fijos: { estado: 'ACTIVO', obligadoContabilidad: 'true' },
+    ocultar: ['estado', 'obligadoContabilidad'],
+    cajas: r => [
+      { k: 'Obligadas y activas', v: r?.personasObligadasActivas },
+      { k: 'Agentes de retención (activas)', v: r?.personasAgentesActivas },
+      { k: 'Total de personas naturales', v: r?.personas },
+    ],
+  },
+
+  'personas-no-obligadas': {
+    titulo: 'Personas naturales NO obligadas a llevar contabilidad',
+    cargar: listarPersonas,
+    etiquetaNombre: 'Nombre',
+    nota:
+      'Personas naturales ACTIVAS que no están obligadas a llevar contabilidad. Son ' +
+      'millones: esta pantalla es un universo, no una lista de trabajo. Acótala por ' +
+      'provincia, actividad o catastro antes de sacar nada de aquí.',
+    fijos: { estado: 'ACTIVO', obligadoContabilidad: 'false' },
+    ocultar: ['estado', 'obligadoContabilidad'],
+    cajas: r => [
+      { k: 'No obligadas y activas', v: r?.personasNoObligadasActivas },
+      { k: '…en el catastro de turismo', v: r?.personasNoObligadasEnTurismo },
+      { k: 'Total de personas naturales', v: r?.personas },
+    ],
+  },
+
+  'personas-inactivas': {
+    titulo: 'Personas naturales inactivas',
+    cargar: listarPersonas,
+    etiquetaNombre: 'Nombre',
+    nota:
+      'Personas naturales cuyo RUC NO está activo: suspendidas o pasivas. No son ' +
+      'prospectos —no pueden facturar— pero siguen en la base porque un RUC ' +
+      'suspendido puede reactivarse, y porque su historial explica cruces con otras ' +
+      'fuentes.',
+    fijos: { estadoInactivo: 'true' },
+    ocultar: ['estado'],
+    cajas: r => [
+      { k: 'Inactivas', v: r?.personasInactivas },
+      { k: '…suspendidas', v: r?.personasSuspendidas },
+      { k: '…pasivas', v: r?.personasPasivas },
+    ],
+  },
+
+  sociedades: {
+    titulo: 'Sociedades no supervisadas',
+    cargar: listarSociedadesNoSupervisadas,
+    etiquetaNombre: 'Razón social',
+    nota:
+      'Sociedades con RUC activo en el SRI pero SIN expediente en la ' +
+      'Superintendencia de Compañías: fundaciones, cooperativas, entidades ' +
+      'públicas y sociedades de hecho. Tienen actividad económica y ' +
+      'establecimientos, pero nunca presentarán balances.',
+    fijos: {},
+    ocultar: [],
+    cajas: r => [
+      { k: 'Sociedades no supervisadas', v: r?.noSupervisadas },
+      { k: 'Compañías en Supercias', v: r?.companiasEnriquecidas },
+      { k: 'Establecimientos (todos)', v: r?.establecimientos },
+    ],
+  },
 }
 
 /**
  * Listado del padrón del SRI para UNA población.
  *
- * Personas naturales y sociedades no supervisadas usan este mismo componente
- * pero son pantallas SEPARADAS, con su propia entrada de menú y su propia URL.
- * No van en pestañas dentro de una sola: son poblaciones distintas y mezclarlas
- * —aunque sea visualmente— invita a tratarlas como si fueran lo mismo.
+ * Cada pantalla tiene su propia entrada de menú y su propia URL. No van en
+ * pestañas dentro de una sola: son poblaciones distintas y mezclarlas —aunque
+ * sea visualmente— invita a tratarlas como si fueran lo mismo.
  */
 export default function PadronLista({ tipo }) {
-  const config =
-    tipo === 'personas'
-      ? {
-          titulo: 'Personas naturales',
-          cargar: listarPersonas,
-          etiquetaNombre: 'Nombre',
-          nota:
-            'Contribuyentes registrados como persona natural en el SRI. No presentan ' +
-            'balances ni tienen indicadores financieros, y por eso viven en su propia ' +
-            'tabla, separados de las compañías.',
-        }
-      : {
-          titulo: 'Sociedades no supervisadas',
-          cargar: listarSociedadesNoSupervisadas,
-          etiquetaNombre: 'Razón social',
-          nota:
-            'Sociedades con RUC activo en el SRI pero SIN expediente en la ' +
-            'Superintendencia de Compañías: fundaciones, cooperativas, entidades ' +
-            'públicas y sociedades de hecho. Tienen actividad económica y ' +
-            'establecimientos, pero nunca presentarán balances.',
-        }
+  const config = PANTALLAS[tipo] ?? PANTALLAS.personas
+  const oculto = campo => config.ocultar.includes(campo)
 
   const [filtros, setFiltros] = useState(FILTROS_VACIOS)
   const [datos, setDatos] = useState([])
   const [resumen, setResumen] = useState(null)
   const [provincias, setProvincias] = useState([])
   const [detalle, setDetalle] = useState(null)
+  const [actividadAbierta, setActividadAbierta] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
+
+  // Paginación por keyset: el backend sólo sabe avanzar (`ruc > cursor`), así
+  // que se apila el cursor de cada página para poder volver atrás.
+  const [cursores, setCursores] = useState([null])
+  const [pagina, setPagina] = useState(0)
+  const [cursorSiguiente, setCursorSiguiente] = useState(null)
 
   useEffect(() => {
     obtenerResumen().then(setResumen).catch(() => {})
@@ -71,18 +168,27 @@ export default function PadronLista({ tipo }) {
   useEffect(() => {
     setFiltros(FILTROS_VACIOS)
     setDetalle(null)
+    setActividadAbierta(null)
+    setCursores([null])
+    setPagina(0)
   }, [tipo])
 
   const cargar = useCallback(
-    async f => {
+    async (cursor, f) => {
       setCargando(true)
       setError(null)
       try {
-        const res = await config.cargar({ ...f, limit: 50 })
+        // Los filtros fijos van los ÚLTIMOS: definen la pantalla y ninguno de
+        // los controles visibles puede pisarlos.
+        const res = await config.cargar({ ...f, ...config.fijos, cursor, limit: 50 })
         setDatos(res.datos)
+        // El backend pide una fila de más para saberlo: si no hay siguiente,
+        // devuelve null y con eso basta para deshabilitar el botón.
+        setCursorSiguiente(res.cursorSiguiente ?? null)
       } catch (e) {
         setError(e?.response?.data?.message ?? e.message)
         setDatos([])
+        setCursorSiguiente(null)
       } finally {
         setCargando(false)
       }
@@ -90,12 +196,39 @@ export default function PadronLista({ tipo }) {
     [config],
   )
 
+  // Cambiar un filtro invalida los cursores ya recorridos: se vuelve a la
+  // primera página en vez de seguir paginando sobre el resultado anterior.
   const timer = useRef(null)
   useEffect(() => {
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => cargar(filtros), 300)
+    timer.current = setTimeout(() => {
+      setCursores([null])
+      setPagina(0)
+      setDetalle(null)
+      setActividadAbierta(null)
+      cargar(null, filtros)
+    }, 300)
     return () => clearTimeout(timer.current)
   }, [filtros, cargar])
+
+  /** Cambio de página: lo desplegado pertenece a la página que se abandona. */
+  const irA = (indice, cursor) => {
+    setPagina(indice)
+    setDetalle(null)
+    setActividadAbierta(null)
+    cargar(cursor, filtros)
+  }
+
+  const siguiente = () => {
+    if (!cursorSiguiente) return
+    setCursores(c => [...c.slice(0, pagina + 1), cursorSiguiente])
+    irA(pagina + 1, cursorSiguiente)
+  }
+
+  const anterior = () => {
+    if (pagina === 0) return
+    irA(pagina - 1, cursores[pagina - 1])
+  }
 
   const set = (campo, valor) => setFiltros(f => ({ ...f, [campo]: valor }))
 
@@ -131,18 +264,7 @@ export default function PadronLista({ tipo }) {
     }
   }
 
-  const totales =
-    tipo === 'personas'
-      ? [
-          { k: 'Personas naturales', v: resumen?.personas },
-          { k: '…de ellas activas', v: resumen?.personasActivas },
-          { k: 'Establecimientos (todos)', v: resumen?.establecimientos },
-        ]
-      : [
-          { k: 'Sociedades no supervisadas', v: resumen?.noSupervisadas },
-          { k: 'Compañías en Supercias', v: resumen?.companiasEnriquecidas },
-          { k: 'Establecimientos (todos)', v: resumen?.establecimientos },
-        ]
+  const totales = config.cajas(resumen)
 
   return (
     <div className="padron">
@@ -168,12 +290,23 @@ export default function PadronLista({ tipo }) {
           onChange={e => set('nombre', e.target.value)}
         />
         <input placeholder="RUC" value={filtros.ruc} onChange={e => set('ruc', e.target.value)} />
-        <select value={filtros.estado} onChange={e => set('estado', e.target.value)}>
-          <option value="">Cualquier estado</option>
-          <option value="ACTIVO">Activo</option>
-          <option value="PASIVO">Pasivo</option>
-          <option value="SUSPENDIDO">Suspendido</option>
-        </select>
+        {/* En las pantallas de activas el estado ya está fijado, y en la de
+            inactivas sólo tiene sentido elegir entre suspendida y pasiva. */}
+        {!oculto('estado') && (
+          <select value={filtros.estado} onChange={e => set('estado', e.target.value)}>
+            <option value="">Cualquier estado</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="PASIVO">Pasivo</option>
+            <option value="SUSPENDIDO">Suspendido</option>
+          </select>
+        )}
+        {tipo === 'personas-inactivas' && (
+          <select value={filtros.estado} onChange={e => set('estado', e.target.value)}>
+            <option value="">Suspendidas y pasivas</option>
+            <option value="SUSPENDIDO">Sólo suspendidas</option>
+            <option value="PASIVO">Sólo pasivas</option>
+          </select>
+        )}
         <select value={filtros.provincia} onChange={e => set('provincia', e.target.value)}>
           <option value="">Todas las provincias</option>
           {provincias.map(p => (
@@ -181,6 +314,35 @@ export default function PadronLista({ tipo }) {
               {p.provincia}
             </option>
           ))}
+        </select>
+        {/* Los tres indicadores tributarios del padrón. Separan a las 33.396
+            personas obligadas a llevar contabilidad de las que no lo están, que
+            es una división comercial de primer orden. */}
+        {!oculto('obligadoContabilidad') && (
+          <select
+            value={filtros.obligadoContabilidad}
+            onChange={e => set('obligadoContabilidad', e.target.value)}
+          >
+            <option value="">Obligado a contabilidad: cualquiera</option>
+            <option value="true">Obligado a llevar contabilidad</option>
+            <option value="false">NO obligado a llevar contabilidad</option>
+          </select>
+        )}
+        <select
+          value={filtros.agenteRetencion}
+          onChange={e => set('agenteRetencion', e.target.value)}
+        >
+          <option value="">Agente de retención: cualquiera</option>
+          <option value="true">Agente de retención</option>
+          <option value="false">No es agente de retención</option>
+        </select>
+        <select
+          value={filtros.contribuyenteEspecial}
+          onChange={e => set('contribuyenteEspecial', e.target.value)}
+        >
+          <option value="">Contribuyente especial: cualquiera</option>
+          <option value="true">Contribuyente especial</option>
+          <option value="false">No es contribuyente especial</option>
         </select>
         <SelectorCatastro
           catastro={filtros.catastro}
@@ -252,7 +414,14 @@ export default function PadronLista({ tipo }) {
                 <td className="catastros">
                   <MarcasCatastro fila={d} />
                 </td>
-                <td className="actividad" title={d.actividadPrincipal ?? ''}>
+                {/* Plegada a una línea: los nombres de actividad llegan a las
+                    40 palabras y, envueltos, reparten de nuevo los anchos de
+                    las 18 columnas en cada página. Se abre al pulsarla. */}
+                <td
+                  className={`actividad${actividadAbierta === d.ruc ? ' abierta' : ''}`}
+                  title={d.actividadPrincipal ?? ''}
+                  onClick={() => setActividadAbierta(r => (r === d.ruc ? null : d.ruc))}
+                >
                   {d.actividadPrincipal ?? '—'}
                 </td>
                 <td>
@@ -286,6 +455,15 @@ export default function PadronLista({ tipo }) {
         </table>
       </div>
 
+      <div className="paginacion">
+        <button type="button" onClick={anterior} disabled={pagina === 0 || cargando}>
+          ← Anterior
+        </button>
+        <span>Página {pagina + 1}</span>
+        <button type="button" onClick={siguiente} disabled={!cursorSiguiente || cargando}>
+          Siguiente →
+        </button>
+      </div>
     </div>
   )
 }

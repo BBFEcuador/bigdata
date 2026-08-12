@@ -11,6 +11,7 @@ import { BalancesModule } from './modules/balances/balances.module';
 import { PadronModule } from './modules/padron/padron.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { SegmentosModule } from './modules/segmentos/segmentos.module';
+import { PresenciaModule } from './modules/presencia/presencia.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SegmentosModule } from './modules/segmentos/segmentos.module';
     PadronModule,
     ImportsModule,
     SegmentosModule,
+    PresenciaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

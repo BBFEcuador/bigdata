@@ -23,7 +23,36 @@ export interface Segmento {
   descripcion: string | null;
   activo: boolean;
   bloqueo: string | null;
+  incluyeInactivos: boolean;
 }
+
+/**
+ * Regla de negocio: un segmento comercial sólo contiene sujetos VIGENTES.
+ *
+ * No se le vende a una empresa en liquidación ni a un RUC suspendido. Como se
+ * cumple SIEMPRE, se aplica aquí y no se copia en la condición de cada
+ * segmento: repetida en ocho sitios, se olvidaría al escribir el noveno y ese
+ * segmento saldría con muertos dentro sin que nada fallara.
+ *
+ * Las dos poblaciones no se miden igual:
+ *
+ * - **Compañías**: manda la situación legal de la Superintendencia. 14.936
+ *   compañías siguen ACTIVO en el SRI mientras están en disolución o
+ *   liquidación, y ésas no son prospecto. Se cruza además con el padrón, que
+ *   descarta otras 3.134 que Supercias da por activas y el SRI tiene
+ *   suspendidas.
+ * - **Personas y sociedades no supervisadas**: sólo existe el estado del SRI.
+ *
+ * El `IS NULL` de las compañías no es un descuido: 1.451 compañías activas no
+ * cruzaron con el padrón —RUC vacío o duplicado— y excluirlas sería castigarlas
+ * por un fallo de enlace, no por estar inactivas.
+ */
+export const REGLA_VIGENCIA = `
+  CASE p.tipo_sujeto
+    WHEN 'compania' THEN
+      p.situacion_legal = 'ACTIVA' AND (p.estado_sri = 'ACTIVO' OR p.estado_sri IS NULL)
+    ELSE p.estado_sri = 'ACTIVO'
+  END`;
 
 /**
  * Capa comercial: segmentos sobre `perfil_comercial`.
@@ -64,6 +93,7 @@ export class SegmentosService {
   async listar() {
     return this.dataSource.query(`
       SELECT s.codigo, s.nombre, s.descripcion, s.activo, s.bloqueo,
+             s.incluye_inactivos,
              (SELECT count(*)::int FROM segmento_miembro m WHERE m.segmento = s.codigo) AS miembros,
              c.ejecutado_en AS ultima_corrida,
              c.altas AS ultimas_altas,
@@ -91,7 +121,7 @@ export class SegmentosService {
 
   private async buscar(codigo: string): Promise<Segmento> {
     const [s] = await this.dataSource.query(
-      `SELECT codigo, nombre, descripcion, condicion, activo, bloqueo
+      `SELECT codigo, nombre, descripcion, condicion, activo, bloqueo, incluye_inactivos
          FROM segmento WHERE codigo = $1`,
       [codigo],
     );
@@ -124,9 +154,16 @@ export class SegmentosService {
 
     try {
       // `condicion` viene de la tabla, no del cliente. Ver la nota de la clase.
+      //
+      // La condición va entre paréntesis: sin ellos, un `OR` dentro de la
+      // definición se comería el AND de la regla de vigencia y el segmento
+      // saldría con inactivos, en silencio.
+      const vigencia = (seg as any).incluye_inactivos ? 'true' : REGLA_VIGENCIA;
       await runner.query(`
         CREATE TEMP TABLE nuevo ON COMMIT DROP AS
-        SELECT p.tipo_sujeto, p.clave FROM perfil_comercial p WHERE ${(seg as any).condicion}
+        SELECT p.tipo_sujeto, p.clave
+          FROM perfil_comercial p
+         WHERE (${(seg as any).condicion}) AND (${vigencia})
       `);
       await runner.query('CREATE UNIQUE INDEX ON nuevo (tipo_sujeto, clave)');
       await runner.query('ANALYZE nuevo');
@@ -271,10 +308,24 @@ export class SegmentosService {
     params.push(limit, offset);
 
     const datos = await this.dataSource.query(
-      `SELECT p.tipo_sujeto, p.clave, p.ruc, p.expediente, p.nombre,
-              p.ciiu6, p.provincia, p.canton, p.estado_sri, p.situacion_legal,
-              p.fecha_constitucion, p.telefono, p.correo,
-              p.anio_ult, p.activos_ult, p.ingresos_ult, p.anio_prev, p.activos_prev,
+      // Todo lo que el perfil sabe del sujeto. La pantalla decide qué enseña,
+      // pero el API no puede ser la que recorte: es el mismo criterio que sigue
+      // el listado del padrón, y es lo que evita que un dato ya cargado
+      // desaparezca por el camino.
+      `SELECT p.tipo_sujeto, p.clave, p.ruc, p.expediente, p.nombre, p.nombre_comercial,
+              p.ciiu6, p.actividad, p.provincia, p.canton, p.parroquia, p.direccion,
+              p.situacion_legal, p.tipo_compania, p.fecha_constitucion,
+              p.capital_suscrito, p.representante, p.cargo,
+              p.estado_sri, p.clase_sri, p.jurisdiccion,
+              p.obligado_contabilidad, p.agente_retencion, p.contribuyente_especial,
+              p.fecha_inicio_actividades, p.fecha_suspension_definitiva,
+              p.fecha_reinicio_actividades, p.num_establecimientos,
+              p.telefono, p.correo, p.sitio_web,
+              p.anio_ult, p.activos_ult, p.ingresos_ult, p.patrimonio_ult, p.utilidad_ult,
+              p.anio_prev, p.activos_prev, p.ingresos_prev,
+              p.turismo_registros, p.turismo_ratificado,
+              p.exportador_bienes_ir_anios, p.exportador_bienes_iva_anios,
+              p.exportador_servicios_iva_anios,
               m.desde, ec.estado AS estado_comercial
          FROM segmento_miembro m
          JOIN perfil_comercial p
@@ -315,10 +366,24 @@ export class SegmentosService {
       incluirGestionados,
     });
 
+    // El CSV lleva TODAS las columnas del perfil. Quien exporta lo hace para
+    // trabajar la lista fuera, y ahí no puede volver a pedir el dato que se
+    // quedó en el servidor.
     const columnas = [
-      'tipo_sujeto', 'ruc', 'expediente', 'nombre', 'ciiu6', 'provincia', 'canton',
-      'estado_sri', 'situacion_legal', 'fecha_constitucion', 'telefono', 'correo',
-      'anio_ult', 'activos_ult', 'ingresos_ult', 'anio_prev', 'activos_prev',
+      'tipo_sujeto', 'ruc', 'expediente', 'nombre', 'nombre_comercial',
+      'ciiu6', 'actividad', 'provincia', 'canton', 'parroquia', 'direccion',
+      'situacion_legal', 'tipo_compania', 'fecha_constitucion', 'capital_suscrito',
+      'representante', 'cargo',
+      'estado_sri', 'clase_sri', 'jurisdiccion',
+      'obligado_contabilidad', 'agente_retencion', 'contribuyente_especial',
+      'fecha_inicio_actividades', 'fecha_suspension_definitiva', 'fecha_reinicio_actividades',
+      'num_establecimientos',
+      'telefono', 'correo', 'sitio_web',
+      'anio_ult', 'activos_ult', 'ingresos_ult', 'patrimonio_ult', 'utilidad_ult',
+      'anio_prev', 'activos_prev', 'ingresos_prev',
+      'turismo_registros', 'turismo_ratificado',
+      'exportador_bienes_ir_anios', 'exportador_bienes_iva_anios',
+      'exportador_servicios_iva_anios',
     ];
 
     const escapar = (v: unknown): string => {

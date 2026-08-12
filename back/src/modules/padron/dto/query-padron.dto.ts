@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBooleanString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class QueryPadronDto {
   @IsOptional()
@@ -17,6 +25,18 @@ export class QueryPadronDto {
   @IsString()
   @MaxLength(30)
   estado?: string;
+
+  /**
+   * Todo lo que NO está activo, en un solo filtro.
+   *
+   * No es lo mismo que `estado=PASIVO`: hay suspendidos y pasivos, y la
+   * pantalla de inactivas los quiere a los dos. Con `IS DISTINCT FROM` entra
+   * además cualquier estado nuevo que publique el SRI, en vez de desaparecer
+   * de las tres pantallas a la vez.
+   */
+  @IsOptional()
+  @IsBooleanString()
+  estadoInactivo?: string;
 
   @IsOptional()
   @IsString()
@@ -40,6 +60,25 @@ export class QueryPadronDto {
   @Min(2000)
   @Max(2100)
   catastroAnio?: number;
+
+  /**
+   * Los tres indicadores tributarios del padrón, como 'true' o 'false'.
+   *
+   * Van sueltos y no en un único parámetro porque se combinan: "obligada a
+   * llevar contabilidad Y agente de retención" es una consulta real, y con un
+   * solo campo habría que inventar una gramática para expresarla.
+   */
+  @IsOptional()
+  @IsBooleanString()
+  obligadoContabilidad?: string;
+
+  @IsOptional()
+  @IsBooleanString()
+  agenteRetencion?: string;
+
+  @IsOptional()
+  @IsBooleanString()
+  contribuyenteEspecial?: string;
 
   /** Cursor de keyset: el último RUC de la página anterior. */
   @IsOptional()

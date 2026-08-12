@@ -5,6 +5,7 @@ import Catalogo from './pages/Catalogo'
 import Ciiu from './pages/Ciiu'
 import Balances from './pages/Balances'
 import Analisis from './pages/Analisis'
+import Informe from './pages/Informe'
 import PadronLista from './pages/PadronLista'
 import ImportarCompanias from './pages/ImportarCompanias'
 import ImportarBalances from './pages/ImportarBalances'
@@ -22,6 +23,10 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* El informe va FUERA del Layout: es un documento, no una pantalla de
+            la aplicación. Así no hay menú lateral que ocultar al imprimir. */}
+        <Route path="/informe/:expediente" element={<Informe />} />
+
         <Route element={<Layout />}>
           <Route path="/" element={<Navigate to={RUTA_INICIAL} replace />} />
           <Route path="/companias" element={<Companias />} />
@@ -29,7 +34,22 @@ function App() {
           <Route path="/ciiu" element={<Ciiu />} />
           <Route path="/balances" element={<Balances />} />
           <Route path="/analisis" element={<Analisis />} />
+          {/* Las personas naturales van partidas en tres pantallas. La ruta
+              general se conserva sin entrada de menú para no romper enlaces
+              guardados. */}
           <Route path="/padron/personas" element={<PadronLista tipo="personas" />} />
+          <Route
+            path="/padron/personas/obligadas"
+            element={<PadronLista tipo="personas-obligadas" />}
+          />
+          <Route
+            path="/padron/personas/no-obligadas"
+            element={<PadronLista tipo="personas-no-obligadas" />}
+          />
+          <Route
+            path="/padron/personas/inactivas"
+            element={<PadronLista tipo="personas-inactivas" />}
+          />
           <Route path="/padron/sociedades" element={<PadronLista tipo="sociedades" />} />
           <Route path="/segmentos" element={<Segmentos />} />
           <Route path="/importar/companias" element={<ImportarCompanias />} />

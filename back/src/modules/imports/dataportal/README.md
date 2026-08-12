@@ -9,48 +9,87 @@ móviles, nómina con sueldos y vehículos**. La fuente es la API REST de
 | Método | Ruta | Qué hace |
 |---|---|---|
 | `POST` | `/imports/dataportal` | Siembra los RUC pendientes y arranca la extracción. Devuelve 202. |
+| `POST` | `/imports/dataportal?segmento=<codigo>` | Igual, pero acotado a un segmento comercial. |
 | `POST` | `/imports/dataportal/detener` | Para tras el RUC en curso. El avance queda guardado. |
 | `GET` | `/imports/dataportal/estado` | Reparto por estado y cuántos datos se llevan extraídos. |
+
+## Acotar a un segmento
+
+```
+POST /imports/dataportal?segmento=salto_umbral_auditoria
+```
+
+Recorrer las 226.191 compañías cuesta ~31 horas. Un segmento comercial suele ser
+de miles, y es lo razonable cuando lo que se quiere es enriquecer una lista de
+trabajo concreta.
+
+El parámetro es un **código de segmento**, nunca un fragmento SQL: se valida
+contra la tabla `segmento` y viaja como parámetro de consulta. La condición del
+segmento se evalúa en su módulo y no llega hasta aquí.
+
+**El filtro se aplica al tomar el lote, no sólo al sembrar.** Es el detalle que
+parece redundante y no lo es: si una carga anterior ya sembró los 226.191 RUC,
+todos siguen en `pendiente`, y sembrar de menos no quita ninguno. Con el filtro
+sólo en la siembra, el job "acotado" se pondría a recorrer la lista entera.
+
+Por lo mismo, **el ámbito no se guarda en el job**: para reanudar una carga
+acotada hay que volver a pasar el mismo `?segmento=`. Sin él continúa por todos
+los pendientes.
+
+Si el segmento no tiene miembros el job no arranca: se responde 400 en vez de
+terminar "con éxito" en un segundo sin haber consultado nada. Un segmento
+definido pero nunca corrido tiene cero miembros.
 
 ## Las credenciales
 
 Van en `back/.env`, **nunca en el código**:
 
 ```
-DATAPORTAL_USER=...
-DATAPORTAL_PASSWORD=...
+DATAPORTAL_TOKEN=...
 DATAPORTAL_RPS=5
 ```
 
-`.env` está en `.gitignore`. El cliente **relee las credenciales en cada
-petición**, no las captura al arrancar: una carga dura ~31 horas y la contraseña
-puede revocarse por el camino, así que se actualiza el archivo y el job sigue
-sin reiniciarse.
+`.env` está en `.gitignore`. El cliente **relee el token en cada petición**, no
+lo captura al arrancar: una carga larga puede sobrevivir a una revocación si se
+actualiza el archivo, y el job sigue sin reiniciarse.
 
 Un `401` o `403` **no se reintenta**: para la carga entera. Insistir 1,13 M de
 veces con una credencial muerta no la revive.
 
-### No hay ningún `?token=`
+### La autenticación es el `?token=`, y sólo eso
 
-Es el error que parece obvio y no lo es. La autenticación es la de WordPress:
-**contraseña de aplicación** por cabecera `Authorization: Basic`. Comprobable
-contra el propio servidor, sin credenciales:
+Las credenciales de WordPress **no autorizan estas rutas**. Medido el
+12/08/2026, mismo RUC, cuatro variantes:
 
-```bash
-curl https://dataportalsys.com/wp-json/datacenter/v1   # args de cada ruta: sólo "dni"
-curl https://dataportalsys.com/wp-json                 # authentication: application-passwords
-```
+| Cómo se pide | Respuesta |
+|---|---|
+| `?token=` en la query | **200** |
+| Contraseña de aplicación por `Authorization: Basic` | 401 `usuario no autorizado` |
+| Contraseña de la cuenta por `Authorization: Basic` | 401 `usuario no autorizado` |
+| Sin nada | 401 `usuario no autorizado` |
 
-Mandar un token por query string devuelve `401` **exactamente igual** que no
-mandar nada, así que el síntoma no distingue "valor equivocado" de "mecanismo
-equivocado". Si algún día vuelve a dar 401, empieza por esos dos `curl`.
+El token sale del propio panel: en `wp-admin`, la pantalla **Buscar por Ruc**
+llama a estos mismos cinco endpoints con el token en la URL. Se ve en la
+pestaña de red del navegador.
 
-Y la contraseña **no es la de la cuenta**: WordPress sólo acepta por Basic las
-de aplicación, que se generan en `wp-admin/profile.php` y tienen la forma
-`abcd EFGH ijkl MNOP`. **Los espacios son parte del valor**, no se recortan.
+**Este README afirmaba lo contrario** —que no había ningún `?token=` y que la
+autenticación era la de WordPress— y costó una noche entera. La deducción de la
+que salía parecía sólida: el índice de la API declara `dni` como único argumento
+de cada ruta, y el raíz anuncia `application-passwords` como método de
+autenticación. Ninguna de las dos cosas describe cómo autoriza el plugin, pero
+las dos apuntaban al sitio equivocado y el `401` no distingue "valor
+equivocado" de "mecanismo equivocado", así que la hipótesis nunca se caía sola.
 
-La cabecera se construye en base64 **latin1**, no UTF-8 (RFC 7617): con un
-usuario o contraseña acentuados, hacerlo en UTF-8 da un 401 desconcertante.
+Si algún día vuelve a dar 401: **mira por red qué pide el panel del portal**
+antes de tocar credenciales. Y ojo con los `429` — el portal limita el ritmo
+*antes* de comprobar la autorización, así que tapan el `401` que hay debajo y
+hacen creer que la credencial es buena.
+
+### El contador de consultas
+
+`wp-admin/profile.php` muestra, abajo del todo, cuántas consultas lleva hechas
+el usuario, separadas por cédula y por RUC. Si el portal tiene cuota, es ahí
+donde se ve. Conviene mirarlo antes y después de una carga grande.
 
 ## Los cinco recursos por RUC
 

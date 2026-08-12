@@ -33,7 +33,25 @@ export const NAVEGACION = [
       { ruta: '/companias', etiqueta: 'Compañías', icono: <Icono d={ICONO_EMPRESA} /> },
       { ruta: '/balances', etiqueta: 'Balances', icono: <Icono d={ICONO_BALANCE} /> },
       { ruta: '/analisis', etiqueta: 'Análisis financiero', icono: <Icono d={ICONO_ANALISIS} /> },
-      { ruta: '/padron/personas', etiqueta: 'Personas naturales', icono: <Icono d={ICONO_PADRON} /> },
+      // Las personas naturales se parten en tres: las dos poblaciones activas
+      // —que son mundos comerciales distintos— y las inactivas, que no son
+      // prospecto de nada. Una sola entrada con un desplegable haría demasiado
+      // fácil mirar la cifra equivocada.
+      {
+        ruta: '/padron/personas/obligadas',
+        etiqueta: 'PN obligadas a contabilidad',
+        icono: <Icono d={ICONO_PADRON} />,
+      },
+      {
+        ruta: '/padron/personas/no-obligadas',
+        etiqueta: 'PN no obligadas',
+        icono: <Icono d={ICONO_PADRON} />,
+      },
+      {
+        ruta: '/padron/personas/inactivas',
+        etiqueta: 'PN inactivas',
+        icono: <Icono d={ICONO_PADRON} />,
+      },
       { ruta: '/padron/sociedades', etiqueta: 'Sociedades no supervisadas', icono: <Icono d={ICONO_SOCIEDAD} /> },
       { ruta: '/catalogo', etiqueta: 'Catálogo de cuentas', icono: <Icono d={ICONO_LISTA} /> },
       { ruta: '/ciiu', etiqueta: 'Catálogo CIIU', icono: <Icono d={ICONO_ARBOL} /> },

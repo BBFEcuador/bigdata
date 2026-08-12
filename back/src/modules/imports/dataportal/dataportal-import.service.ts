@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ImportJobsService } from '../import-jobs.service';
@@ -44,8 +44,8 @@ export class DataportalImportService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  enqueue(jobId: string): void {
-    void this.run(jobId).catch((err) => {
+  enqueue(jobId: string, segmento?: string): void {
+    void this.run(jobId, segmento).catch((err) => {
       this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
     });
   }
@@ -55,38 +55,107 @@ export class DataportalImportService {
   }
 
   /**
-   * Siembra la lista de trabajo con los RUC de las compañías.
+   * Restricción a los RUC de un segmento comercial.
+   *
+   * El fragmento es constante y el código del segmento viaja como **parámetro**:
+   * aquí no se interpola nada que venga del cliente. `segmento.condicion` sí es
+   * SQL, pero esa se evalúa en el módulo de segmentos y nunca llega hasta aquí.
+   *
+   * Se pasa por `perfil_comercial` porque el miembro se identifica por
+   * `(tipo_sujeto, clave)` —y para una compañía la clave es el expediente, no el
+   * RUC—. De paso alcanza a las tres poblaciones: un segmento con personas
+   * naturales se enriquece igual.
+   */
+  private filtroSegmento(alias: string, indice: number): string {
+    return `AND EXISTS (
+             SELECT 1
+               FROM segmento_miembro m
+               JOIN perfil_comercial p
+                 ON p.tipo_sujeto = m.tipo_sujeto AND p.clave = m.clave
+              WHERE m.segmento = $${indice} AND p.ruc = ${alias}.ruc)`;
+  }
+
+  /**
+   * Comprueba que el segmento existe y tiene miembros con RUC.
+   *
+   * Un segmento recién definido y nunca corrido tiene cero miembros, y sin esta
+   * comprobación el job arrancaría, no encontraría nada que hacer y terminaría
+   * "con éxito" en un segundo — el fallo más caro de diagnosticar.
+   */
+  async resolverSegmento(codigo: string): Promise<{ nombre: string; miembros: number }> {
+    const [seg] = await this.dataSource.query(
+      `SELECT codigo, nombre FROM segmento WHERE codigo = $1`,
+      [codigo],
+    );
+    if (!seg) {
+      const otros = await this.dataSource.query(`SELECT codigo FROM segmento ORDER BY codigo`);
+      throw new BadRequestException(
+        `Segmento desconocido "${codigo}". Válidos: ` +
+          otros.map((s: { codigo: string }) => s.codigo).join(', '),
+      );
+    }
+    const [{ n }] = await this.dataSource.query(
+      `SELECT count(*)::int AS n
+         FROM segmento_miembro m
+         JOIN perfil_comercial p ON p.tipo_sujeto = m.tipo_sujeto AND p.clave = m.clave
+        WHERE m.segmento = $1 AND p.ruc IS NOT NULL AND p.ruc <> ''`,
+      [codigo],
+    );
+    if (Number(n) === 0) {
+      throw new BadRequestException(
+        `El segmento "${codigo}" no tiene miembros con RUC. Córrelo antes ` +
+          `(POST /segmentos/${codigo}/correr), y si acabas de importar, refresca ` +
+          `el perfil primero (POST /segmentos/perfil/refrescar).`,
+      );
+    }
+    return { nombre: seg.nombre, miembros: Number(n) };
+  }
+
+  /**
+   * Siembra la lista de trabajo con los RUC de las compañías, o sólo con los de
+   * un segmento.
    *
    * Idempotente: `ON CONFLICT DO NOTHING` permite reejecutarlo cuando entren
    * compañías nuevas sin reiniciar lo ya consultado.
    */
-  async sembrar(): Promise<number> {
-    const res = await this.dataSource.query(`
-      INSERT INTO dataportal_consulta (ruc)
-      SELECT DISTINCT ruc FROM companias
-       WHERE ruc IS NOT NULL AND ruc <> ''
-      ON CONFLICT (ruc) DO NOTHING
-    `);
+  async sembrar(segmento?: string): Promise<number> {
+    const res = segmento
+      ? await this.dataSource.query(
+          `INSERT INTO dataportal_consulta (ruc)
+           SELECT DISTINCT p.ruc
+             FROM segmento_miembro m
+             JOIN perfil_comercial p
+               ON p.tipo_sujeto = m.tipo_sujeto AND p.clave = m.clave
+            WHERE m.segmento = $1 AND p.ruc IS NOT NULL AND p.ruc <> ''
+           ON CONFLICT (ruc) DO NOTHING`,
+          [segmento],
+        )
+      : await this.dataSource.query(`
+          INSERT INTO dataportal_consulta (ruc)
+          SELECT DISTINCT ruc FROM companias
+           WHERE ruc IS NOT NULL AND ruc <> ''
+          ON CONFLICT (ruc) DO NOTHING
+        `);
     return Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0;
   }
 
-  private async run(jobId: string): Promise<void> {
+  private async run(jobId: string, segmento?: string): Promise<void> {
     const job = await this.jobsService.findOne(jobId);
     if (!job) return;
 
     this.cancelar = false;
     const t0 = Date.now();
     const client = new DataportalClient(() => {
-      const usuario = process.env.DATAPORTAL_USER;
-      const clave = process.env.DATAPORTAL_PASSWORD;
-      if (!usuario || !clave) {
+      const token = process.env.DATAPORTAL_TOKEN;
+      if (!token) {
         throw new CredencialesInvalidasError(
-          'Faltan DATAPORTAL_USER / DATAPORTAL_PASSWORD en back/.env. ' +
-            'La clave es una contraseña de aplicación de WordPress, no la de la cuenta.',
+          'Falta DATAPORTAL_TOKEN en back/.env. Es el `?token=` con el que el panel ' +
+            'del portal llama a estos mismos cinco endpoints; las credenciales de ' +
+            'WordPress no autorizan el datacenter.',
         );
       }
-      return { usuario, clave };
-    });
+      return token;
+    }, { rps: RITMO_POR_SEGUNDO });
 
     let hechos = 0;
     let conDatos = 0;
@@ -96,11 +165,10 @@ export class DataportalImportService {
     try {
       await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
 
-      const sembrados = await this.sembrar();
-      const total = await this.contarPendientes();
-      this.logger.log(`Job ${jobId}: ${sembrados} RUC nuevos, ${total} pendientes`);
-
-      const intervalo = 1000 / RITMO_POR_SEGUNDO;
+      const sembrados = await this.sembrar(segmento);
+      const total = await this.contarPendientes(segmento);
+      const ambito = segmento ? ` (segmento ${segmento})` : '';
+      this.logger.log(`Job ${jobId}${ambito}: ${sembrados} RUC nuevos, ${total} pendientes`);
 
       for (;;) {
         if (this.cancelar) {
@@ -108,13 +176,11 @@ export class DataportalImportService {
           break;
         }
 
-        const lote = await this.tomarLote();
+        const lote = await this.tomarLote(segmento);
         if (lote.length === 0) break;
 
         for (const ruc of lote) {
           if (this.cancelar) break;
-          const inicio = Date.now();
-
           try {
             const { crudas, status, sinDatos: vacio } = await client.consultar(ruc);
             const parseado = parsearRespuestas(ruc, crudas);
@@ -128,10 +194,10 @@ export class DataportalImportService {
             await this.marcarError(ruc, jobId, (err as Error).message);
           }
 
-          // Ritmo: se descuenta lo que ya tardó la petición, así el límite es
-          // de peticiones por segundo y no de pausas por segundo.
-          const resto = intervalo - (Date.now() - inicio);
-          if (resto > 0) await dormir(resto);
+          // Aquí NO se pausa. El ritmo lo lleva el cliente, petición a petición.
+          // Tenerlo aquí era el bug: cada RUC son cinco peticiones, así que una
+          // pausa por RUC dejaba salir ráfagas de cinco y el portal respondía
+          // 429 tanto a 5 rps como a 1.
         }
 
         await this.jobsService.reportProgress(jobId, {
@@ -150,7 +216,8 @@ export class DataportalImportService {
         rowsRejected: errores,
         avisos:
           `${conDatos} compañías con datos, ${sinDatos} sin datos en el portal, ` +
-          `${errores} con error. Quedan ${await this.contarPendientes()} pendientes.`,
+          `${errores} con error. Quedan ${await this.contarPendientes(segmento)} pendientes` +
+          `${segmento ? ` en el segmento ${segmento}` : ''}.`,
         finishedAt: new Date(),
       });
 
@@ -202,11 +269,14 @@ export class DataportalImportService {
     };
   }
 
-  private async contarPendientes(): Promise<number> {
+  private async contarPendientes(segmento?: string): Promise<number> {
+    const params: unknown[] = [MAX_INTENTOS_POR_RUC];
+    if (segmento) params.push(segmento);
     const [r] = await this.dataSource.query(
-      `SELECT count(*)::int AS n FROM dataportal_consulta
-        WHERE estado = 'pendiente' OR (estado = 'error' AND intentos < $1)`,
-      [MAX_INTENTOS_POR_RUC],
+      `SELECT count(*)::int AS n FROM dataportal_consulta c
+        WHERE (c.estado = 'pendiente' OR (c.estado = 'error' AND c.intentos < $1))
+              ${segmento ? this.filtroSegmento('c', 2) : ''}`,
+      params,
     );
     return Number(r?.n ?? 0);
   }
@@ -216,13 +286,21 @@ export class DataportalImportService {
    *
    * `FOR UPDATE SKIP LOCKED` permite que dos procesos trabajen a la vez sin
    * pisarse ni bloquearse: cada uno se lleva RUC distintos.
+   *
+   * **El filtro del segmento va aquí, no sólo en la siembra.** Si una carga
+   * anterior ya sembró los 226.191 RUC, todos siguen en `pendiente`, y sembrar
+   * de menos no quita ni uno: sin este filtro el job acotado se pondría a
+   * recorrer la lista entera igual.
    */
-  private async tomarLote(): Promise<string[]> {
+  private async tomarLote(segmento?: string): Promise<string[]> {
+    const params: unknown[] = [TAMANO_LOTE, MAX_INTENTOS_POR_RUC];
+    if (segmento) params.push(segmento);
     const filas = await this.dataSource.query(
       `WITH siguiente AS (
-         SELECT ruc FROM dataportal_consulta
-          WHERE estado = 'pendiente' OR (estado = 'error' AND intentos < $2)
-          ORDER BY ruc
+         SELECT d.ruc FROM dataportal_consulta d
+          WHERE (d.estado = 'pendiente' OR (d.estado = 'error' AND d.intentos < $2))
+                ${segmento ? this.filtroSegmento('d', 3) : ''}
+          ORDER BY d.ruc
           LIMIT $1
           FOR UPDATE SKIP LOCKED
        )
@@ -231,7 +309,7 @@ export class DataportalImportService {
          FROM siguiente s
         WHERE c.ruc = s.ruc
        RETURNING c.ruc`,
-      [TAMANO_LOTE, MAX_INTENTOS_POR_RUC],
+      params,
     );
     return filas.map((f: { ruc: string }) => f.ruc);
   }
