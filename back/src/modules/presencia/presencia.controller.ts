@@ -9,30 +9,14 @@ import {
   Patch,
   Post,
   Query,
-  createParamDecorator,
-  ExecutionContext,
 } from '@nestjs/common';
 import { PresenciaService } from './presencia.service';
 
-/**
- * Quién está haciendo el cambio.
- *
- * El proyecto todavía no tiene autenticación —están las dependencias de JWT,
- * pero ningún guard—, así que el usuario viaja en una cabecera. **Sin ella no
- * se escribe**: una columna de auditoría que admite anónimos no audita nada, y
- * el día que exista un guard este decorador es el único sitio que cambia.
- */
-export const Usuario = createParamDecorator((_: unknown, ctx: ExecutionContext): string => {
-  const req = ctx.switchToHttp().getRequest();
-  const valor = String(req.headers['x-usuario'] ?? req.user?.username ?? '').trim();
-  if (valor === '') {
-    throw new BadRequestException(
-      'Falta la cabecera X-Usuario: toda modificación de la presencia digital queda ' +
-        'firmada por quien la hace.',
-    );
-  }
-  return valor.slice(0, 120);
-});
+// El decorador se mudó a `common/http` cuando `scraping` también lo necesitó.
+// Se re-exporta desde aquí para no romper lo que ya lo importaba de este
+// archivo.
+export { Usuario } from '../../common/http/usuario.decorator';
+import { Usuario } from '../../common/http/usuario.decorator';
 
 /**
  * Presencia digital: web y redes sociales, con validación humana.

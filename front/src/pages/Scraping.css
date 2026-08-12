@@ -1,0 +1,290 @@
+.scraping .cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.scraping .firma {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.83rem;
+}
+
+.scraping .firma input {
+  width: 10rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  font-size: 0.83rem;
+}
+
+.scraping button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.scraping button:hover:not(:disabled) {
+  border-color: var(--input-border);
+  color: var(--text);
+}
+
+.scraping button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.scraping button.primario {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-on-dark);
+  font-weight: 600;
+}
+
+.scraping .despachador {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+}
+
+/* ------------------------------------------------------- fichas por estado
+   Son a la vez el resumen y el filtro: la pregunta que se hace todo el rato
+   es "¿cuántos han fallado?" y lo siguiente que se quiere es verlos. */
+.scraping .fichas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.scraping .ficha {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 6.5rem;
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.scraping .ficha .n {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.scraping .ficha .et {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.scraping .ficha.activa {
+  border-color: var(--primary);
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+.scraping .ficha.corriendo .n {
+  color: var(--primary);
+}
+.scraping .ficha.completado .n {
+  color: var(--success);
+}
+.scraping .ficha.fallido .n {
+  color: var(--error);
+}
+.scraping .ficha.pausado .n {
+  color: var(--warning);
+}
+
+/* ----------------------------------------------------------------- filtros */
+.scraping .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.scraping .filtros input,
+.scraping .filtros select {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  font-size: 0.83rem;
+}
+
+/* ------------------------------------------------------------------ tabla */
+.scraping .tabla-scroll {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.scraping table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.scraping th,
+.scraping td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.scraping thead th {
+  background: var(--surface-alt);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.scraping .der {
+  text-align: right;
+}
+
+.scraping .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.scraping .tenue {
+  color: var(--text-muted);
+}
+
+.scraping .nombre {
+  max-width: 260px;
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Los colores de estado se declaran DENTRO de .scraping: la clase `.estado` es
+   global y ya la usa el historial de importaciones con otros valores. */
+.scraping .estado {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  background: var(--container-bg);
+  color: var(--text-soft);
+}
+
+.scraping .estado.corriendo {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.scraping .estado.encolado {
+  background: var(--secondary-light);
+  color: var(--secondary);
+}
+.scraping .estado.pausado {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+.scraping .estado.completado {
+  background: var(--success-light);
+  color: var(--success);
+}
+.scraping .estado.fallido {
+  background: var(--error-light);
+  color: var(--error);
+}
+
+.scraping .barra {
+  display: block;
+  position: relative;
+  width: 8rem;
+  height: 0.9rem;
+  margin-top: 0.35rem;
+  background: var(--container-bg);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.scraping .barra i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s;
+}
+
+.scraping .barra em {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-style: normal;
+  color: var(--text-soft);
+}
+
+.scraping .motivo {
+  max-width: 240px;
+  font-size: 0.75rem;
+  color: var(--error);
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.scraping .acciones {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.scraping .acciones button.cancelar {
+  color: var(--error);
+}
+
+.scraping .acciones button.reanudar,
+.scraping .acciones button.reintentar {
+  color: var(--primary);
+}
+
+.scraping .vacio-total {
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+}
+
+.scraping .alerta {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.scraping .alerta.error {
+  background: var(--error-light);
+  color: var(--error);
+  border: 1px solid var(--error-border);
+}
+
+.scraping .alerta.ok {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}

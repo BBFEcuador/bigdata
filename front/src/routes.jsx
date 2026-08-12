@@ -26,6 +26,7 @@ const ICONO_PADRON = 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 
 const ICONO_HISTORIAL = 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7L3 8'
 const ICONO_SEGMENTOS = 'M12 3v9l6.5 3.8M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'
 const ICONO_TRIBUTARIO = 'M3 6h18M6 6v13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6M9 6V4h6v2M9 11h6M9 15h4'
+const ICONO_RASTREO = 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4M11 8v3l2 1.5'
 
 export const NAVEGACION = [
   {
@@ -63,6 +64,12 @@ export const NAVEGACION = [
     titulo: 'Comercial',
     items: [
       { ruta: '/segmentos', etiqueta: 'Segmentos', icono: <Icono d={ICONO_SEGMENTOS} /> },
+    ],
+  },
+  {
+    titulo: 'Rastreo',
+    items: [
+      { ruta: '/scraping', etiqueta: 'Rastreo de compañías', icono: <Icono d={ICONO_RASTREO} /> },
     ],
   },
   {

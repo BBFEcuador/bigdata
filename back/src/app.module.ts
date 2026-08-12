@@ -13,6 +13,7 @@ import { ImportsModule } from './modules/imports/imports.module';
 import { SegmentosModule } from './modules/segmentos/segmentos.module';
 import { PresenciaModule } from './modules/presencia/presencia.module';
 import { TributarioModule } from './modules/tributario/tributario.module';
+import { ScrapingModule } from './modules/scraping/scraping.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { TributarioModule } from './modules/tributario/tributario.module';
     SegmentosModule,
     PresenciaModule,
     TributarioModule,
+    ScrapingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
