@@ -1,27 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  listarBalances,
-  obtenerComparativo,
-  obtenerResumen,
-} from '../services/balances.service'
+import { Link } from 'react-router-dom'
+import { listarBalances, obtenerResumen } from '../services/balances.service'
 import './Balances.css'
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
-const dinero = n =>
-  (n ?? 0).toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const FILTROS_VACIOS = { anio: '', nombre: '', ruc: '', rama: '' }
 
-/** Variación porcentual entre dos años; null cuando la base es cero. */
-const variacion = (antes, ahora) =>
-  antes === 0 || antes === null || antes === undefined ? null : ((ahora - antes) / Math.abs(antes)) * 100
-
+/**
+ * Pantalla de DATOS: qué balances hay y de quién.
+ * El comparativo, los estados completos y los indicadores viven en
+ * «Análisis financiero», para no mantener dos versiones de la misma tabla.
+ */
 export default function Balances() {
   const [filtros, setFiltros] = useState(FILTROS_VACIOS)
   const [datos, setDatos] = useState([])
   const [resumen, setResumen] = useState([])
-  const [seleccion, setSeleccion] = useState(null)
-  const [comparativo, setComparativo] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -50,16 +44,6 @@ export default function Balances() {
     timer.current = setTimeout(() => cargar(filtros), 250)
     return () => clearTimeout(timer.current)
   }, [filtros, cargar])
-
-  const abrir = async expediente => {
-    setSeleccion(expediente)
-    setComparativo(null)
-    try {
-      setComparativo(await obtenerComparativo(expediente))
-    } catch (e) {
-      setError(e?.response?.data?.message ?? e.message)
-    }
-  }
 
   const set = (campo, valor) => setFiltros(f => ({ ...f, [campo]: valor }))
   const totalBalances = resumen.reduce((a, r) => a + r.balances, 0)
@@ -138,9 +122,9 @@ export default function Balances() {
               <td>{b.nombre}</td>
               <td title={b.descripcionRama}>{b.ramaActividad}</td>
               <td>
-                <button type="button" className="ver" onClick={() => abrir(b.expediente)}>
-                  Ver histórico
-                </button>
+                <Link className="ver" to={`/analisis?expediente=${b.expediente}`}>
+                  Analizar
+                </Link>
               </td>
             </tr>
           ))}
@@ -154,15 +138,6 @@ export default function Balances() {
         </tbody>
       </table>
 
-      {seleccion && (
-        <Comparativo
-          datos={comparativo}
-          onCerrar={() => {
-            setSeleccion(null)
-            setComparativo(null)
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -172,87 +147,6 @@ function Caja({ etiqueta, valor }) {
     <div className="caja">
       <span className="caja-valor">{valor}</span>
       <span className="caja-etiqueta">{etiqueta}</span>
-    </div>
-  )
-}
-
-/**
- * Serie histórica de una compañía: un año por columna.
- *
- * Sólo muestra las cuentas grandes, que son las que existen en todos los
- * ejercicios. El detalle fino cambia de un año a otro y compararlo línea a línea
- * daría huecos por todas partes.
- */
-function Comparativo({ datos, onCerrar }) {
-  if (!datos) {
-    return (
-      <div className="panel">
-        <p className="cargando">Cargando histórico…</p>
-      </div>
-    )
-  }
-
-  const bloques = [
-    { id: 'situacion', titulo: 'Situación financiera' },
-    { id: 'resultados', titulo: 'Resultados' },
-  ]
-
-  return (
-    <div className="panel">
-      <div className="panel-cabecera">
-        <div>
-          <h3>{datos.nombre}</h3>
-          <p className="sub">
-            Expediente {datos.expediente} · RUC {datos.ruc} · {datos.ciiu}
-            {datos.descripcionRama ? ` · ${datos.descripcionRama}` : ''}
-          </p>
-        </div>
-        <button type="button" onClick={onCerrar}>
-          Cerrar
-        </button>
-      </div>
-
-      {bloques.map(bloque => (
-        <div key={bloque.id}>
-          <h4>{bloque.titulo}</h4>
-          <table className="tabla comparativa">
-            <thead>
-              <tr>
-                <th>Concepto</th>
-                {datos.anios.map(a => (
-                  <th key={a} className="derecha">
-                    {a}
-                  </th>
-                ))}
-                <th className="derecha">Var. último año</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datos.conceptos
-                .filter(c => c.bloque === bloque.id)
-                .map(c => {
-                  const n = c.valores.length
-                  const v = n >= 2 ? variacion(c.valores[n - 2], c.valores[n - 1]) : null
-                  return (
-                    <tr key={c.clave}>
-                      <td title={`Cuenta ${c.codigo}`}>{c.etiqueta}</td>
-                      {c.valores.map((valor, i) => (
-                        <td key={i} className="derecha mono">
-                          {dinero(valor)}
-                        </td>
-                      ))}
-                      <td
-                        className={`derecha mono ${v === null ? '' : v >= 0 ? 'sube' : 'baja'}`}
-                      >
-                        {v === null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)} %`}
-                      </td>
-                    </tr>
-                  )
-                })}
-            </tbody>
-          </table>
-        </div>
-      ))}
     </div>
   )
 }

@@ -75,16 +75,30 @@ describe('constantes del import de balances', () => {
  * fuera de la serie sin avisar.
  */
 describe('conceptos financieros', () => {
-  it('cada concepto tiene código en los dos formularios cargados', () => {
+  it('cada concepto tiene código en el formulario IFRS', () => {
+    // El IFRS es el plan de referencia: si un concepto no existe ahí, sobra.
     for (const c of CONCEPTOS) {
       expect(typeof c.codigos[1]).toBe('string');
-      expect(typeof c.codigos[3]).toBe('string');
     }
+  });
+
+  it('un concepto puede no existir en el formulario fiscal, pero explícitamente', () => {
+    // `null` significa "este plan no lo desglosa" y hace que el indicador salga
+    // vacío. `undefined` sería un olvido, y se colaría como cero.
+    for (const c of CONCEPTOS) {
+      expect(c.codigos).toHaveProperty('3');
+      expect(c.codigos[3] === null || typeof c.codigos[3] === 'string').toBe(true);
+    }
+    // Los dos que hoy sólo existen en IFRS.
+    const soloIfrs = CONCEPTOS.filter((c) => c.codigos[3] === null).map((c) => c.clave);
+    expect(soloIfrs).toEqual(['inventarios', 'gastosFinancieros']);
   });
 
   it('no repite un código dentro del mismo formulario', () => {
     for (const formulario of [1, 3]) {
-      const codigos = CONCEPTOS.map((c) => c.codigos[formulario]);
+      const codigos = CONCEPTOS.map((c) => c.codigos[formulario]).filter(
+        (c): c is string => c !== null,
+      );
       expect(new Set(codigos).size).toBe(codigos.length);
     }
   });

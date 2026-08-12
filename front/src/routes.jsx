@@ -20,6 +20,7 @@ const ICONO_LISTA = 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'
 const ICONO_ARBOL = 'M5 3v4h6M5 11h6M5 11v8h6M17 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 13a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM17 21a2 2 0 1 1-4 0 2 2 0 0 1 4 0z'
 const ICONO_SUBIR = 'M12 16V4M6 10l6-6 6 6M4 20h16'
 const ICONO_BALANCE = 'M3 20h18M7 20V10M12 20V4M17 20v-7'
+const ICONO_ANALISIS = 'M3 3v18h18M7 15l4-5 3 3 5-7'
 const ICONO_HISTORIAL = 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7L3 8'
 
 export const NAVEGACION = [
@@ -28,6 +29,7 @@ export const NAVEGACION = [
     items: [
       { ruta: '/companias', etiqueta: 'Compañías', icono: <Icono d={ICONO_EMPRESA} /> },
       { ruta: '/balances', etiqueta: 'Balances', icono: <Icono d={ICONO_BALANCE} /> },
+      { ruta: '/analisis', etiqueta: 'Análisis financiero', icono: <Icono d={ICONO_ANALISIS} /> },
       { ruta: '/catalogo', etiqueta: 'Catálogo de cuentas', icono: <Icono d={ICONO_LISTA} /> },
       { ruta: '/ciiu', etiqueta: 'Catálogo CIIU', icono: <Icono d={ICONO_ARBOL} /> },
     ],

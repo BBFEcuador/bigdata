@@ -19,3 +19,13 @@ export const obtenerComparativo = expediente =>
 /** Balance completo de un ejercicio. */
 export const obtenerDetalle = (expediente, anio) =>
   api.get(`/balances/${expediente}/${anio}`).then(r => r.data)
+
+/** Estados financieros completos: todas las cuentas, un año por columna. */
+export const obtenerEstados = (expediente, formulario) =>
+  api
+    .get(`/balances/${expediente}/estados`, { params: limpiar({ formulario }) })
+    .then(r => r.data)
+
+/** Indicadores financieros de todos los ejercicios. */
+export const obtenerIndicadores = expediente =>
+  api.get(`/balances/${expediente}/indicadores`).then(r => r.data)

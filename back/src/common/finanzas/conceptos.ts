@@ -46,6 +46,14 @@ export const CONCEPTOS: Concepto[] = [
   { clave: 'gastos', etiqueta: 'Gastos operacionales', bloque: 'resultados', codigos: { 1: '502', 3: '1030' } },
   { clave: 'utilidadAntesImpuestos', etiqueta: 'Utilidad antes de participación e impuestos', bloque: 'resultados', codigos: { 1: '600', 3: '1065' } },
   { clave: 'utilidadNeta', etiqueta: 'Utilidad (pérdida) neta del período', bloque: 'resultados', codigos: { 1: '707', 3: '1099' } },
+
+  // Sólo IFRS. El formulario fiscal reparte los inventarios en ocho cuentas
+  // (340-347, una de ellas un deterioro que resta) y no trae un total; sumarlas
+  // daría una cifra discutible. Los ratios que dependen de estos conceptos
+  // quedan sin calcular en los años declarados en ese formulario, que es más
+  // honesto que publicar un número inventado.
+  { clave: 'inventarios', etiqueta: 'Inventarios', bloque: 'situacion', codigos: { 1: '10103', 3: null } },
+  { clave: 'gastosFinancieros', etiqueta: 'Gastos financieros', bloque: 'resultados', codigos: { 1: '50203', 3: null } },
 ];
 
 /** Códigos de un formulario, en el orden de `CONCEPTOS`. */

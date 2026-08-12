@@ -1,0 +1,233 @@
+.analisis h2 {
+  margin-bottom: 1rem;
+}
+
+/* Buscador con sugerencias flotantes. */
+.analisis .buscador {
+  position: relative;
+  max-width: 620px;
+}
+
+.analisis .buscador input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.analisis .sugerencias {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.analisis .sugerencias button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.analisis .sugerencias button:hover {
+  background: #eef4fc;
+}
+
+.analisis .sugerencias strong {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.analisis .sugerencias span {
+  font-size: 0.75rem;
+  color: #777;
+}
+
+.analisis .ficha {
+  margin: 1.25rem 0 0.75rem;
+}
+
+.analisis .ficha h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.analisis .sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.analisis .pestanas {
+  display: flex;
+  gap: 0.4rem;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1rem;
+}
+
+.analisis .pestanas button {
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.analisis .pestanas button.activa {
+  color: #3d6fb4;
+  border-bottom-color: #3d6fb4;
+  font-weight: 600;
+}
+
+.analisis .bloque h4 {
+  margin: 1.1rem 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777;
+}
+
+.analisis .controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.analisis .check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #444;
+}
+
+.analisis .conteo {
+  margin-left: auto;
+  color: #888;
+  font-size: 0.78rem;
+}
+
+/* Con 622 cuentas y hasta nueve columnas, la tabla scrollea sola: el body de
+   la página nunca debe desplazarse en horizontal. */
+.analisis .scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.analisis .tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.analisis .tabla th,
+.analisis .tabla td {
+  padding: 0.4rem 0.65rem;
+  border-bottom: 1px solid #f2f2f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.analisis .tabla thead th {
+  position: sticky;
+  top: 0;
+  background: #fafafa;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+}
+
+.analisis .tabla tbody tr:hover {
+  background: #fbfcfe;
+}
+
+.analisis .tabla tr.destacada {
+  background: #f6f8fb;
+  font-weight: 600;
+}
+
+.analisis .derecha {
+  text-align: right;
+}
+
+.analisis .mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+/* Las columnas de variación van atenuadas para que las cifras manden. */
+.analisis .var {
+  background: #fcfcfd;
+  font-size: 0.74rem;
+  color: #999;
+}
+
+.analisis td.sube {
+  color: #1a7f4b;
+}
+
+.analisis td.baja {
+  color: #b3261e;
+}
+
+.analisis .codigo {
+  display: inline-block;
+  min-width: 5.5rem;
+  color: #999;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+}
+
+.analisis .aviso {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.8rem;
+  background: #fff8e6;
+  border: 1px solid #f0e0b0;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: #6b5a20;
+}
+
+.analisis .error {
+  color: #b3261e;
+  font-size: 0.85rem;
+}
+
+.analisis .cargando,
+.analisis .pista {
+  color: #888;
+  font-size: 0.85rem;
+  margin-top: 1.5rem;
+}
+
+.analisis sup {
+  color: #b07d2b;
+  font-weight: 600;
+}

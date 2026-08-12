@@ -5,6 +5,12 @@ import { Balance } from './entities/balance.entity';
 import { QueryBalancesDto } from './dto/query-balances.dto';
 import { FORMULARIO_IFRS } from './balances.constants';
 import { CONCEPTOS, clavePorCodigo } from '../../common/finanzas/conceptos';
+import {
+  GRUPOS_INDICADOR,
+  INDICADORES,
+  Magnitudes,
+  calcularIndicadores,
+} from '../../common/finanzas/indicadores';
 
 /** Todos los códigos clave de todos los formularios, para pedirlos de una vez. */
 function todosLosCodigosClave(): string[] {
@@ -55,7 +61,13 @@ export class BalancesService {
     };
   }
 
-  /** Cuántos balances y cuántas celdas hay por ejercicio. */
+  /**
+   * Cuántos balances y cuántas celdas hay por ejercicio.
+   *
+   * Agrupado por AÑO, no por (año, formulario): en 2021 conviven los dos
+   * formularios y desglosarlos aquí sacaba dos entradas "2021" en la pantalla.
+   * El reparto por formulario se devuelve como detalle dentro del mismo año.
+   */
   async resumen() {
     const filas = await this.repo.query(`
       SELECT b.anio,
@@ -66,14 +78,22 @@ export class BalancesService {
       FROM balance b
       WHERE b.ausente_desde_job IS NULL
       GROUP BY b.anio, b.formulario
-      ORDER BY b.anio DESC
+      ORDER BY b.anio DESC, b.formulario
     `);
-    return filas.map((f: Record<string, string>) => ({
-      anio: Number(f.anio),
-      formulario: Number(f.formulario),
-      balances: Number(f.balances),
-      celdas: Number(f.celdas),
-    }));
+
+    const porAnio = new Map<
+      number,
+      { anio: number; balances: number; celdas: number; formularios: { formulario: number; balances: number }[] }
+    >();
+    for (const f of filas) {
+      const anio = Number(f.anio);
+      if (!porAnio.has(anio)) porAnio.set(anio, { anio, balances: 0, celdas: 0, formularios: [] });
+      const entrada = porAnio.get(anio)!;
+      entrada.balances += Number(f.balances);
+      entrada.celdas += Number(f.celdas);
+      entrada.formularios.push({ formulario: Number(f.formulario), balances: Number(f.balances) });
+    }
+    return [...porAnio.values()].sort((a, b) => b.anio - a.anio);
   }
 
   /**
@@ -150,6 +170,134 @@ export class BalancesService {
         etiqueta: c.etiqueta,
         bloque: c.bloque,
         valores: anios.map((a) => valorPorAnioYClave.get(a)?.[c.clave] ?? 0),
+      })),
+    };
+  }
+
+  /**
+   * Estados financieros COMPLETOS de una compañía, un año por columna.
+   *
+   * A diferencia del comparativo de conceptos, aquí van las 622 cuentas (o las
+   * 925 del fiscal) con su jerarquía, no sólo las magnitudes grandes.
+   *
+   * Se acota a UN formulario, y eso es una limitación real, no una omisión: los
+   * planes de cuentas no tienen equivalencia cuenta a cuenta. Poner en la misma
+   * fila la cuenta `1010101` del IFRS y la del fiscal sería juntar dos cosas
+   * distintas. Entre formularios sólo son comparables los conceptos, que es
+   * justo lo que hace `comparativo()`.
+   */
+  async estados(expediente: string, formularioPedido?: number) {
+    const cabeceras = await this.repo.find({
+      where: { expediente },
+      order: { anio: 'ASC' },
+    });
+    if (cabeceras.length === 0) {
+      throw new NotFoundException(`No hay balances del expediente ${expediente}`);
+    }
+
+    const disponibles = [...new Set(cabeceras.map((c) => c.formulario))].sort();
+    const formulario =
+      formularioPedido && disponibles.includes(formularioPedido)
+        ? formularioPedido
+        : disponibles.includes(FORMULARIO_IFRS)
+          ? FORMULARIO_IFRS
+          : disponibles[0];
+
+    const anios = cabeceras.filter((c) => c.formulario === formulario).map((c) => c.anio);
+    const ultima = cabeceras[cabeceras.length - 1];
+
+    // Todas las cuentas del plan que tengan valor en ALGÚN año, con su nombre y
+    // su nivel. El LEFT JOIN va del catálogo al detalle para conservar el orden
+    // y la jerarquía aunque una cuenta falte en un año concreto.
+    const filas = await this.repo.query(
+      `SELECT cc.codigo, cc.nombre, cc.nivel, cc.es_hoja, bc.anio, bc.valor
+         FROM balance_cuenta bc
+         JOIN categoria_cuenta cc
+           ON cc.codigo = bc.codigo_cuenta AND cc.formulario = bc.formulario
+        WHERE bc.expediente = $1 AND bc.formulario = $2
+        ORDER BY cc.codigo`,
+      [expediente, formulario],
+    );
+
+    const cuentas = new Map<
+      string,
+      { codigo: string; nombre: string; nivel: number; esHoja: boolean; valores: Record<number, number> }
+    >();
+    for (const f of filas) {
+      if (!cuentas.has(f.codigo)) {
+        cuentas.set(f.codigo, {
+          codigo: f.codigo,
+          nombre: f.nombre,
+          nivel: Number(f.nivel),
+          esHoja: f.es_hoja === true,
+          valores: {},
+        });
+      }
+      cuentas.get(f.codigo)!.valores[Number(f.anio)] = Number(f.valor);
+    }
+
+    return {
+      expediente,
+      ruc: ultima.ruc,
+      nombre: ultima.nombre,
+      formulario,
+      formulariosDisponibles: disponibles,
+      anios,
+      // Un cero explícito donde no hay fila: en `balance_cuenta` la ausencia de
+      // fila ES el cero, y la tabla necesita la celda.
+      cuentas: [...cuentas.values()]
+        .sort((a, b) => a.codigo.localeCompare(b.codigo, 'en', { numeric: true }))
+        .map((c) => ({
+          codigo: c.codigo,
+          nombre: c.nombre,
+          nivel: c.nivel,
+          esHoja: c.esHoja,
+          valores: anios.map((a) => c.valores[a] ?? 0),
+        })),
+    };
+  }
+
+  /**
+   * Indicadores financieros por año.
+   *
+   * Se calculan sobre los CONCEPTOS, así que cubren todos los ejercicios venga
+   * cada uno del formulario que venga. Los que necesitan cuentas que el fiscal
+   * no desglosa —prueba ácida, cobertura de intereses— salen `null` en esos
+   * años en vez de aproximarse.
+   */
+  async indicadores(expediente: string) {
+    const comp = await this.comparativo(expediente);
+
+    const porClave = new Map(comp.conceptos.map((c) => [c.clave, c.valores]));
+    const magnitudesDe = (i: number): Magnitudes => {
+      const m: Magnitudes = {};
+      for (const c of CONCEPTOS) {
+        // Un concepto sin código en el formulario de ese año no es cero: es
+        // desconocido, y tiene que llegar como `undefined` para que el
+        // indicador salga `null`.
+        const tieneCodigo = c.codigos[comp.formularios[i]] != null;
+        if (tieneCodigo) m[c.clave] = porClave.get(c.clave)?.[i] ?? 0;
+      }
+      return m;
+    };
+
+    const porAnio = comp.anios.map((_, i) => calcularIndicadores(magnitudesDe(i)));
+
+    return {
+      expediente: comp.expediente,
+      ruc: comp.ruc,
+      nombre: comp.nombre,
+      ramaActividad: comp.ramaActividad,
+      descripcionRama: comp.descripcionRama,
+      anios: comp.anios,
+      formularios: comp.formularios,
+      grupos: GRUPOS_INDICADOR,
+      indicadores: INDICADORES.map((def) => ({
+        clave: def.clave,
+        etiqueta: def.etiqueta,
+        grupo: def.grupo,
+        formato: def.formato,
+        valores: porAnio.map((r) => r[def.clave]),
       })),
     };
   }

@@ -23,6 +23,24 @@ export class BalancesController {
     return this.service.comparativo(expediente);
   }
 
+  /** Estados financieros completos, todas las cuentas, un año por columna. */
+  @Get(':expediente/estados')
+  estados(
+    @Param('expediente') expediente: string,
+    @Query('formulario') formulario?: string,
+  ) {
+    return this.service.estados(
+      expediente,
+      formulario ? parseInt(formulario, 10) : undefined,
+    );
+  }
+
+  /** Indicadores financieros de todos los ejercicios. */
+  @Get(':expediente/indicadores')
+  indicadores(@Param('expediente') expediente: string) {
+    return this.service.indicadores(expediente);
+  }
+
   /** Balance completo de un ejercicio concreto. */
   @Get(':expediente/:anio')
   detalle(
