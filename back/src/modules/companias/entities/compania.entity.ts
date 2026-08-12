@@ -94,6 +94,43 @@ export class Compania {
   @Column({ type: 'date', name: 'fecha_presentacion_balance_inicial', nullable: true })
   fechaPresentacionBalanceInicial: string | null;
 
+  // ------------------------------------------------------ padrón del SRI
+  //
+  // Columnas añadidas por el importador del SRI, nunca por el directorio. Un
+  // NULL aquí significa "esta compañía no se cruzó con el padrón" —RUC vacío,
+  // ausente del padrón, o duplicado y por tanto no enlazado—, no "el SRI dice
+  // que no". `sriJobId` permite distinguir ambos casos.
+
+  @Column({ type: 'text', name: 'sri_estado_contribuyente', nullable: true })
+  sriEstadoContribuyente: string | null;
+
+  @Column({ type: 'text', name: 'sri_clase_contribuyente', nullable: true })
+  sriClaseContribuyente: string | null;
+
+  @Column({ type: 'date', name: 'sri_fecha_inicio_actividades', nullable: true })
+  sriFechaInicioActividades: string | null;
+
+  @Column({ type: 'boolean', name: 'sri_obligado_contabilidad', nullable: true })
+  sriObligadoContabilidad: boolean | null;
+
+  @Column({ type: 'boolean', name: 'sri_agente_retencion', nullable: true })
+  sriAgenteRetencion: boolean | null;
+
+  @Column({ type: 'boolean', name: 'sri_contribuyente_especial', nullable: true })
+  sriContribuyenteEspecial: boolean | null;
+
+  @Column({ type: 'text', name: 'sri_nombre_comercial', nullable: true })
+  sriNombreComercial: string | null;
+
+  @Column({ type: 'text', name: 'sri_parroquia', nullable: true })
+  sriParroquia: string | null;
+
+  @Column({ type: 'smallint', name: 'sri_num_establecimientos', nullable: true })
+  sriNumEstablecimientos: number | null;
+
+  @Column({ type: 'uuid', name: 'sri_job_id', nullable: true })
+  sriJobId: string | null;
+
   @Column({ type: 'uuid', name: 'row_hash' })
   rowHash: string;
 

@@ -14,3 +14,7 @@ export const obtenerFacetas = () => api.get('/companias/facetas').then(r => r.da
 
 export const obtenerCompania = expediente =>
   api.get(`/companias/${expediente}`).then(r => r.data)
+
+/** Ficha completa: directorio, datos del SRI, establecimientos y ejercicios. */
+export const obtenerFicha = expediente =>
+  api.get(`/companias/${expediente}/ficha`).then(r => r.data)

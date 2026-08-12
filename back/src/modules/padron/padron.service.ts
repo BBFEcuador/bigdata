@@ -68,9 +68,22 @@ export class PadronService {
     }
 
     params.push(limit + 1); // una fila de más: así se sabe si hay siguiente sin contar
+
+    // TODAS las columnas del contribuyente, no un subconjunto. La pantalla
+    // decide cuáles enseña, pero la API no puede ser la que recorte: el padrón
+    // sólo tiene 13 campos por contribuyente y devolverlos cuesta lo mismo.
     const filas = await this.dataSource.query(
-      `SELECT p.ruc, p.razon_social, p.estado_contribuyente, p.clase_contribuyente,
-              p.fecha_inicio_actividades, p.obligado_contabilidad, p.num_establecimientos
+      `SELECT p.ruc, p.razon_social, p.jurisdiccion, p.estado_contribuyente,
+              p.clase_contribuyente, p.fecha_inicio_actividades, p.fecha_actualizacion,
+              p.fecha_suspension_definitiva, p.fecha_reinicio_actividades,
+              p.obligado_contabilidad, p.agente_retencion, p.contribuyente_especial,
+              p.num_establecimientos,
+              (SELECT string_agg(DISTINCT e.provincia, ', ')
+                 FROM establecimiento e WHERE e.ruc = p.ruc) AS provincias,
+              (SELECT e.actividad FROM establecimiento e
+                WHERE e.ruc = p.ruc ORDER BY e.numero LIMIT 1) AS actividad_principal,
+              (SELECT e.codigo_ciiu FROM establecimiento e
+                WHERE e.ruc = p.ruc ORDER BY e.numero LIMIT 1) AS ciiu_principal
          FROM ${tabla} p
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY p.ruc
@@ -82,11 +95,20 @@ export class PadronService {
     const datos = (hayMas ? filas.slice(0, limit) : filas).map((f: Record<string, unknown>) => ({
       ruc: f.ruc,
       razonSocial: f.razon_social,
+      jurisdiccion: f.jurisdiccion,
       estadoContribuyente: f.estado_contribuyente,
       claseContribuyente: f.clase_contribuyente,
       fechaInicioActividades: f.fecha_inicio_actividades,
+      fechaActualizacion: f.fecha_actualizacion,
+      fechaSuspensionDefinitiva: f.fecha_suspension_definitiva,
+      fechaReinicioActividades: f.fecha_reinicio_actividades,
       obligadoContabilidad: f.obligado_contabilidad,
+      agenteRetencion: f.agente_retencion,
+      contribuyenteEspecial: f.contribuyente_especial,
       numEstablecimientos: Number(f.num_establecimientos ?? 0),
+      provincias: f.provincias,
+      actividadPrincipal: f.actividad_principal,
+      ciiuPrincipal: f.ciiu_principal,
     }));
 
     return { datos, cursorSiguiente: hayMas ? datos[datos.length - 1].ruc : null };

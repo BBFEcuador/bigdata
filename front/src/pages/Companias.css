@@ -124,3 +124,43 @@
   border: 1px solid #f5c2bd;
   font-size: 0.9rem;
 }
+
+/* Badge del estado ante el SRI: distinto de la situación legal en Supercias. */
+.companias .estado {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.companias .estado.activo {
+  background: #e6f4ec;
+  color: #1a7f4b;
+}
+
+.companias .estado.suspendido {
+  background: #fdeeee;
+  color: #b3261e;
+}
+
+.companias .estado.pasivo {
+  background: #f1f1f1;
+  color: #666;
+}
+
+.companias .ver {
+  padding: 0.22rem 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f7f7f7;
+  cursor: pointer;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.companias .ver:hover {
+  background: #eef4fc;
+  border-color: #3d6fb4;
+}

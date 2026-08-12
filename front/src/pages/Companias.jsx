@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { listarCompanias, obtenerFacetas } from '../services/companias.service'
+import { listarCompanias, obtenerFacetas, obtenerFicha } from '../services/companias.service'
+import FichaCompania from '../components/FichaCompania'
 import SelectorCiiu from '../components/SelectorCiiu'
 import './Companias.css'
 
@@ -16,6 +17,8 @@ const FILTROS_VACIOS = {
 const num = n => (n ?? 0).toLocaleString('es-EC')
 
 export default function Companias() {
+  // Expediente cuya ficha completa está abierta, o null.
+  const [ficha, setFicha] = useState(null)
   // El catálogo CIIU enlaza aquí con `?ciiu=G4669`, así que el filtro arranca
   // desde la URL en vez de vacío.
   const [searchParams] = useSearchParams()
@@ -153,12 +156,19 @@ export default function Companias() {
               <th>RUC</th>
               <th>Nombre</th>
               <th>Situación</th>
+              <th>SRI</th>
+              <th>Representante legal</th>
+              <th>Cargo</th>
+              <th>Teléfono</th>
               <th>Tipo</th>
               <th>Provincia</th>
               <th>Cantón</th>
+              <th>Parroquia</th>
               <th className="der">Capital</th>
               <th>Constitución</th>
+              <th className="der">Locales</th>
               <th>Actividad económica</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -168,9 +178,24 @@ export default function Companias() {
                 <td className="mono">{c.ruc ?? '—'}</td>
                 <td>{c.nombre}</td>
                 <td>{c.situacionLegal ?? '—'}</td>
+                {/* Estado ante el SRI: es distinto de la situación legal en
+                    Supercias, y para prospección comercial manda éste. */}
+                <td>
+                  {c.sriEstadoContribuyente ? (
+                    <span className={`estado ${String(c.sriEstadoContribuyente).toLowerCase()}`}>
+                      {c.sriEstadoContribuyente}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td>{c.representante ?? '—'}</td>
+                <td>{c.cargo ?? '—'}</td>
+                <td className="mono">{c.telefono ?? '—'}</td>
                 <td>{c.tipo ?? '—'}</td>
                 <td>{c.provincia ?? '—'}</td>
                 <td>{c.canton ?? '—'}</td>
+                <td>{c.sriParroquia ?? '—'}</td>
                 <td className="der mono">
                   {c.capitalSuscrito === null
                     ? '—'
@@ -179,16 +204,22 @@ export default function Companias() {
                       })}
                 </td>
                 <td>{c.fechaConstitucion ?? '—'}</td>
+                <td className="der mono">{c.sriNumEstablecimientos ?? '—'}</td>
                 {/* Un código que no esté en el catálogo se muestra tal cual, sin
                     descripción: hay unos pocos, incluido un ZZZZZ.ZZ de relleno. */}
                 <td className="actividad" title={c.ciiuNivel6 ?? ''}>
                   {c.actividad ?? (c.ciiuNivel6 ? <span className="tenue">{c.ciiuNivel6}</span> : '—')}
                 </td>
+                <td>
+                  <button type="button" className="ver" onClick={() => setFicha(c.expediente)}>
+                    Ficha
+                  </button>
+                </td>
               </tr>
             ))}
             {!cargando && datos.length === 0 && (
               <tr>
-                <td colSpan={10} className="vacio">
+                <td colSpan={17} className="vacio">
                   Sin resultados
                 </td>
               </tr>
@@ -196,6 +227,8 @@ export default function Companias() {
           </tbody>
         </table>
       </div>
+
+      {ficha && <FichaCompania expediente={ficha} onCerrar={() => setFicha(null)} cargar={obtenerFicha} />}
 
       <div className="paginacion">
         <button type="button" onClick={anterior} disabled={pagina === 0 || cargando}>

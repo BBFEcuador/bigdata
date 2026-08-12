@@ -220,3 +220,22 @@
   color: #b3261e;
   font-size: 0.85rem;
 }
+
+/* La tabla lleva las 16 columnas del padrón: scrollea ella, nunca la página. */
+.padron .tabla-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.padron .tabla-scroll .tabla {
+  border: 0;
+  border-radius: 0;
+}
+
+.padron .actividad {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

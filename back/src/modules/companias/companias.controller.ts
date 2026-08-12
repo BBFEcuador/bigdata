@@ -23,4 +23,12 @@ export class CompaniasController {
     if (!c) throw new NotFoundException(`No existe la compañía ${expediente}`);
     return c;
   }
+
+  /** Ficha completa: directorio, datos del SRI, establecimientos y ejercicios. */
+  @Get(':expediente/ficha')
+  async ficha(@Param('expediente') expediente: string) {
+    const ficha = await this.service.fichaCompleta(expediente);
+    if (!ficha) throw new NotFoundException(`No existe la compañía ${expediente}`);
+    return ficha;
+  }
 }

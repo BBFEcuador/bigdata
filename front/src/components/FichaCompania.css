@@ -1,0 +1,223 @@
+/* Ficha completa de una compañía, en capa sobre la tabla. */
+
+.ficha-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(20, 24, 30, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 3vh 2vw;
+  overflow-y: auto;
+}
+
+.ficha {
+  width: min(1100px, 100%);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+
+.ficha-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  border-radius: 8px 8px 0 0;
+}
+
+.ficha-cabecera h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.ficha-cabecera .sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.ficha-cabecera button {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f1f1f1;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.ficha-cuerpo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.ficha .bloque {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 0.8rem 0.9rem;
+}
+
+.ficha .bloque.ancho {
+  grid-column: 1 / -1;
+}
+
+.ficha .bloque h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #444;
+}
+
+/* La procedencia de cada bloque es información, no adorno: la situación legal
+   la dice Supercias y el estado de contribuyente el SRI, y pueden discrepar. */
+.ficha .fuente {
+  font-size: 0.66rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #9aa4ae;
+}
+
+.ficha .datos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+}
+
+.ficha .dato {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px dashed #f2f2f2;
+  font-size: 0.82rem;
+}
+
+.ficha .dato.ancho {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.ficha .clave {
+  color: #777;
+  white-space: nowrap;
+}
+
+.ficha .nota-fuente {
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: #eef4fc;
+  color: #3d6fb4;
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.ficha .valor {
+  text-align: right;
+  color: #222;
+}
+
+.ficha .dato.ancho .valor {
+  text-align: left;
+}
+
+.ficha .dato.destacado .valor {
+  font-weight: 600;
+}
+
+.ficha .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+.ficha .vacio-bloque {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #888;
+  line-height: 1.45;
+}
+
+.ficha .ejercicios {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ficha .anio {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid #cfe0f5;
+  border-radius: 4px;
+  background: #eef4fc;
+  color: #3d6fb4;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ficha .anio sup {
+  color: #b07d2b;
+}
+
+.ficha .enlace-analisis {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #3d6fb4;
+}
+
+.ficha .tabla-locales {
+  overflow-x: auto;
+}
+
+.ficha .tabla-locales table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.ficha .tabla-locales th,
+.ficha .tabla-locales td {
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid #f2f2f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ficha .tabla-locales th {
+  background: #fafafa;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.ficha .tabla-locales .actividad {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ficha .cargando,
+.ficha .error {
+  padding: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.ficha .error {
+  color: #b3261e;
+}

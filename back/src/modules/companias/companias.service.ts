@@ -158,6 +158,51 @@ export class CompaniasService {
   }
 
   /** Valores distintos para poblar los desplegables de filtro. */
+  /**
+   * Ficha completa de una compañía: todo lo que la base sabe de ella.
+   *
+   * Junta las tres fuentes en una sola respuesta —directorio de la
+   * Superintendencia, padrón del SRI y balances— porque la pantalla las
+   * necesita a la vez y hacer tres viajes desde el navegador sólo añadiría
+   * parpadeo.
+   */
+  async fichaCompleta(expediente: string) {
+    const compania = await this.buscarUno(expediente);
+    if (!compania) return null;
+
+    const [establecimientos, ejercicios] = await Promise.all([
+      compania.ruc
+        ? this.repo.query(
+            `SELECT numero, nombre_comercial, estado, provincia, canton, parroquia,
+                    codigo_ciiu, actividad
+               FROM establecimiento WHERE ruc = $1 ORDER BY numero`,
+            [compania.ruc],
+          )
+        : Promise.resolve([]),
+      this.repo.query(
+        `SELECT anio, formulario FROM balance
+          WHERE expediente = $1 AND ausente_desde_job IS NULL
+          ORDER BY anio`,
+        [expediente],
+      ),
+    ]);
+
+    // Misma resolución del nombre de actividad que en el listado: sin esto la
+    // ficha mostraría el código CIIU y un guion donde la tabla sí da el nombre.
+    const [conActividad] = await this.conNombreActividad([compania]);
+
+    return {
+      compania: conActividad,
+      establecimientos,
+      // Sólo qué ejercicios existen; las cifras están en /balances y en
+      // /analisis, y duplicarlas aquí sería tener dos verdades.
+      ejercicios: ejercicios.map((e: Record<string, string>) => ({
+        anio: Number(e.anio),
+        formulario: Number(e.formulario),
+      })),
+    };
+  }
+
   async facetas() {
     const [provincias, situaciones, tipos] = await Promise.all([
       this.repo.query(

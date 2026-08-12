@@ -5,7 +5,7 @@ import Catalogo from './pages/Catalogo'
 import Ciiu from './pages/Ciiu'
 import Balances from './pages/Balances'
 import Analisis from './pages/Analisis'
-import Padron from './pages/Padron'
+import PadronLista from './pages/PadronLista'
 import ImportarCompanias from './pages/ImportarCompanias'
 import ImportarBalances from './pages/ImportarBalances'
 import ImportarSri from './pages/ImportarSri'
@@ -26,7 +26,8 @@ function App() {
           <Route path="/ciiu" element={<Ciiu />} />
           <Route path="/balances" element={<Balances />} />
           <Route path="/analisis" element={<Analisis />} />
-          <Route path="/padron" element={<Padron />} />
+          <Route path="/padron/personas" element={<PadronLista tipo="personas" />} />
+          <Route path="/padron/sociedades" element={<PadronLista tipo="sociedades" />} />
           <Route path="/importar/companias" element={<ImportarCompanias />} />
           <Route path="/importar/balances" element={<ImportarBalances />} />
           <Route path="/importar/sri" element={<ImportarSri />} />
