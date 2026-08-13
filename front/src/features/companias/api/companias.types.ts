@@ -18,33 +18,74 @@ export type QueryCompanias = Partial<FiltrosCompanias> & {
 }
 
 export type CompaniaResumen = {
-  expediente: string
+  id?: string | null
+  expediente: string | null
   ruc: string | null
   nombre: string
+  jurisdiccion?: string | null
+  estadoContribuyente?: string | null
+  claseContribuyente?: string | null
+  fechaInicioActividades?: string | null
+  fechaActualizacion?: string | null
+  fechaSuspensionDefinitiva?: string | null
+  fechaReinicioActividades?: string | null
+  obligadoContabilidad?: boolean | null
+  agenteRetencion?: boolean | null
+  contribuyenteEspecial?: boolean | null
+  numEstablecimientos?: number | null
   situacionLegal: string | null
   sriEstadoContribuyente: string | null
+  sriClaseContribuyente?: string | null
+  sriFechaInicioActividades?: string | null
+  sriObligadoContabilidad?: boolean | null
+  sriAgenteRetencion?: boolean | null
+  sriContribuyenteEspecial?: boolean | null
+  sriNombreComercial?: string | null
   representante: string | null
   cargo: string | null
   telefono: string | null
   tipo: string | null
+  tipoCompania?: string | null
+  pais?: string | null
+  region?: string | null
   provincia: string | null
   canton: string | null
+  ciudad?: string | null
+  calle?: string | null
+  numero?: string | null
+  interseccion?: string | null
+  barrio?: string | null
   sriParroquia: string | null
   capitalSuscrito: number | null
   fechaConstitucion: string | null
   sriNumEstablecimientos: number | null
+  ultimoBalance?: number | null
+  presentoBalanceInicial?: boolean | null
+  fechaPresentacionBalanceInicial?: string | null
   turismoRegistros?: number | null
   turismoActividades?: string[] | null
+  turismoClasificaciones?: string[] | null
   turismoRatificado?: boolean | null
   exportadorBienesIrAnios?: number[] | null
   exportadorBienesIvaAnios?: number[] | null
   exportadorServiciosIvaAnios?: number[] | null
+  ciiuNivel1?: string | null
   ciiuNivel6: string | null
   actividad: string | null
+  sriJobId?: string | null
+  turismoJobId?: string | null
+  catastrosJobId?: string | null
+  rowHash?: string | null
+  primerJobId?: string | null
+  ultimoJobId?: string | null
+  ausenteDesdeJob?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export type ResultadoCompanias = {
   datos: CompaniaResumen[]
+  cursorSiguiente?: string | null
   hayMas: boolean
   total: TotalConsulta | null
 }

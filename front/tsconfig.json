@@ -15,6 +15,10 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "noEmit": true,
     "types": ["vite/client"]
   },
