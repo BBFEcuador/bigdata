@@ -24,7 +24,7 @@ import './styles/App.css'
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* El informe va FUERA del Layout: es un documento, no una pantalla de
             la aplicación. Así no hay menú lateral que ocultar al imprimir. */}
