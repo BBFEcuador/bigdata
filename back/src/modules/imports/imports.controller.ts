@@ -59,7 +59,7 @@ export class ImportsController {
     private readonly turismo: TurismoImportService,
     private readonly catastros: CatastrosImportService,
     private readonly web: WebImportService,
-  ) {}
+  ) { }
 
   /**
    * Excel de compañías. Devuelve 202 de inmediato: la carga tarda minutos y
@@ -170,7 +170,7 @@ export class ImportsController {
       if (file) await fs.unlink(file.path).catch(() => undefined);
       throw new BadRequestException(
         `Tipo de catastro desconocido "${tipo}". Valores válidos: ${TIPOS_CATASTRO.join(', ')}. ` +
-          'Lo normal es no pasar este parámetro: el tipo se deduce del archivo.',
+        'Lo normal es no pasar este parámetro: el tipo se deduce del archivo.',
       );
     }
     const job = await this.crearJob(file, IMPORT_KIND_CATASTROS, modo);
@@ -178,22 +178,6 @@ export class ImportsController {
     return this.respuesta(job);
   }
 
-  /**
-   * Enriquecimiento desde DataPortal. No recibe archivo: la fuente es su API.
-   *
-   * Recorre las compañías con RUC y consulta cinco endpoints por cada una.
-   * Es una carga de ~31 horas, así que la lista de trabajo y el avance viven en
-   * `dataportal_consulta`: relanzar continúa por los pendientes en vez de
-   * empezar de cero.
-   *
-   * Con `?segmento=<codigo>` se acota a los miembros de un segmento comercial.
-   * El parámetro es un **código**, nunca un fragmento SQL: la condición del
-   * segmento vive en la tabla, poblada desde migraciones.
-   *
-   * El ámbito no se guarda en el job: para reanudar una carga acotada hay que
-   * volver a pasar el mismo `?segmento=`. Sin él continuaría por todos los
-   * pendientes, que son 226.191.
-   */
   @Post('dataportal')
   @HttpCode(202)
   async lanzarDataportal(@Query('segmento') segmento?: string) {
@@ -306,7 +290,7 @@ export class ImportsController {
       await fs.unlink(file.path).catch(() => undefined);
       throw new ConflictException(
         `Ya hay una importación de este tipo en curso (job ${activo.id}, ` +
-          `estado "${activo.status}"). Espera a que termine.`,
+        `estado "${activo.status}"). Espera a que termine.`,
       );
     }
 

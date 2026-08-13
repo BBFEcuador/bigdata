@@ -17,7 +17,9 @@ export function stagingTableName(jobId: string): string {
 }
 
 export function createStagingTableSql(table: string): string {
-  const cols = COPY_COLUMNS.map((c) => `  ${c} ${STAGING_COLUMN_TYPES[c]}`).join(',\n');
+  const cols = COPY_COLUMNS.map(
+    (c) => `  ${c} ${STAGING_COLUMN_TYPES[c]}`,
+  ).join(',\n');
   // UNLOGGED: no escribe WAL. Sobre un millón de filas son cientos de MB de WAL
   // que no se generan, y no hay nada que recuperar ante un fallo porque la tabla
   // se reconstruye desde el archivo.
@@ -52,6 +54,9 @@ export function copyIntoStagingSql(table: string): string {
  */
 export function mergeChunkSql(table: string): string {
   const updatable = BUSINESS_COLUMNS.filter((c) => c !== 'expediente');
+  const targetColumn = (c: string) => (c === 'tipo' ? 'tipo_compania' : c);
+  const targetColumns = BUSINESS_COLUMNS.map(targetColumn);
+  const sourceValues = BUSINESS_COLUMNS.map((c) => `src.${c}`);
 
   return `
 WITH src AS (
@@ -62,22 +67,22 @@ WITH src AS (
   ORDER BY s.expediente, s.source_row_number DESC
 ),
 merged AS (
-  INSERT INTO companias (
-    ${BUSINESS_COLUMNS.join(', ')},
+  INSERT INTO contribuyentes (
+    tipo, ${targetColumns.join(', ')},
     row_hash, primer_job_id, ultimo_job_id, ausente_desde_job
   )
   SELECT
-    ${BUSINESS_COLUMNS.map((c) => `src.${c}`).join(', ')},
+    'companies', ${sourceValues.join(', ')},
     src.row_hash, $1, $1, NULL
   FROM src
-  ON CONFLICT (expediente) DO UPDATE SET
-    ${updatable.map((c) => `${c} = EXCLUDED.${c}`).join(',\n    ')},
+  ON CONFLICT (expediente) WHERE tipo = 'companies' AND expediente IS NOT NULL DO UPDATE SET
+    ${updatable.map((c) => `${targetColumn(c)} = EXCLUDED.${targetColumn(c)}`).join(',\n    ')},
     row_hash = EXCLUDED.row_hash,
     ultimo_job_id = EXCLUDED.ultimo_job_id,
     ausente_desde_job = NULL,
     updated_at = now()
-  WHERE companias.row_hash IS DISTINCT FROM EXCLUDED.row_hash
-     OR companias.ausente_desde_job IS NOT NULL
+WHERE contribuyentes.row_hash IS DISTINCT FROM EXCLUDED.row_hash
+     OR contribuyentes.ausente_desde_job IS NOT NULL
   RETURNING (xmax = 0) AS inserted
 )
 SELECT
@@ -96,9 +101,10 @@ FROM merged
  */
 export function markMissingSql(table: string): string {
   return `
-UPDATE companias c
+UPDATE contribuyentes c
 SET ausente_desde_job = $1, updated_at = now()
-WHERE c.ausente_desde_job IS NULL
+WHERE c.tipo = 'companies'
+  AND c.ausente_desde_job IS NULL
   AND NOT EXISTS (SELECT 1 FROM ${table} s WHERE s.expediente = c.expediente)
 `;
 }
@@ -107,9 +113,9 @@ WHERE c.ausente_desde_job IS NULL
 export function countMissingSql(table: string): string {
   return `
 SELECT count(*)::bigint AS missing,
-       (SELECT count(*)::bigint FROM companias WHERE ausente_desde_job IS NULL) AS vivas
-FROM companias c
-WHERE c.ausente_desde_job IS NULL
+       (SELECT count(*)::bigint FROM contribuyentes WHERE tipo = 'companies' AND ausente_desde_job IS NULL) AS vivas
+FROM contribuyentes c
+WHERE c.tipo = 'companies' AND c.ausente_desde_job IS NULL
   AND NOT EXISTS (SELECT 1 FROM ${table} s WHERE s.expediente = c.expediente)
 `;
 }
@@ -126,24 +132,24 @@ WHERE c.ausente_desde_job IS NULL
  */
 export const SECONDARY_INDEXES: { name: string; sql: string }[] = [
   {
-    name: 'idx_companias_ruc',
-    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_companias_ruc ON companias (ruc)',
+    name: 'idx_contribuyentes_ruc',
+    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contribuyentes_ruc ON contribuyentes (ruc)',
   },
   {
-    name: 'idx_companias_provincia_canton',
-    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_companias_provincia_canton ON companias (provincia, canton)',
+    name: 'idx_contribuyentes_provincia_canton',
+    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contribuyentes_provincia_canton ON contribuyentes (provincia, canton)',
   },
   {
-    name: 'idx_companias_situacion',
-    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_companias_situacion ON companias (situacion_legal)',
+    name: 'idx_contribuyentes_situacion',
+    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contribuyentes_situacion ON contribuyentes (situacion_legal)',
   },
   {
-    name: 'idx_companias_ciiu1',
-    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_companias_ciiu1 ON companias (ciiu_nivel_1)',
+    name: 'idx_contribuyentes_ciiu1',
+    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contribuyentes_ciiu1 ON contribuyentes (ciiu_nivel_1)',
   },
   {
-    name: 'idx_companias_nombre_trgm',
-    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_companias_nombre_trgm ON companias USING gin (nombre gin_trgm_ops)',
+    name: 'idx_contribuyentes_nombre_trgm',
+    sql: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contribuyentes_nombre_trgm ON contribuyentes USING gin (nombre gin_trgm_ops)',
   },
 ];
 

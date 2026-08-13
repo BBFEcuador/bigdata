@@ -119,7 +119,7 @@ export class ImportPgSession extends PgCopySession {
 
   async vacuumAnalyze(): Promise<void> {
     // VACUUM normal, nunca FULL: FULL reescribe la tabla con un lock exclusivo.
-    await this.client.query('VACUUM (ANALYZE) companias');
+    await this.client.query("VACUUM (ANALYZE) contribuyentes");
   }
 
   async dropStaging(): Promise<void> {

@@ -16,12 +16,19 @@ import {
 
 const sufijo = (jobId: string) => jobId.replace(/-/g, '');
 
-export const stagingBalanceTable = (jobId: string) => `stg_balance_${sufijo(jobId)}`;
-export const stagingCuentaTable = (jobId: string) => `stg_balance_cuenta_${sufijo(jobId)}`;
+export const stagingBalanceTable = (jobId: string) =>
+  `stg_balance_${sufijo(jobId)}`;
+export const stagingCuentaTable = (jobId: string) =>
+  `stg_balance_cuenta_${sufijo(jobId)}`;
 /** Expedientes cuyo balance cambió respecto a lo que ya hay en la base. */
-export const cambiadasTable = (jobId: string) => `stg_bal_cambiadas_${sufijo(jobId)}`;
+export const cambiadasTable = (jobId: string) =>
+  `stg_bal_cambiadas_${sufijo(jobId)}`;
 
-function ddl(tabla: string, columnas: readonly string[], tipos: Record<string, string>): string {
+function ddl(
+  tabla: string,
+  columnas: readonly string[],
+  tipos: Record<string, string>,
+): string {
   const cols = columnas.map((c) => `  ${c} ${tipos[c]}`).join(',\n');
   // UNLOGGED: no escribe WAL. Con ~10 M filas de detalle por carga son varios GB
   // que no se generan, y no hay nada que recuperar: el staging se reconstruye
@@ -160,7 +167,10 @@ WHERE bc.anio = c.anio
  * ~10 M por carga. Un hash join contra una tabla de 622 filas cachada hace lo
  * mismo de una vez, y lo que no casa simplemente no entra (y se cuenta aparte).
  */
-export function insertarDetalleChunkSql(staging: string, cambiadas: string): string {
+export function insertarDetalleChunkSql(
+  staging: string,
+  cambiadas: string,
+): string {
   return `
 WITH src AS (
   SELECT DISTINCT ON (s.anio, s.formulario, s.expediente, s.codigo_cuenta)
@@ -227,7 +237,7 @@ export function contarHuerfanasSql(staging: string): string {
   return `
 SELECT count(DISTINCT s.expediente)::bigint AS huerfanas
 FROM ${staging} s
-LEFT JOIN companias c ON c.expediente = s.expediente
+LEFT JOIN contribuyentes c ON c.expediente = s.expediente AND c.tipo = 'companies'
 WHERE c.expediente IS NULL
 `;
 }

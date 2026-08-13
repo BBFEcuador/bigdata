@@ -19,8 +19,13 @@ import {
 
 const LOTE_UPSERT = 5_000;
 
-/** Las tres poblaciones a las que puede pertenecer un RUC. */
-const TABLAS_TITULARES = ['companias', 'persona_natural', 'sociedad_no_supervisada'];
+/** Las poblaciones de la tabla unificada y sus etiquetas históricas. */
+const TIPOS_TITULARES = [
+  { tipo: 'companies', salida: 'companias' },
+  { tipo: 'natural_contable', salida: 'persona_natural' },
+  { tipo: 'natural_no_contable', salida: 'persona_natural' },
+  { tipo: 'sociedad_no_supervisada', salida: 'sociedad_no_supervisada' },
+] as const;
 
 /**
  * Importador de los catastros del SRI.
@@ -48,7 +53,10 @@ export class CatastrosImportService {
 
   enqueue(jobId: string, tipoForzado?: TipoCatastro): void {
     void this.run(jobId, tipoForzado).catch((err) => {
-      this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
+      this.logger.error(
+        `Job ${jobId} falló de forma inesperada: ${err?.message}`,
+        err?.stack,
+      );
     });
   }
 
@@ -59,7 +67,10 @@ export class CatastrosImportService {
     const t0 = Date.now();
 
     try {
-      await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
+      await this.jobsService.update(jobId, {
+        status: 'parsing',
+        startedAt: new Date(),
+      });
 
       const clave = `import_job:${jobId}`;
       const [{ ok }] = await this.dataSource.query(
@@ -79,7 +90,11 @@ export class CatastrosImportService {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);
       await this.jobsService
-        .update(jobId, { status: 'failed', errorMessage: mensaje, finishedAt: new Date() })
+        .update(jobId, {
+          status: 'failed',
+          errorMessage: mensaje,
+          finishedAt: new Date(),
+        })
         .catch(() => undefined);
     } finally {
       this.jobsService.forgetProgress(jobId);
@@ -103,7 +118,8 @@ export class CatastrosImportService {
       motivo: i.motivo,
       raw: i.raw,
     }));
-    if (incidencias.length) await this.jobsService.saveRejects(jobId, incidencias);
+    if (incidencias.length)
+      await this.jobsService.saveRejects(jobId, incidencias);
 
     const total = res.exportadores.length + res.digitales.length;
     await this.jobsService.reportProgress(
@@ -128,7 +144,9 @@ export class CatastrosImportService {
     await this.jobsService.reportProgress(jobId, { progressPct: 85 }, true);
 
     const enriquecidos =
-      res.tipo === CATASTRO_SERVICIOS_DIGITALES ? {} : await this.propagarATitulares(jobId, res.tipo);
+      res.tipo === CATASTRO_SERVICIOS_DIGITALES
+        ? {}
+        : await this.propagarATitulares(jobId, res.tipo);
 
     await this.jobsService.update(jobId, {
       status: 'completed',
@@ -148,9 +166,13 @@ export class CatastrosImportService {
     );
   }
 
-  private resumen(res: ResultadoParseoCatastros, enriquecidos: Record<string, number>): string {
+  private resumen(
+    res: ResultadoParseoCatastros,
+    enriquecidos: Record<string, number>,
+  ): string {
     const partes = [ETIQUETA_CATASTRO[res.tipo] + '.'];
-    if (res.anios.length) partes.push(`Ejercicios cargados: ${res.anios.join(', ')}.`);
+    if (res.anios.length)
+      partes.push(`Ejercicios cargados: ${res.anios.join(', ')}.`);
     if (Object.keys(enriquecidos).length) {
       partes.push(
         `Enlazados: ${enriquecidos.companias ?? 0} compañías, ` +
@@ -173,11 +195,15 @@ export class CatastrosImportService {
     let actualizadas = 0;
 
     for (let i = 0; i < res.exportadores.length; i += LOTE_UPSERT) {
-      const r = await this.upsertExportadores(jobId, res.exportadores.slice(i, i + LOTE_UPSERT));
+      const r = await this.upsertExportadores(
+        jobId,
+        res.exportadores.slice(i, i + LOTE_UPSERT),
+      );
       insertadas += r.insertadas;
       actualizadas += r.actualizadas;
       await this.jobsService.reportProgress(jobId, {
-        progressPct: 40 + Math.round((40 * (i + LOTE_UPSERT)) / res.exportadores.length),
+        progressPct:
+          40 + Math.round((40 * (i + LOTE_UPSERT)) / res.exportadores.length),
       });
     }
 
@@ -290,17 +316,18 @@ export class CatastrosImportService {
     if (!columna) return {};
     const out: Record<string, number> = {};
 
-    for (const tabla of TABLAS_TITULARES) {
+    for (const titular of TIPOS_TITULARES) {
       // Igual que en el padrón del SRI: un RUC que apunta a dos expedientes no
       // se enlaza con ninguno, porque elegir uno sería inventar.
       const filtroAmbiguos =
-        tabla === 'companias'
-          ? `AND (SELECT count(*) FROM companias c2 WHERE c2.ruc = a.ruc) = 1`
+        titular.tipo === 'companies'
+          ? `AND (SELECT count(*) FROM contribuyentes c2
+                  WHERE c2.tipo = 'companies' AND c2.ruc = a.ruc) = 1`
           : '';
 
       const res = await this.dataSource.query(
         `
-        UPDATE ${tabla} d SET
+        UPDATE contribuyentes d SET
           ${columna} = a.anios,
           catastros_job_id = $1,
           updated_at = now()
@@ -310,26 +337,28 @@ export class CatastrosImportService {
           WHERE catastro = $2 AND ausente_desde_job IS NULL
           GROUP BY ruc
         ) a
-        WHERE d.ruc = a.ruc
+        WHERE d.tipo = $3 AND d.ruc = a.ruc
           ${filtroAmbiguos}
           AND d.${columna} IS DISTINCT FROM a.anios
         `,
-        [jobId, tipo],
+        [jobId, tipo, titular.tipo],
       );
-      out[tabla] = Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0;
+      out[titular.salida] =
+        (out[titular.salida] ?? 0) +
+        (Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0);
 
       // Y se limpia el que dejó de estar: si no, un RUC que salió del catastro
       // seguiría marcado como exportador para siempre.
       await this.dataSource.query(
         `
-        UPDATE ${tabla} d SET ${columna} = NULL, updated_at = now()
-        WHERE d.${columna} IS NOT NULL
+        UPDATE contribuyentes d SET ${columna} = NULL, updated_at = now()
+        WHERE d.tipo = $2 AND d.${columna} IS NOT NULL
           AND NOT EXISTS (
             SELECT 1 FROM catastro_sri cs
             WHERE cs.ruc = d.ruc AND cs.catastro = $1 AND cs.ausente_desde_job IS NULL
           )
         `,
-        [tipo],
+        [tipo, titular.tipo],
       );
     }
 

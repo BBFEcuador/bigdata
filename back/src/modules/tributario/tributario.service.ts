@@ -95,7 +95,9 @@ export class TributarioService {
     if (q.q) {
       params.push(`%${q.q.trim()}%`);
       const i = params.length;
-      where.push(`(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR a.expediente = $${i})`);
+      where.push(
+        `(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR a.expediente = $${i})`,
+      );
     }
 
     // `NULLS LAST` no es cosmético: en un ranking descendente los nulos van
@@ -118,7 +120,7 @@ export class TributarioService {
               p.anios_decil_alto, p.anios_sin_utilidad, p.brecha_total
          FROM riesgo_tributario_anio a
          JOIN perfil_riesgo_tributario p USING (expediente)
-         JOIN companias c USING (expediente)
+         JOIN contribuyentes c USING (expediente)
          LEFT JOIN actividad_ciiu ci ON ci.codigo = a.grupo_ciiu
         WHERE ${where.join(' AND ')}
         ORDER BY ${orderBy}
@@ -130,7 +132,7 @@ export class TributarioService {
       `SELECT count(*)::int AS total
          FROM riesgo_tributario_anio a
          JOIN perfil_riesgo_tributario p USING (expediente)
-         JOIN companias c USING (expediente)
+         JOIN contribuyentes c USING (expediente)
         WHERE ${where.join(' AND ')}`,
       params.slice(0, params.length - 2),
     );
@@ -182,7 +184,9 @@ export class TributarioService {
     if (q.q) {
       params.push(`%${q.q.trim()}%`);
       const i = params.length;
-      where.push(`(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR u.expediente = $${i})`);
+      where.push(
+        `(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR u.expediente = $${i})`,
+      );
     }
 
     params.push(limit, offset);
@@ -194,7 +198,7 @@ export class TributarioService {
               u.utilidad_ejercicio, u.base_anticipo, u.anticipo_provisional,
               u.netas_prev, u.variacion, u.peso_patrimonio
          FROM utilidad_no_distribuida u
-         JOIN companias c USING (expediente)
+         JOIN contribuyentes c USING (expediente)
         WHERE ${where.join(' AND ')}
         ORDER BY u.base_anticipo DESC
         LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -208,7 +212,7 @@ export class TributarioService {
               sum(u.anticipo_provisional) AS suma_anticipo,
               sum(coalesce(u.niif, 0)) AS suma_niif
          FROM utilidad_no_distribuida u
-         JOIN companias c USING (expediente)
+         JOIN contribuyentes c USING (expediente)
         WHERE ${where.join(' AND ')}`,
       params.slice(0, params.length - 2),
     );
@@ -237,8 +241,10 @@ export class TributarioService {
       // pantalla pueda decir con qué tarifa se calculó en vez de presentar el
       // número como si fuera definitivo.
       tarifa: await this.dataSource
-        .query(`SELECT tramo, desde, hasta, tarifa, nota FROM tarifa_pago_a_cuenta ORDER BY tramo`)
-        .then(t => ({ tramos: t, completa: t.length > 1 })),
+        .query(
+          `SELECT tramo, desde, hasta, tarifa, nota FROM tarifa_pago_a_cuenta ORDER BY tramo`,
+        )
+        .then((t) => ({ tramos: t, completa: t.length > 1 })),
       movimiento,
       limit,
       offset,
@@ -298,7 +304,9 @@ export class TributarioService {
     if (q.q) {
       params.push(`%${q.q.trim()}%`);
       const i = params.length;
-      where.push(`(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR m.expediente = $${i})`);
+      where.push(
+        `(c.nombre ILIKE $${i} OR c.ruc LIKE $${i} OR m.expediente = $${i})`,
+      );
     }
 
     // El mínimo se aplica al ejercicio más reciente, no a la suma de todos:
@@ -328,7 +336,7 @@ export class TributarioService {
               min(d.iva_sube) AS iva_sube, min(d.iva_baja) AS iva_baja,
               min(d.ir_sube)  AS ir_sube,  min(d.ir_baja)  AS ir_baja
          FROM balance_magnitud m
-         JOIN companias c USING (expediente)
+         JOIN contribuyentes c USING (expediente)
          LEFT JOIN credito_tributario_empresa d USING (expediente)
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         GROUP BY m.expediente, c.ruc, c.nombre, c.ciiu_nivel_6
@@ -343,14 +351,14 @@ export class TributarioService {
               sum(greatest((m.magnitudes->>'creditoIva')::numeric, 0)) AS suma_iva,
               sum(greatest((m.magnitudes->>'creditoIr')::numeric, 0))  AS suma_ir
          FROM balance_magnitud m
-         JOIN companias c USING (expediente)
+         JOIN contribuyentes c USING (expediente)
         WHERE m.anio = $1
           ${where.length ? `AND ${where.join(' AND ')}` : ''}`,
       params.slice(0, params.length - 2 - (q.minimo ? 1 : 0)),
     );
 
     return {
-      anios: anios.map(a => a.anio),
+      anios: anios.map((a) => a.anio),
       ultimo,
       datos,
       totales,
@@ -367,7 +375,7 @@ export class TributarioService {
               p.anios_con_datos, p.anios_decil_alto, p.anios_sin_utilidad,
               p.brecha_total, p.percentil_maximo, p.grupo_ciiu,
               ci.nombre AS actividad
-         FROM companias c
+         FROM contribuyentes c
          LEFT JOIN perfil_riesgo_tributario p USING (expediente)
          LEFT JOIN actividad_ciiu ci ON ci.codigo = p.grupo_ciiu
         WHERE c.expediente = $1`,
@@ -432,6 +440,14 @@ export class TributarioService {
       `SELECT tramo, tarifa FROM tarifa_pago_a_cuenta ORDER BY tramo LIMIT 1`,
     );
 
-    return { empresa, ejercicios, credito, diagnostico, noDistribuidas, tarifa, resoluciones };
+    return {
+      empresa,
+      ejercicios,
+      credito,
+      diagnostico,
+      noDistribuidas,
+      tarifa,
+      resoluciones,
+    };
   }
 }

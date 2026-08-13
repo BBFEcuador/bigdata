@@ -9,12 +9,18 @@
  * conocerá.
  */
 
-export const TIPOS_SUJETO = ['compania', 'persona_natural', 'sociedad_no_supervisada'] as const;
+export const TIPOS_SUJETO = [
+  'compania',
+  'persona_natural',
+  'sociedad_no_supervisada',
+] as const;
 
 export type TipoSujeto = (typeof TIPOS_SUJETO)[number];
 
 export function esTipoSujeto(v: unknown): v is TipoSujeto {
-  return typeof v === 'string' && (TIPOS_SUJETO as readonly string[]).includes(v);
+  return (
+    typeof v === 'string' && (TIPOS_SUJETO as readonly string[]).includes(v)
+  );
 }
 
 /**
@@ -29,10 +35,25 @@ export function esTipoSujeto(v: unknown): v is TipoSujeto {
  * y el índice sólo puede venir de un `TipoSujeto` ya validado. Nada de esto
  * toca nunca la entrada del usuario.
  */
-export const ORIGEN_SUJETO: Record<TipoSujeto, { tabla: string; columna: string }> = {
-  compania: { tabla: 'companias', columna: 'expediente' },
-  persona_natural: { tabla: 'persona_natural', columna: 'ruc' },
-  sociedad_no_supervisada: { tabla: 'sociedad_no_supervisada', columna: 'ruc' },
+export const ORIGEN_SUJETO: Record<
+  TipoSujeto,
+  { tabla: string; columna: string; filtro: string }
+> = {
+  compania: {
+    tabla: 'contribuyentes',
+    columna: 'expediente',
+    filtro: "tipo = 'companies'",
+  },
+  persona_natural: {
+    tabla: 'contribuyentes',
+    columna: 'ruc',
+    filtro: "tipo IN ('natural_contable', 'natural_no_contable')",
+  },
+  sociedad_no_supervisada: {
+    tabla: 'contribuyentes',
+    columna: 'ruc',
+    filtro: "tipo = 'sociedad_no_supervisada'",
+  },
 };
 
 /** Para que un 404 diga «no existe la persona natural X» y no un código. */

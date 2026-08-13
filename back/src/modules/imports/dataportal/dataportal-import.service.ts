@@ -46,7 +46,10 @@ export class DataportalImportService {
 
   enqueue(jobId: string, segmento?: string): void {
     void this.run(jobId, segmento).catch((err) => {
-      this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
+      this.logger.error(
+        `Job ${jobId} falló de forma inesperada: ${err?.message}`,
+        err?.stack,
+      );
     });
   }
 
@@ -82,13 +85,17 @@ export class DataportalImportService {
    * comprobación el job arrancaría, no encontraría nada que hacer y terminaría
    * "con éxito" en un segundo — el fallo más caro de diagnosticar.
    */
-  async resolverSegmento(codigo: string): Promise<{ nombre: string; miembros: number }> {
+  async resolverSegmento(
+    codigo: string,
+  ): Promise<{ nombre: string; miembros: number }> {
     const [seg] = await this.dataSource.query(
       `SELECT codigo, nombre FROM segmento WHERE codigo = $1`,
       [codigo],
     );
     if (!seg) {
-      const otros = await this.dataSource.query(`SELECT codigo FROM segmento ORDER BY codigo`);
+      const otros = await this.dataSource.query(
+        `SELECT codigo FROM segmento ORDER BY codigo`,
+      );
       throw new BadRequestException(
         `Segmento desconocido "${codigo}". Válidos: ` +
           otros.map((s: { codigo: string }) => s.codigo).join(', '),
@@ -132,8 +139,8 @@ export class DataportalImportService {
         )
       : await this.dataSource.query(`
           INSERT INTO dataportal_consulta (ruc)
-          SELECT DISTINCT ruc FROM companias
-           WHERE ruc IS NOT NULL AND ruc <> ''
+          SELECT DISTINCT ruc FROM contribuyentes
+           WHERE tipo = 'companies' AND ruc IS NOT NULL AND ruc <> ''
           ON CONFLICT (ruc) DO NOTHING
         `);
     return Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0;
@@ -145,17 +152,20 @@ export class DataportalImportService {
 
     this.cancelar = false;
     const t0 = Date.now();
-    const client = new DataportalClient(() => {
-      const token = process.env.DATAPORTAL_TOKEN;
-      if (!token) {
-        throw new CredencialesInvalidasError(
-          'Falta DATAPORTAL_TOKEN en back/.env. Es el `?token=` con el que el panel ' +
-            'del portal llama a estos mismos cinco endpoints; las credenciales de ' +
-            'WordPress no autorizan el datacenter.',
-        );
-      }
-      return token;
-    }, { rps: RITMO_POR_SEGUNDO });
+    const client = new DataportalClient(
+      () => {
+        const token = process.env.DATAPORTAL_TOKEN;
+        if (!token) {
+          throw new CredencialesInvalidasError(
+            'Falta DATAPORTAL_TOKEN en back/.env. Es el `?token=` con el que el panel ' +
+              'del portal llama a estos mismos cinco endpoints; las credenciales de ' +
+              'WordPress no autorizan el datacenter.',
+          );
+        }
+        return token;
+      },
+      { rps: RITMO_POR_SEGUNDO },
+    );
 
     let hechos = 0;
     let conDatos = 0;
@@ -163,16 +173,23 @@ export class DataportalImportService {
     let errores = 0;
 
     try {
-      await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
+      await this.jobsService.update(jobId, {
+        status: 'parsing',
+        startedAt: new Date(),
+      });
 
       const sembrados = await this.sembrar(segmento);
       const total = await this.contarPendientes(segmento);
       const ambito = segmento ? ` (segmento ${segmento})` : '';
-      this.logger.log(`Job ${jobId}${ambito}: ${sembrados} RUC nuevos, ${total} pendientes`);
+      this.logger.log(
+        `Job ${jobId}${ambito}: ${sembrados} RUC nuevos, ${total} pendientes`,
+      );
 
       for (;;) {
         if (this.cancelar) {
-          this.logger.warn(`Job ${jobId} detenido a petición; se reanuda por los pendientes.`);
+          this.logger.warn(
+            `Job ${jobId} detenido a petición; se reanuda por los pendientes.`,
+          );
           break;
         }
 
@@ -182,7 +199,11 @@ export class DataportalImportService {
         for (const ruc of lote) {
           if (this.cancelar) break;
           try {
-            const { crudas, status, sinDatos: vacio } = await client.consultar(ruc);
+            const {
+              crudas,
+              status,
+              sinDatos: vacio,
+            } = await client.consultar(ruc);
             const parseado = parsearRespuestas(ruc, crudas);
             await this.guardar(ruc, jobId, crudas, parseado, status, vacio);
             hechos++;
@@ -204,7 +225,8 @@ export class DataportalImportService {
           rowsRead: hechos,
           rowsCopied: conDatos,
           rowsRejected: errores,
-          progressPct: total > 0 ? Math.min(99, Math.round((hechos / total) * 100)) : 0,
+          progressPct:
+            total > 0 ? Math.min(99, Math.round((hechos / total) * 100)) : 0,
         });
       }
 
@@ -222,7 +244,9 @@ export class DataportalImportService {
       });
 
       const horas = ((Date.now() - t0) / 3_600_000).toFixed(1);
-      this.logger.log(`Job ${jobId} terminado en ${horas} h: ${hechos} consultas`);
+      this.logger.log(
+        `Job ${jobId} terminado en ${horas} h: ${hechos} consultas`,
+      );
     } catch (err) {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);
@@ -257,7 +281,10 @@ export class DataportalImportService {
     `);
     return {
       porEstado,
-      total: Object.values(porEstado).reduce((a: number, b) => a + Number(b), 0),
+      total: Object.values(porEstado).reduce(
+        (a: number, b) => a + Number(b),
+        0,
+      ),
       pendientes: await this.contarPendientes(),
       extraidos: {
         empresas: Number(extra.empresas),
@@ -329,7 +356,13 @@ export class DataportalImportService {
             SET estado = $2, payload = $3::jsonb, http_status = $4,
                 consultado_en = now(), job_id = $5, ultimo_error = NULL, updated_at = now()
           WHERE ruc = $1`,
-        [ruc, vacio ? 'sin_datos' : 'ok', JSON.stringify(crudas), status, jobId],
+        [
+          ruc,
+          vacio ? 'sin_datos' : 'ok',
+          JSON.stringify(crudas),
+          status,
+          jobId,
+        ],
       );
 
       if (p.empresa) {
@@ -355,10 +388,19 @@ export class DataportalImportService {
              masa_salarial = EXCLUDED.masa_salarial,
              actualizado_en = now()`,
           [
-            e.ruc, e.razon_social, e.nombre_comercial, e.nombre_comercial_2,
-            e.estado_contribuyente, e.fecha_inicio, e.fecha_suspension,
-            e.actividad_economica, e.provincia, e.direccion, e.telefono,
-            e.num_empleados, e.masa_salarial,
+            e.ruc,
+            e.razon_social,
+            e.nombre_comercial,
+            e.nombre_comercial_2,
+            e.estado_contribuyente,
+            e.fecha_inicio,
+            e.fecha_suspension,
+            e.actividad_economica,
+            e.provincia,
+            e.direccion,
+            e.telefono,
+            e.num_empleados,
+            e.masa_salarial,
           ],
         );
       }
@@ -391,23 +433,36 @@ export class DataportalImportService {
              fecha_matricula, anio_pago)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
           [
-            v.ruc, v.placa, v.tipo, v.marca, v.modelo, v.anio, v.cilindraje,
-            v.avaluo, v.ciudad, v.fecha_matricula, v.anio_pago,
+            v.ruc,
+            v.placa,
+            v.tipo,
+            v.marca,
+            v.modelo,
+            v.anio,
+            v.cilindraje,
+            v.avaluo,
+            v.ciudad,
+            v.fecha_matricula,
+            v.anio_pago,
           ],
         );
       }
 
       await m.query(`DELETE FROM dataportal_propiedad WHERE ruc = $1`, [ruc]);
       for (const prop of p.propiedades) {
-        await m.query(`INSERT INTO dataportal_propiedad (ruc, datos) VALUES ($1, $2::jsonb)`, [
-          ruc,
-          JSON.stringify(prop),
-        ]);
+        await m.query(
+          `INSERT INTO dataportal_propiedad (ruc, datos) VALUES ($1, $2::jsonb)`,
+          [ruc, JSON.stringify(prop)],
+        );
       }
     });
   }
 
-  private async marcarError(ruc: string, jobId: string, mensaje: string): Promise<void> {
+  private async marcarError(
+    ruc: string,
+    jobId: string,
+    mensaje: string,
+  ): Promise<void> {
     await this.dataSource.query(
       `UPDATE dataportal_consulta
           SET estado = 'error', ultimo_error = $2, job_id = $3, updated_at = now()

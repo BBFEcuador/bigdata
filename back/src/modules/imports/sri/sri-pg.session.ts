@@ -17,7 +17,11 @@ export interface Totales {
   actualizadas: number;
 }
 
-const totales = (fila: Record<string, string> | undefined, k1: string, k2: string): Totales => ({
+const totales = (
+  fila: Record<string, string> | undefined,
+  k1: string,
+  k2: string,
+): Totales => ({
   insertadas: Number(fila?.[k1] ?? 0),
   actualizadas: Number(fila?.[k2] ?? 0),
 });
@@ -70,29 +74,54 @@ export class SriPgSession extends PgCopySession {
   }
 
   async mergePersonas(): Promise<Totales> {
-    const { rows } = await this.client.query(mergePersonasSql(this.tabla), [this.jobId]);
-    return totales(rows[0], 'insertadas', 'actualizadas');
-  }
-
-  async mergeSociedadesNoSupervisadas(): Promise<Totales> {
-    const { rows } = await this.client.query(mergeSociedadesNoSupervisadasSql(this.tabla), [
+    // Un RUC puede cambiar de obligado a no obligado entre dos padrones. La
+    // clasificación forma parte de la identidad lógica y debe quedar una sola
+    // vez en la población correcta.
+    await this.client.query(`
+      DELETE FROM contribuyentes c
+       USING (
+         SELECT DISTINCT ON (ruc) ruc,
+                CASE WHEN obligado_contabilidad IS TRUE
+                     THEN 'natural_contable' ELSE 'natural_no_contable' END AS tipo
+           FROM ${this.tabla}
+          WHERE tipo_contribuyente = 'PERSONA NATURAL'
+          ORDER BY ruc, numero_establecimiento
+       ) s
+       WHERE c.ruc = s.ruc
+         AND c.tipo IN ('natural_contable', 'natural_no_contable')
+         AND c.tipo <> s.tipo
+    `);
+    const { rows } = await this.client.query(mergePersonasSql(this.tabla), [
       this.jobId,
     ]);
     return totales(rows[0], 'insertadas', 'actualizadas');
   }
 
+  async mergeSociedadesNoSupervisadas(): Promise<Totales> {
+    const { rows } = await this.client.query(
+      mergeSociedadesNoSupervisadasSql(this.tabla),
+      [this.jobId],
+    );
+    return totales(rows[0], 'insertadas', 'actualizadas');
+  }
+
   async enriquecerCompanias(): Promise<number> {
-    const res = await this.client.query(enriquecerCompaniasSql(this.tabla), [this.jobId]);
+    const res = await this.client.query(enriquecerCompaniasSql(this.tabla), [
+      this.jobId,
+    ]);
     return res.rowCount ?? 0;
   }
 
   async mergeEstablecimientos(): Promise<Totales> {
-    const { rows } = await this.client.query(mergeEstablecimientosSql(this.tabla), [this.jobId]);
+    const { rows } = await this.client.query(
+      mergeEstablecimientosSql(this.tabla),
+      [this.jobId],
+    );
     return totales(rows[0], 'insertados', 'actualizados');
   }
 
   async vacuumAnalyze(): Promise<void> {
-    for (const t of ['persona_natural', 'sociedad_no_supervisada', 'establecimiento']) {
+    for (const t of ['contribuyentes', 'establecimiento']) {
       await this.client.query(`VACUUM (ANALYZE) ${t}`);
     }
   }

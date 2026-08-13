@@ -147,14 +147,17 @@ export class ScrapingJobsService {
     const origen = ORIGEN_SUJETO[tipo];
     // Cinturón: el DTO ya valida el tipo, pero esto se interpola en el SQL y no
     // puede depender de que el validador siga puesto dentro de seis meses.
-    if (!origen) throw new BadRequestException(`Tipo de sujeto desconocido: ${tipo}`);
-    const { tabla, columna } = origen;
+    if (!origen)
+      throw new BadRequestException(`Tipo de sujeto desconocido: ${tipo}`);
+    const { tabla, columna, filtro } = origen;
     const [fila] = await this.dataSource.query(
-      `SELECT 1 FROM ${tabla} WHERE ${columna} = $1`,
+      `SELECT 1 FROM ${tabla} WHERE ${filtro} AND ${columna} = $1`,
       [clave],
     );
     if (!fila) {
-      throw new NotFoundException(`No existe ${ETIQUETA_SUJETO[tipo]} ${clave}`);
+      throw new NotFoundException(
+        `No existe ${ETIQUETA_SUJETO[tipo]} ${clave}`,
+      );
     }
   }
 
@@ -206,7 +209,13 @@ export class ScrapingJobsService {
               WHERE estado IN ('encolado','corriendo','pausado')
          DO NOTHING
          RETURNING id`,
-        [...paramsFiltro, datos.fuente, datos.prioridad ?? 0, MAX_INTENTOS, datos.usuario],
+        [
+          ...paramsFiltro,
+          datos.fuente,
+          datos.prioridad ?? 0,
+          MAX_INTENTOS,
+          datos.usuario,
+        ],
       ),
     );
 
@@ -216,7 +225,7 @@ export class ScrapingJobsService {
            (job_id, tipo_sujeto, clave, accion, estado_despues, usuario, detalle)
          SELECT j.id, j.tipo_sujeto, j.clave, 'creado', 'encolado', $2, 'Alta masiva'
            FROM scraping_job j WHERE j.id = ANY($1::uuid[])`,
-        [creados.map(c => c.id), datos.usuario],
+        [creados.map((c) => c.id), datos.usuario],
       );
     }
 
@@ -314,7 +323,9 @@ export class ScrapingJobsService {
 
     return {
       // `cursor_ts` es de uso interno; fuera va sólo en `siguiente`.
-      filas: pagina.map(({ cursor_ts, ...fila }: Record<string, unknown>) => fila),
+      filas: pagina.map(
+        ({ cursor_ts, ...fila }: Record<string, unknown>) => fila,
+      ),
       hayMas,
       siguiente: hayMas && ultimo ? `${ultimo.cursor_ts}|${ultimo.id}` : null,
       // El resumen respeta la búsqueda y la fuente, pero NO el estado: las
@@ -349,7 +360,12 @@ export class ScrapingJobsService {
           AND ($3::text IS NULL OR j.clave = $3 OR p.ruc LIKE $3 || '%'
                OR p.nombre ILIKE '%' || $3 || '%')
         GROUP BY j.estado`,
-      [filtro.fuente ?? null, filtro.clave ?? null, filtro.q ?? null, filtro.tipoSujeto ?? null],
+      [
+        filtro.fuente ?? null,
+        filtro.clave ?? null,
+        filtro.q ?? null,
+        filtro.tipoSujeto ?? null,
+      ],
     );
     const porEstado: Record<string, number> = {
       encolado: 0,
@@ -458,7 +474,11 @@ export class ScrapingJobsService {
    */
   async latido(
     id: string,
-    avance: { pct?: number; paso?: string; checkpoint?: Record<string, unknown> },
+    avance: {
+      pct?: number;
+      paso?: string;
+      checkpoint?: Record<string, unknown>;
+    },
   ): Promise<OrdenDelLatido | null> {
     const [fila] = filas<OrdenDelLatido>(
       await this.dataSource.query(
@@ -501,7 +521,9 @@ export class ScrapingJobsService {
     if (permanente || !quedan) {
       await this.cerrar(job, 'fallido', 'fallido', {
         error,
-        detalle: permanente ? 'Error permanente: no se reintenta' : 'Intentos agotados',
+        detalle: permanente
+          ? 'Error permanente: no se reintenta'
+          : 'Intentos agotados',
       });
       return;
     }
@@ -522,7 +544,8 @@ export class ScrapingJobsService {
       estadoAntes: 'corriendo',
       estadoDespues: 'encolado',
       usuario: USUARIO_SISTEMA,
-      detalle: `Intento ${job.intentos}/${job.max_intentos} falló: ${error}. ` +
+      detalle:
+        `Intento ${job.intentos}/${job.max_intentos} falló: ${error}. ` +
         `Reintenta en ${Math.round(esperaMs / 1000)} s.`,
     });
   }
@@ -533,7 +556,8 @@ export class ScrapingJobsService {
       // La orden se limpia al cumplirla: si se quedara puesta, reanudar el job
       // lo pausaría otra vez en el primer latido.
       limpiarAccion: true,
-      detalle: estado === 'pausado' ? 'Pausado a petición' : 'Cancelado a petición',
+      detalle:
+        estado === 'pausado' ? 'Pausado a petición' : 'Cancelado a petición',
     });
   }
 
@@ -590,17 +614,20 @@ export class ScrapingJobsService {
    * es la diferencia entre entender el rechazo y tener que recargar).
    */
   async accionar(id: string, accion: AccionUsuario, usuario: string) {
-    const afectadas = filas(await this.dataSource.query(this.sqlAccion(accion), [id]));
+    const afectadas = filas(
+      await this.dataSource.query(this.sqlAccion(accion), [id]),
+    );
 
     if (afectadas.length === 0) {
-      const [job] = await this.dataSource.query(`SELECT estado FROM scraping_job WHERE id = $1`, [
-        id,
-      ]);
+      const [job] = await this.dataSource.query(
+        `SELECT estado FROM scraping_job WHERE id = $1`,
+        [id],
+      );
       if (!job) throw new NotFoundException(`No existe el job ${id}`);
       throw new ConflictException(
         `El job está ${ETIQUETA_ESTADO[job.estado as EstadoScraping]} y no se puede ` +
           `${accion} desde ahí (se puede desde: ${ORIGENES_ACCION[accion]
-            .map(e => ETIQUETA_ESTADO[e])
+            .map((e) => ETIQUETA_ESTADO[e])
             .join(', ')}).`,
       );
     }
@@ -674,9 +701,12 @@ export class ScrapingJobsService {
   }
 
   private nombreEvento(accion: AccionUsuario, estadoFinal: string): string {
-    if (accion === 'pausar') return estadoFinal === 'pausado' ? 'pausado' : 'pausa_solicitada';
+    if (accion === 'pausar')
+      return estadoFinal === 'pausado' ? 'pausado' : 'pausa_solicitada';
     if (accion === 'cancelar') {
-      return estadoFinal === 'cancelado' ? 'cancelado' : 'cancelacion_solicitada';
+      return estadoFinal === 'cancelado'
+        ? 'cancelado'
+        : 'cancelacion_solicitada';
     }
     return accion === 'reanudar' ? 'reanudado' : 'reintentado';
   }
@@ -758,11 +788,15 @@ export class ScrapingJobsService {
       e.detalle ?? null,
     ];
     try {
-      await (runner ? runner.query(sql, params) : this.dataSource.query(sql, params));
+      await (runner
+        ? runner.query(sql, params)
+        : this.dataSource.query(sql, params));
     } catch (err) {
       // La auditoría no puede tumbar un job. Si falla, se registra y se sigue:
       // perder una línea de histórico es malo, perder el trabajo es peor.
-      this.logger.warn(`No se pudo escribir el evento "${e.accion}" del job ${jobId}: ${err}`);
+      this.logger.warn(
+        `No se pudo escribir el evento "${e.accion}" del job ${jobId}: ${err}`,
+      );
     }
   }
 }

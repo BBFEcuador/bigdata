@@ -62,7 +62,10 @@ export class WebImportService {
 
   enqueue(jobId: string): void {
     void this.run(jobId).catch((err) => {
-      this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
+      this.logger.error(
+        `Job ${jobId} falló de forma inesperada: ${err?.message}`,
+        err?.stack,
+      );
     });
   }
 
@@ -81,7 +84,8 @@ export class WebImportService {
   async sembrar(): Promise<number> {
     const res = await this.dataSource.query(`
       INSERT INTO web_consulta (expediente, ruc)
-      SELECT expediente, ruc FROM companias WHERE ausente_desde_job IS NULL
+      SELECT expediente, ruc FROM contribuyentes
+       WHERE tipo = 'companies' AND ausente_desde_job IS NULL
       ON CONFLICT (expediente) DO NOTHING
     `);
     return Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0;
@@ -102,15 +106,22 @@ export class WebImportService {
     let propuestas = 0;
 
     try {
-      await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
+      await this.jobsService.update(jobId, {
+        status: 'parsing',
+        startedAt: new Date(),
+      });
 
       const sembradas = await this.sembrar();
       const total = await this.contarPendientes();
-      this.logger.log(`Job ${jobId}: ${sembradas} compañías nuevas, ${total} pendientes`);
+      this.logger.log(
+        `Job ${jobId}: ${sembradas} compañías nuevas, ${total} pendientes`,
+      );
 
       for (;;) {
         if (this.cancelar) {
-          this.logger.warn(`Job ${jobId} detenido a petición; se reanuda por las pendientes.`);
+          this.logger.warn(
+            `Job ${jobId} detenido a petición; se reanuda por las pendientes.`,
+          );
           break;
         }
 
@@ -127,7 +138,11 @@ export class WebImportService {
             else sinSitio++;
           } catch (err) {
             errores++;
-            await this.marcarError(fila.expediente, jobId, (err as Error).message);
+            await this.marcarError(
+              fila.expediente,
+              jobId,
+              (err as Error).message,
+            );
           }
         }
 
@@ -135,7 +150,8 @@ export class WebImportService {
           rowsRead: hechas,
           rowsCopied: propuestas,
           rowsRejected: errores,
-          progressPct: total > 0 ? Math.min(99, Math.round((hechas / total) * 100)) : 0,
+          progressPct:
+            total > 0 ? Math.min(99, Math.round((hechas / total) * 100)) : 0,
         });
       }
 
@@ -154,7 +170,9 @@ export class WebImportService {
       });
 
       const horas = ((Date.now() - t0) / 3_600_000).toFixed(1);
-      this.logger.log(`Job ${jobId} terminado en ${horas} h: ${hechas} compañías`);
+      this.logger.log(
+        `Job ${jobId} terminado en ${horas} h: ${hechas} compañías`,
+      );
     } catch (err) {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);
@@ -191,7 +209,9 @@ export class WebImportService {
     await this.guardarCandidatos(fila.expediente, lista);
 
     const hallazgos: Hallazgo[] = [];
-    const nombres = [fila.nombre_comercial, fila.nombre].filter(Boolean) as string[];
+    const nombres = [fila.nombre_comercial, fila.nombre].filter(
+      Boolean,
+    ) as string[];
 
     for (const candidato of lista) {
       if (hallazgos.length >= MAX_PAGINAS) break;
@@ -220,7 +240,11 @@ export class WebImportService {
       // quien luego tiene que revisar esto a mano.
       if (lectura.aparcado) continue;
 
-      hallazgos.push({ candidato, url: r.urlFinal ?? `https://${candidato.dominio}/`, lectura });
+      hallazgos.push({
+        candidato,
+        url: r.urlFinal ?? `https://${candidato.dominio}/`,
+        lectura,
+      });
 
       // No hace falta seguir probando si ya tenemos lo mejor que puede salir:
       // el dominio del correo (que se propone sin condiciones) o una página que
@@ -234,7 +258,13 @@ export class WebImportService {
           SET estado = $2, candidatos = $3, hallazgos = $4, revisado_en = now(),
               job_id = $5, ultimo_error = NULL, updated_at = now()
         WHERE expediente = $1`,
-      [fila.expediente, hallazgos.length > 0 ? 'ok' : 'sin_sitio', lista.length, n, jobId],
+      [
+        fila.expediente,
+        hallazgos.length > 0 ? 'ok' : 'sin_sitio',
+        lista.length,
+        n,
+        jobId,
+      ],
     );
     return n;
   }
@@ -247,7 +277,10 @@ export class WebImportService {
    * descartó, y cada rastreo desharía el trabajo del anterior sin que nadie se
    * diera cuenta hasta que el revisor viera los mismos casos por tercera vez.
    */
-  private async proponer(fila: FilaTrabajo, hallazgos: Hallazgo[]): Promise<number> {
+  private async proponer(
+    fila: FilaTrabajo,
+    hallazgos: Hallazgo[],
+  ): Promise<number> {
     if (hallazgos.length === 0) return 0;
 
     const mejor = elegir(hallazgos);
@@ -255,18 +288,32 @@ export class WebImportService {
 
     let guardadas = 0;
     await this.dataSource.transaction(async (m) => {
-      guardadas += await insertar(m, fila.expediente, 'web', origen(mejor.url), null, {
-        titulo: mejor.lectura.titulo,
-        descripcion: mejor.lectura.descripcion,
-        nombre_en_pagina: mejor.lectura.nombreEnPagina,
-        regla: mejor.candidato.origen,
-        dominio: mejor.candidato.dominio,
-      });
+      guardadas += await insertar(
+        m,
+        fila.expediente,
+        'web',
+        origen(mejor.url),
+        null,
+        {
+          titulo: mejor.lectura.titulo,
+          descripcion: mejor.lectura.descripcion,
+          nombre_en_pagina: mejor.lectura.nombreEnPagina,
+          regla: mejor.candidato.origen,
+          dominio: mejor.candidato.dominio,
+        },
+      );
 
       for (const s of mejor.lectura.sociales) {
-        guardadas += await insertar(m, fila.expediente, s.red, s.url, s.handle, {
-          desde: mejor.candidato.dominio,
-        });
+        guardadas += await insertar(
+          m,
+          fila.expediente,
+          s.red,
+          s.url,
+          s.handle,
+          {
+            desde: mejor.candidato.dominio,
+          },
+        );
       }
     });
     return guardadas;
@@ -335,7 +382,7 @@ export class WebImportService {
               co.sri_nombre_comercial AS nombre_comercial,
               p.correo
          FROM reservadas r
-         JOIN companias co ON co.expediente = r.expediente
+         JOIN contribuyentes co ON co.expediente = r.expediente AND co.tipo = 'companies'
          LEFT JOIN perfil_comercial p
                 ON p.tipo_sujeto = 'compania' AND p.clave = r.expediente`,
       [TAMANO_LOTE, MAX_INTENTOS],
@@ -343,7 +390,10 @@ export class WebImportService {
   }
 
   /** Deja constancia de qué dominios se conjeturaron, antes de probarlos. */
-  private async guardarCandidatos(expediente: string, lista: Candidato[]): Promise<void> {
+  private async guardarCandidatos(
+    expediente: string,
+    lista: Candidato[],
+  ): Promise<void> {
     for (const c of lista) {
       await this.dataSource.query(
         `INSERT INTO web_candidato (expediente, dominio, origen, orden)
@@ -382,7 +432,11 @@ export class WebImportService {
     );
   }
 
-  private async marcarError(expediente: string, jobId: string, mensaje: string): Promise<void> {
+  private async marcarError(
+    expediente: string,
+    jobId: string,
+    mensaje: string,
+  ): Promise<void> {
     await this.dataSource.query(
       `UPDATE web_consulta
           SET estado = 'error', ultimo_error = $2, job_id = $3, updated_at = now()

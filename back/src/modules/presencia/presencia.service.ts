@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
@@ -49,10 +53,12 @@ export class PresenciaService {
   /** Todo lo que hay de una compañía, propuesto incluido, para la ficha. */
   async deCompania(expediente: string) {
     const [compania] = await this.dataSource.query(
-      `SELECT expediente, nombre, ruc, sri_nombre_comercial FROM companias WHERE expediente = $1`,
+      `SELECT expediente, nombre, ruc, sri_nombre_comercial FROM contribuyentes
+        WHERE tipo = 'companies' AND expediente = $1`,
       [expediente],
     );
-    if (!compania) throw new NotFoundException(`No existe la compañía ${expediente}`);
+    if (!compania)
+      throw new NotFoundException(`No existe la compañía ${expediente}`);
 
     const canales = await this.dataSource.query(
       `SELECT id, canal, valor, handle, revision, fuente, indicios, nota,
@@ -79,7 +85,11 @@ export class PresenciaService {
    * nombre de la compañía son las que más probablemente se confirmen, y ponerlas
    * delante hace que la primera hora de revisión valga más que las siguientes.
    */
-  async porRevisar(opciones: { canal?: string; limite?: number; desde?: string }) {
+  async porRevisar(opciones: {
+    canal?: string;
+    limite?: number;
+    desde?: string;
+  }) {
     const limite = Math.min(Math.max(Number(opciones.limite ?? 50), 1), 500);
     const params: unknown[] = [limite];
     let filtro = '';
@@ -97,7 +107,7 @@ export class PresenciaService {
       `SELECT pc.id, pc.expediente, c.nombre, c.ruc, c.sri_nombre_comercial,
               pc.canal, pc.valor, pc.handle, pc.indicios, pc.creado_en
          FROM presencia_canal pc
-         JOIN companias c ON c.expediente = pc.expediente
+         JOIN contribuyentes c ON c.tipo = 'companies' AND c.expediente = pc.expediente
         WHERE pc.revision = 'propuesto' ${filtro}
         ORDER BY (pc.indicios->>'nombre_en_pagina')::boolean DESC NULLS LAST,
                  pc.expediente, pc.canal
@@ -145,7 +155,16 @@ export class PresenciaService {
         [id, revision, usuario, nota ?? null],
       ),
     );
-    await this.evento(id, fila.expediente, fila.canal, revision, fila.valor, fila.valor, usuario, nota);
+    await this.evento(
+      id,
+      fila.expediente,
+      fila.canal,
+      revision,
+      fila.valor,
+      fila.valor,
+      usuario,
+      nota,
+    );
     return actualizada;
   }
 
@@ -165,10 +184,11 @@ export class PresenciaService {
     const valor = this.normalizar(datos.canal as Canal, datos.valor);
 
     const [existe] = await this.dataSource.query(
-      `SELECT 1 FROM companias WHERE expediente = $1`,
+      `SELECT 1 FROM contribuyentes WHERE tipo = 'companies' AND expediente = $1`,
       [expediente],
     );
-    if (!existe) throw new NotFoundException(`No existe la compañía ${expediente}`);
+    if (!existe)
+      throw new NotFoundException(`No existe la compañía ${expediente}`);
 
     const [fila] = await this.dataSource.query(
       `INSERT INTO presencia_canal
@@ -180,9 +200,25 @@ export class PresenciaService {
              nota = COALESCE(EXCLUDED.nota, presencia_canal.nota),
              actualizado_por = EXCLUDED.actualizado_por, actualizado_en = now()
        RETURNING *`,
-      [expediente, datos.canal, valor, datos.handle ?? null, datos.nota ?? null, usuario],
+      [
+        expediente,
+        datos.canal,
+        valor,
+        datos.handle ?? null,
+        datos.nota ?? null,
+        usuario,
+      ],
     );
-    await this.evento(fila.id, expediente, datos.canal, 'alta', null, valor, usuario, datos.nota);
+    await this.evento(
+      fila.id,
+      expediente,
+      datos.canal,
+      'alta',
+      null,
+      valor,
+      usuario,
+      datos.nota,
+    );
     return fila;
   }
 
@@ -194,7 +230,9 @@ export class PresenciaService {
   ) {
     const fila = await this.exigirFila(id);
     const valor =
-      datos.valor !== undefined ? this.normalizar(fila.canal as Canal, datos.valor) : fila.valor;
+      datos.valor !== undefined
+        ? this.normalizar(fila.canal as Canal, datos.valor)
+        : fila.valor;
 
     const actualizada = primeraFila(
       await this.dataSource.query(
@@ -207,7 +245,16 @@ export class PresenciaService {
         [id, valor, datos.handle ?? null, datos.nota ?? null, usuario],
       ),
     );
-    await this.evento(id, fila.expediente, fila.canal, 'edicion', fila.valor, valor, usuario, datos.nota);
+    await this.evento(
+      id,
+      fila.expediente,
+      fila.canal,
+      'edicion',
+      fila.valor,
+      valor,
+      usuario,
+      datos.nota,
+    );
     return actualizada;
   }
 
@@ -219,10 +266,21 @@ export class PresenciaService {
    */
   async borrar(id: number, usuario: string, nota?: string) {
     const fila = await this.exigirFila(id);
-    await this.dataSource.query(`DELETE FROM presencia_canal WHERE id = $1`, [id]);
+    await this.dataSource.query(`DELETE FROM presencia_canal WHERE id = $1`, [
+      id,
+    ]);
     // El evento se guarda SIN clave foránea a la fila, justo para que sobreviva
     // a este borrado: si no, borrar haría desaparecer también su historial.
-    await this.evento(null, fila.expediente, fila.canal, 'borrado', fila.valor, null, usuario, nota);
+    await this.evento(
+      null,
+      fila.expediente,
+      fila.canal,
+      'borrado',
+      fila.valor,
+      null,
+      usuario,
+      nota,
+    );
     return { borrado: true, id };
   }
 
@@ -255,11 +313,13 @@ export class PresenciaService {
    */
   private normalizar(canal: Canal, valor: string): string {
     const bruto = (valor ?? '').trim();
-    if (bruto === '') throw new BadRequestException('El valor no puede estar vacío.');
+    if (bruto === '')
+      throw new BadRequestException('El valor no puede estar vacío.');
 
     if (canal === 'whatsapp' || canal === 'telegram') {
       const soloDigitos = bruto.replace(/[^\d]/g, '');
-      if (soloDigitos.length >= 7 && soloDigitos.length <= 15) return soloDigitos;
+      if (soloDigitos.length >= 7 && soloDigitos.length <= 15)
+        return soloDigitos;
     }
 
     const conEsquema = /^https?:\/\//i.test(bruto) ? bruto : `https://${bruto}`;
@@ -292,7 +352,16 @@ export class PresenciaService {
       `INSERT INTO presencia_evento
          (canal_id, expediente, canal, accion, valor_antes, valor_despues, usuario, nota)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [canalId, expediente, canal, accion, antes, despues, usuario, nota ?? null],
+      [
+        canalId,
+        expediente,
+        canal,
+        accion,
+        antes,
+        despues,
+        usuario,
+        nota ?? null,
+      ],
     );
   }
 }

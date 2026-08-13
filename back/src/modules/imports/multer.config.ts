@@ -51,8 +51,8 @@ export function crearMulterConfig(
         cb(
           new BadRequestException(
             `Sólo se aceptan archivos ${extensiones.join(' o ')} ` +
-              `(recibido "${ext || 'sin extensión'}").` +
-              (ayuda ? ` ${ayuda}` : ''),
+            `(recibido "${ext || 'sin extensión'}").` +
+            (ayuda ? ` ${ayuda}` : ''),
           ),
           false,
         );
@@ -89,8 +89,8 @@ export const multerConfigTurismo = crearMulterConfig(['.xlsx'], 64 * 1024 * 1024
  * error críptico a mitad del parseo en vez de uno claro en la subida.
  */
 export const multerConfigCatastros = crearMulterConfig(
-  ['.xlsx'],
+  ['.csv'],
   64 * 1024 * 1024,
   'El SRI publica varios catastros en el formato antiguo .xls: ábrelo en Excel o LibreOffice ' +
-    'y guárdalo como "Libro de Excel (.xlsx)" antes de subirlo.',
+  'y guárdalo como "Libro de Excel (.xlsx)" antes de subirlo.',
 );

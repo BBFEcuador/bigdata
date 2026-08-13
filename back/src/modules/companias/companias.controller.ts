@@ -4,14 +4,13 @@ import { QueryCompaniasDto } from './dto/query-companias.dto';
 
 @Controller('companias')
 export class CompaniasController {
-  constructor(private readonly service: CompaniasService) {}
+  constructor(private readonly service: CompaniasService) { }
 
   @Get()
   listar(@Query() query: QueryCompaniasDto) {
     return this.service.listar(query);
   }
 
-  /** Valores para los desplegables de filtro del frontend. */
   @Get('facetas')
   facetas() {
     return this.service.facetas();
@@ -24,7 +23,6 @@ export class CompaniasController {
     return c;
   }
 
-  /** Ficha completa: directorio, datos del SRI, establecimientos y ejercicios. */
   @Get(':expediente/ficha')
   async ficha(@Param('expediente') expediente: string) {
     const ficha = await this.service.fichaCompleta(expediente);

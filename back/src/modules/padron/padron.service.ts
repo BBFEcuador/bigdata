@@ -48,17 +48,21 @@ export class PadronService {
             WHERE estado_contribuyente = 'ACTIVO' AND obligado_contabilidad IS NOT TRUE
               AND (turismo_registros IS NOT NULL)
           )::bigint AS no_obligadas_en_turismo
-        FROM persona_natural
+        FROM contribuyentes
+       WHERE tipo IN ('natural_contable', 'natural_no_contable')
       )
       SELECT pn.*,
-        (SELECT count(*) FROM sociedad_no_supervisada)::bigint AS no_supervisadas,
+        (SELECT count(*) FROM contribuyentes WHERE tipo = 'sociedad_no_supervisada')::bigint AS no_supervisadas,
         (SELECT count(*) FROM establecimiento)::bigint         AS establecimientos,
-        (SELECT count(*) FROM companias WHERE sri_job_id IS NOT NULL)::bigint AS companias_enriquecidas
+        (SELECT count(*) FROM contribuyentes
+          WHERE tipo = 'companies' AND sri_job_id IS NOT NULL)::bigint AS companias_enriquecidas
       FROM pn
     `);
     // Los años se envían con el resumen para que el desplegable de catastro
     // ofrezca sólo ejercicios que existen de verdad.
-    const aniosCatastro = await aniosPorCatastro((sql) => this.dataSource.query(sql));
+    const aniosCatastro = await aniosPorCatastro((sql) =>
+      this.dataSource.query(sql),
+    );
     return {
       personas: Number(r.total),
       noSupervisadas: Number(r.no_supervisadas),
@@ -82,14 +86,21 @@ export class PadronService {
    * Con 7,6 millones de filas, `OFFSET` y `COUNT(*)` sin acotar se degradan en
    * las páginas profundas, igual que en compañías.
    */
-  async listar(tabla: 'persona_natural' | 'sociedad_no_supervisada', q: QueryPadronDto) {
+  async listar(
+    tipo: 'personas' | 'sociedad_no_supervisada',
+    q: QueryPadronDto,
+  ) {
     const limit = q.limit ?? 50;
-    const where: string[] = [];
+    const where: string[] = [
+      tipo === 'personas'
+        ? `p.tipo IN ('natural_contable', 'natural_no_contable')`
+        : `p.tipo = 'sociedad_no_supervisada'`,
+    ];
     const params: unknown[] = [];
 
     if (q.nombre) {
       params.push(`%${q.nombre}%`);
-      where.push(`p.razon_social ILIKE $${params.length}`);
+      where.push(`p.nombre ILIKE $${params.length}`);
     }
     if (q.ruc) {
       params.push(`${q.ruc}%`);
@@ -125,7 +136,12 @@ export class PadronService {
     // Catastros públicos, enlazados por RUC. Es el mismo filtro que usa el
     // listado de compañías: las tres tablas llevan las mismas columnas porque
     // el catastro reparte sus RUC entre las tres poblaciones.
-    const catastro = condicionCatastroPosicional('p', q.catastro, q.catastroAnio, params.length + 1);
+    const catastro = condicionCatastroPosicional(
+      'p',
+      q.catastro,
+      q.catastroAnio,
+      params.length + 1,
+    );
     if (catastro) {
       if (catastro.usaAnio) params.push(q.catastroAnio);
       where.push(catastro.sql);
@@ -142,7 +158,7 @@ export class PadronService {
     // decide cuáles enseña, pero la API no puede ser la que recorte: el padrón
     // sólo tiene 13 campos por contribuyente y devolverlos cuesta lo mismo.
     const filas = await this.dataSource.query(
-      `SELECT p.ruc, p.razon_social, p.jurisdiccion, p.estado_contribuyente,
+      `SELECT p.ruc, p.nombre AS razon_social, p.jurisdiccion, p.estado_contribuyente,
               p.clase_contribuyente, p.fecha_inicio_actividades, p.fecha_actualizacion,
               p.fecha_suspension_definitiva, p.fecha_reinicio_actividades,
               p.obligado_contabilidad, p.agente_retencion, p.contribuyente_especial,
@@ -156,7 +172,7 @@ export class PadronService {
                 WHERE e.ruc = p.ruc ORDER BY e.numero LIMIT 1) AS actividad_principal,
               (SELECT e.codigo_ciiu FROM establecimiento e
                 WHERE e.ruc = p.ruc ORDER BY e.numero LIMIT 1) AS ciiu_principal
-         FROM ${tabla} p
+         FROM contribuyentes p
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY p.ruc
         LIMIT $${params.length}`,
@@ -164,32 +180,37 @@ export class PadronService {
     );
 
     const hayMas = filas.length > limit;
-    const datos = (hayMas ? filas.slice(0, limit) : filas).map((f: Record<string, unknown>) => ({
-      ruc: f.ruc,
-      razonSocial: f.razon_social,
-      jurisdiccion: f.jurisdiccion,
-      estadoContribuyente: f.estado_contribuyente,
-      claseContribuyente: f.clase_contribuyente,
-      fechaInicioActividades: f.fecha_inicio_actividades,
-      fechaActualizacion: f.fecha_actualizacion,
-      fechaSuspensionDefinitiva: f.fecha_suspension_definitiva,
-      fechaReinicioActividades: f.fecha_reinicio_actividades,
-      obligadoContabilidad: f.obligado_contabilidad,
-      agenteRetencion: f.agente_retencion,
-      contribuyenteEspecial: f.contribuyente_especial,
-      numEstablecimientos: Number(f.num_establecimientos ?? 0),
-      provincias: f.provincias,
-      actividadPrincipal: f.actividad_principal,
-      ciiuPrincipal: f.ciiu_principal,
-      turismoRegistros: f.turismo_registros,
-      turismoActividades: f.turismo_actividades,
-      turismoRatificado: f.turismo_ratificado,
-      exportadorBienesIrAnios: f.exportador_bienes_ir_anios,
-      exportadorBienesIvaAnios: f.exportador_bienes_iva_anios,
-      exportadorServiciosIvaAnios: f.exportador_servicios_iva_anios,
-    }));
+    const datos = (hayMas ? filas.slice(0, limit) : filas).map(
+      (f: Record<string, unknown>) => ({
+        ruc: f.ruc,
+        razonSocial: f.razon_social,
+        jurisdiccion: f.jurisdiccion,
+        estadoContribuyente: f.estado_contribuyente,
+        claseContribuyente: f.clase_contribuyente,
+        fechaInicioActividades: f.fecha_inicio_actividades,
+        fechaActualizacion: f.fecha_actualizacion,
+        fechaSuspensionDefinitiva: f.fecha_suspension_definitiva,
+        fechaReinicioActividades: f.fecha_reinicio_actividades,
+        obligadoContabilidad: f.obligado_contabilidad,
+        agenteRetencion: f.agente_retencion,
+        contribuyenteEspecial: f.contribuyente_especial,
+        numEstablecimientos: Number(f.num_establecimientos ?? 0),
+        provincias: f.provincias,
+        actividadPrincipal: f.actividad_principal,
+        ciiuPrincipal: f.ciiu_principal,
+        turismoRegistros: f.turismo_registros,
+        turismoActividades: f.turismo_actividades,
+        turismoRatificado: f.turismo_ratificado,
+        exportadorBienesIrAnios: f.exportador_bienes_ir_anios,
+        exportadorBienesIvaAnios: f.exportador_bienes_iva_anios,
+        exportadorServiciosIvaAnios: f.exportador_servicios_iva_anios,
+      }),
+    );
 
-    return { datos, cursorSiguiente: hayMas ? datos[datos.length - 1].ruc : null };
+    return {
+      datos,
+      cursorSiguiente: hayMas ? datos[datos.length - 1].ruc : null,
+    };
   }
 
   /**
@@ -202,7 +223,7 @@ export class PadronService {
   async establecimientos(ruc: string) {
     const [establecimientos, turismo, catastros] = await Promise.all([
       this.dataSource.query(
-        `SELECT numero, tipo_titular, nombre_comercial, estado,
+        `SELECT numero, titular_id, tipo_titular, nombre_comercial, estado,
                 provincia, canton, parroquia, codigo_ciiu, actividad
            FROM establecimiento WHERE ruc = $1 ORDER BY numero`,
         [ruc],

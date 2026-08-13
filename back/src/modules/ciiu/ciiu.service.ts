@@ -35,18 +35,23 @@ export class CiiuService {
     if (q.conConteo !== 'true') return { datos, total: datos.length };
 
     // Un solo agregado para todas las filas, en vez de una consulta por fila.
-    const conteos: { codigo_supercias: string; n: string }[] = await this.repo.query(
-      `SELECT ciiu_nivel_6 AS codigo_supercias, count(*)::bigint AS n
-       FROM companias
-       WHERE ciiu_nivel_6 IS NOT NULL AND ausente_desde_job IS NULL
+    const conteos: { codigo_supercias: string; n: string }[] =
+      await this.repo.query(
+        `SELECT ciiu_nivel_6 AS codigo_supercias, count(*)::bigint AS n
+       FROM contribuyentes
+       WHERE tipo = 'companies' AND ciiu_nivel_6 IS NOT NULL AND ausente_desde_job IS NULL
        GROUP BY ciiu_nivel_6`,
+      );
+    const porCodigo = new Map(
+      conteos.map((c) => [c.codigo_supercias, Number(c.n)]),
     );
-    const porCodigo = new Map(conteos.map((c) => [c.codigo_supercias, Number(c.n)]));
 
     return {
       datos: datos.map((d) => ({
         ...d,
-        companias: d.codigoSupercias ? porCodigo.get(d.codigoSupercias) ?? 0 : null,
+        companias: d.codigoSupercias
+          ? (porCodigo.get(d.codigoSupercias) ?? 0)
+          : null,
       })),
       total: datos.length,
     };
@@ -54,14 +59,20 @@ export class CiiuService {
 
   /** Detalle con su padre, sus hijos directos y cuántas compañías tiene. */
   async detalle(codigo: string) {
-    const actividad = await this.repo.findOne({ where: { codigo: codigo.toUpperCase() } });
-    if (!actividad) throw new NotFoundException(`No existe la actividad ${codigo}`);
+    const actividad = await this.repo.findOne({
+      where: { codigo: codigo.toUpperCase() },
+    });
+    if (!actividad)
+      throw new NotFoundException(`No existe la actividad ${codigo}`);
 
     const [padre, hijos, conteo] = await Promise.all([
       actividad.codigoPadre
         ? this.repo.findOne({ where: { codigo: actividad.codigoPadre } })
         : Promise.resolve(null),
-      this.repo.find({ where: { codigoPadre: actividad.codigo }, order: { codigo: 'ASC' } }),
+      this.repo.find({
+        where: { codigoPadre: actividad.codigo },
+        order: { codigo: 'ASC' },
+      }),
       this.contarCompanias(actividad.codigo),
     ]);
 
@@ -78,8 +89,8 @@ export class CiiuService {
   private async contarCompanias(codigo: string): Promise<number> {
     const [r] = await this.repo.query(
       `SELECT count(*)::bigint AS n
-       FROM companias
-       WHERE ausente_desde_job IS NULL
+       FROM contribuyentes
+       WHERE tipo = 'companies' AND ausente_desde_job IS NULL
          AND replace(ciiu_nivel_6, '.', '') LIKE $1`,
       [`${codigo}%`],
     );

@@ -32,7 +32,10 @@ export class TurismoImportService {
 
   enqueue(jobId: string): void {
     void this.run(jobId).catch((err) => {
-      this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
+      this.logger.error(
+        `Job ${jobId} falló de forma inesperada: ${err?.message}`,
+        err?.stack,
+      );
     });
   }
 
@@ -43,7 +46,10 @@ export class TurismoImportService {
     const t0 = Date.now();
 
     try {
-      await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
+      await this.jobsService.update(jobId, {
+        status: 'parsing',
+        startedAt: new Date(),
+      });
 
       const clave = `import_job:${jobId}`;
       const [{ ok }] = await this.dataSource.query(
@@ -63,7 +69,11 @@ export class TurismoImportService {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);
       await this.jobsService
-        .update(jobId, { status: 'failed', errorMessage: mensaje, finishedAt: new Date() })
+        .update(jobId, {
+          status: 'failed',
+          errorMessage: mensaje,
+          finishedAt: new Date(),
+        })
         .catch(() => undefined);
     } finally {
       this.jobsService.forgetProgress(jobId);
@@ -71,13 +81,20 @@ export class TurismoImportService {
     }
   }
 
-  private async procesar(jobId: string, ruta: string, modo: string, t0: number): Promise<void> {
+  private async procesar(
+    jobId: string,
+    ruta: string,
+    modo: string,
+    t0: number,
+  ): Promise<void> {
     const filas: SourceRow[] = [];
     for await (const fila of readRows(ruta)) filas.push(fila);
 
     const { registros, rechazos, avisos, duplicados } = parsearTurismo(filas);
     if (registros.length === 0) {
-      throw new Error('El archivo no contiene ningún registro turístico válido.');
+      throw new Error(
+        'El archivo no contiene ningún registro turístico válido.',
+      );
     }
 
     const incidencias = [...rechazos, ...avisos].map((i) => ({
@@ -86,7 +103,8 @@ export class TurismoImportService {
       motivo: i.motivo,
       raw: i.raw,
     }));
-    if (incidencias.length) await this.jobsService.saveRejects(jobId, incidencias);
+    if (incidencias.length)
+      await this.jobsService.saveRejects(jobId, incidencias);
 
     await this.jobsService.reportProgress(
       jobId,
@@ -104,7 +122,11 @@ export class TurismoImportService {
 
     const claves = registros.map((r) => r.numeroRegistro);
     const { missing, vivos } = await this.contarAusentes(claves);
-    if (modo === 'snapshot_completo' && vivos > 0 && missing / vivos > UMBRAL_AUSENCIA) {
+    if (
+      modo === 'snapshot_completo' &&
+      vivos > 0 &&
+      missing / vivos > UMBRAL_AUSENCIA
+    ) {
       throw new Error(
         `El archivo dejaría fuera ${missing} de ${vivos} registros vigentes ` +
           `(${((missing / vivos) * 100).toFixed(1)}%). Parece un archivo incompleto; ` +
@@ -119,11 +141,15 @@ export class TurismoImportService {
       insertadas += r.insertadas;
       actualizadas += r.actualizadas;
       await this.jobsService.reportProgress(jobId, {
-        progressPct: 40 + Math.round((40 * (i + LOTE_UPSERT)) / registros.length),
+        progressPct:
+          40 + Math.round((40 * (i + LOTE_UPSERT)) / registros.length),
       });
     }
 
-    const marcadas = modo === 'snapshot_completo' ? await this.marcarAusentes(jobId, claves) : 0;
+    const marcadas =
+      modo === 'snapshot_completo'
+        ? await this.marcarAusentes(jobId, claves)
+        : 0;
 
     await this.jobsService.reportProgress(jobId, { progressPct: 85 }, true);
     await this.clasificarTitulares();
@@ -274,7 +300,9 @@ export class TurismoImportService {
     };
   }
 
-  private async contarAusentes(claves: string[]): Promise<{ missing: number; vivos: number }> {
+  private async contarAusentes(
+    claves: string[],
+  ): Promise<{ missing: number; vivos: number }> {
     const [r] = await this.dataSource.query(
       `SELECT
          count(*) FILTER (WHERE numero_registro <> ALL($1::text[]))::bigint AS missing,
@@ -286,7 +314,10 @@ export class TurismoImportService {
     return { missing: Number(r?.missing ?? 0), vivos: Number(r?.vivos ?? 0) };
   }
 
-  private async marcarAusentes(jobId: string, claves: string[]): Promise<number> {
+  private async marcarAusentes(
+    jobId: string,
+    claves: string[],
+  ): Promise<number> {
     const res = await this.dataSource.query(
       `UPDATE turismo_establecimiento
        SET ausente_desde_job = $1, updated_at = now()
@@ -312,10 +343,13 @@ export class TurismoImportService {
       FROM (
         SELECT x.numero_registro,
                CASE
-                 WHEN EXISTS (SELECT 1 FROM companias c WHERE c.ruc = x.ruc) THEN 'compania'
-                 WHEN EXISTS (SELECT 1 FROM persona_natural p WHERE p.ruc = x.ruc)
+                 WHEN EXISTS (SELECT 1 FROM contribuyentes c
+                                WHERE c.tipo = 'companies' AND c.ruc = x.ruc) THEN 'compania'
+                 WHEN EXISTS (SELECT 1 FROM contribuyentes p
+                                WHERE p.tipo IN ('natural_contable', 'natural_no_contable') AND p.ruc = x.ruc)
                    THEN 'persona_natural'
-                 WHEN EXISTS (SELECT 1 FROM sociedad_no_supervisada s WHERE s.ruc = x.ruc)
+                 WHEN EXISTS (SELECT 1 FROM contribuyentes s
+                                WHERE s.tipo = 'sociedad_no_supervisada' AND s.ruc = x.ruc)
                    THEN 'sociedad_no_supervisada'
                  ELSE 'desconocido'
                END AS tipo
@@ -330,8 +364,9 @@ export class TurismoImportService {
   private async rucsAmbiguos(): Promise<number> {
     const [r] = await this.dataSource.query(`
       SELECT count(*)::bigint AS n FROM (
-        SELECT c.ruc FROM companias c
-        WHERE c.ruc IN (SELECT ruc FROM turismo_establecimiento WHERE ausente_desde_job IS NULL)
+        SELECT c.ruc FROM contribuyentes c
+        WHERE c.tipo = 'companies'
+          AND c.ruc IN (SELECT ruc FROM turismo_establecimiento WHERE ausente_desde_job IS NULL)
         GROUP BY c.ruc HAVING count(*) > 1
       ) x
     `);
@@ -346,22 +381,30 @@ export class TurismoImportService {
    * catastro: un establecimiento que se da de baja tiene que dejar de contar,
    * o la ficha seguiría diciendo "registrado en turismo" para siempre.
    */
-  private async propagarATitulares(jobId: string): Promise<Record<string, number>> {
-    const tablas = ['companias', 'persona_natural', 'sociedad_no_supervisada'];
+  private async propagarATitulares(
+    jobId: string,
+  ): Promise<Record<string, number>> {
+    const titulares = [
+      { clave: 'companies', salida: 'companias' },
+      { clave: 'natural_contable', salida: 'persona_natural' },
+      { clave: 'natural_no_contable', salida: 'persona_natural' },
+      { clave: 'sociedad_no_supervisada', salida: 'sociedad_no_supervisada' },
+    ];
     const out: Record<string, number> = {};
 
-    for (const tabla of tablas) {
+    for (const titular of titulares) {
       // En `companias` un RUC puede apuntar a dos expedientes (8 casos en toda
       // la base). Como no se puede saber cuál de los dos es el del catastro, no
       // se enlaza ninguno: es la misma regla del importador del padrón.
       const filtroAmbiguos =
-        tabla === 'companias'
-          ? `AND (SELECT count(*) FROM companias c2 WHERE c2.ruc = a.ruc) = 1`
+        titular.clave === 'companies'
+          ? `AND (SELECT count(*) FROM contribuyentes c2
+                  WHERE c2.tipo = 'companies' AND c2.ruc = a.ruc) = 1`
           : '';
 
       const res = await this.dataSource.query(
         `
-        UPDATE ${tabla} d SET
+        UPDATE contribuyentes d SET
           turismo_registros = a.n,
           turismo_actividades = a.actividades,
           turismo_clasificaciones = a.clasificaciones,
@@ -378,25 +421,27 @@ export class TurismoImportService {
           WHERE ausente_desde_job IS NULL
           GROUP BY ruc
         ) a
-        WHERE d.ruc = a.ruc
+        WHERE d.tipo = $2 AND d.ruc = a.ruc
           ${filtroAmbiguos}
           AND (d.turismo_registros IS DISTINCT FROM a.n
             OR d.turismo_actividades IS DISTINCT FROM a.actividades
             OR d.turismo_clasificaciones IS DISTINCT FROM a.clasificaciones
             OR d.turismo_ratificado IS DISTINCT FROM a.ratificado)
         `,
-        [jobId],
+        [jobId, titular.clave],
       );
-      out[tabla] = Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0;
+      out[titular.salida] =
+        (out[titular.salida] ?? 0) +
+        (Array.isArray(res) && typeof res[1] === 'number' ? res[1] : 0);
 
       await this.dataSource.query(`
-        UPDATE ${tabla} d SET
+        UPDATE contribuyentes d SET
           turismo_registros = NULL,
           turismo_actividades = NULL,
           turismo_clasificaciones = NULL,
           turismo_ratificado = NULL,
           updated_at = now()
-        WHERE d.turismo_registros IS NOT NULL
+        WHERE d.tipo = '${titular.clave}' AND d.turismo_registros IS NOT NULL
           AND NOT EXISTS (
             SELECT 1 FROM turismo_establecimiento te
             WHERE te.ruc = d.ruc AND te.ausente_desde_job IS NULL

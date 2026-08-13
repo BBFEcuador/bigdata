@@ -1,9 +1,26 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity('companias')
+/** Población a la que pertenece un contribuyente. */
+export type TipoContribuyente =
+  | 'companies'
+  | 'natural_contable'
+  | 'natural_no_contable'
+  | 'sociedad_no_supervisada';
+
+/**
+ * La entidad conserva el nombre histórico `Compania` porque lo consumen
+ * varios módulos, pero apunta a la única tabla de sujetos del sistema.
+ */
+@Entity('contribuyentes')
 export class Compania {
-  @PrimaryColumn({ type: 'text' })
-  expediente: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'text' })
+  tipo: TipoContribuyente;
+
+  @Column({ type: 'text', nullable: true })
+  expediente: string | null;
 
   @Column({ type: 'text', nullable: true })
   ruc: string | null;
@@ -11,14 +28,48 @@ export class Compania {
   @Column({ type: 'text' })
   nombre: string;
 
+  @Column({ type: 'text', nullable: true })
+  jurisdiccion: string | null;
+
+  @Column({ type: 'text', name: 'estado_contribuyente', nullable: true })
+  estadoContribuyente: string | null;
+
+  @Column({ type: 'text', name: 'clase_contribuyente', nullable: true })
+  claseContribuyente: string | null;
+
+  @Column({ type: 'date', name: 'fecha_inicio_actividades', nullable: true })
+  fechaInicioActividades: string | null;
+
+  @Column({ type: 'date', name: 'fecha_actualizacion', nullable: true })
+  fechaActualizacion: string | null;
+
+  @Column({ type: 'date', name: 'fecha_suspension_definitiva', nullable: true })
+  fechaSuspensionDefinitiva: string | null;
+
+  @Column({ type: 'date', name: 'fecha_reinicio_actividades', nullable: true })
+  fechaReinicioActividades: string | null;
+
+  @Column({ type: 'boolean', name: 'obligado_contabilidad', nullable: true })
+  obligadoContabilidad: boolean | null;
+
+  @Column({ type: 'boolean', name: 'agente_retencion', nullable: true })
+  agenteRetencion: boolean | null;
+
+  @Column({ type: 'boolean', name: 'contribuyente_especial', nullable: true })
+  contribuyenteEspecial: boolean | null;
+
+  @Column({ type: 'smallint', name: 'num_establecimientos', nullable: true })
+  numEstablecimientos: number | null;
+
+  // Campos específicos de Supercias.
   @Column({ type: 'text', name: 'situacion_legal', nullable: true })
   situacionLegal: string | null;
 
   @Column({ type: 'date', name: 'fecha_constitucion', nullable: true })
   fechaConstitucion: string | null;
 
-  @Column({ type: 'text', nullable: true })
-  tipo: string | null;
+  @Column({ type: 'text', name: 'tipo_compania', nullable: true })
+  tipoCompania: string | null;
 
   @Column({ type: 'text', nullable: true })
   pais: string | null;
@@ -81,25 +132,42 @@ export class Compania {
   @Column({ type: 'boolean', name: 'presento_balance_inicial', nullable: true })
   presentoBalanceInicial: boolean | null;
 
-  @Column({ type: 'date', name: 'fecha_presentacion_balance_inicial', nullable: true })
+  @Column({
+    type: 'date',
+    name: 'fecha_presentacion_balance_inicial',
+    nullable: true,
+  })
   fechaPresentacionBalanceInicial: string | null;
 
+  // Enriquecimientos conservados con el prefijo histórico de la fuente.
   @Column({ type: 'text', name: 'sri_estado_contribuyente', nullable: true })
   sriEstadoContribuyente: string | null;
 
   @Column({ type: 'text', name: 'sri_clase_contribuyente', nullable: true })
   sriClaseContribuyente: string | null;
 
-  @Column({ type: 'date', name: 'sri_fecha_inicio_actividades', nullable: true })
+  @Column({
+    type: 'date',
+    name: 'sri_fecha_inicio_actividades',
+    nullable: true,
+  })
   sriFechaInicioActividades: string | null;
 
-  @Column({ type: 'boolean', name: 'sri_obligado_contabilidad', nullable: true })
+  @Column({
+    type: 'boolean',
+    name: 'sri_obligado_contabilidad',
+    nullable: true,
+  })
   sriObligadoContabilidad: boolean | null;
 
   @Column({ type: 'boolean', name: 'sri_agente_retencion', nullable: true })
   sriAgenteRetencion: boolean | null;
 
-  @Column({ type: 'boolean', name: 'sri_contribuyente_especial', nullable: true })
+  @Column({
+    type: 'boolean',
+    name: 'sri_contribuyente_especial',
+    nullable: true,
+  })
   sriContribuyenteEspecial: boolean | null;
 
   @Column({ type: 'text', name: 'sri_nombre_comercial', nullable: true })
@@ -108,7 +176,11 @@ export class Compania {
   @Column({ type: 'text', name: 'sri_parroquia', nullable: true })
   sriParroquia: string | null;
 
-  @Column({ type: 'smallint', name: 'sri_num_establecimientos', nullable: true })
+  @Column({
+    type: 'smallint',
+    name: 'sri_num_establecimientos',
+    nullable: true,
+  })
   sriNumEstablecimientos: number | null;
 
   @Column({ type: 'uuid', name: 'sri_job_id', nullable: true })
@@ -117,23 +189,54 @@ export class Compania {
   @Column({ type: 'smallint', name: 'turismo_registros', nullable: true })
   turismoRegistros: number | null;
 
-  @Column({ type: 'text', name: 'turismo_actividades', array: true, nullable: true })
+  @Column({
+    type: 'text',
+    name: 'turismo_actividades',
+    array: true,
+    nullable: true,
+  })
   turismoActividades: string[] | null;
 
-  @Column({ type: 'text', name: 'turismo_clasificaciones', array: true, nullable: true })
+  @Column({
+    type: 'text',
+    name: 'turismo_clasificaciones',
+    array: true,
+    nullable: true,
+  })
   turismoClasificaciones: string[] | null;
 
   @Column({ type: 'boolean', name: 'turismo_ratificado', nullable: true })
   turismoRatificado: boolean | null;
 
-  @Column({ type: 'smallint', name: 'exportador_bienes_iva_anios', array: true, nullable: true })
+  @Column({ type: 'uuid', name: 'turismo_job_id', nullable: true })
+  turismoJobId: string | null;
+
+  @Column({
+    type: 'smallint',
+    name: 'exportador_bienes_iva_anios',
+    array: true,
+    nullable: true,
+  })
   exportadorBienesIvaAnios: number[] | null;
 
-  @Column({ type: 'smallint', name: 'exportador_servicios_iva_anios', array: true, nullable: true })
+  @Column({
+    type: 'smallint',
+    name: 'exportador_servicios_iva_anios',
+    array: true,
+    nullable: true,
+  })
   exportadorServiciosIvaAnios: number[] | null;
 
-  @Column({ type: 'smallint', name: 'exportador_bienes_ir_anios', array: true, nullable: true })
+  @Column({
+    type: 'smallint',
+    name: 'exportador_bienes_ir_anios',
+    array: true,
+    nullable: true,
+  })
   exportadorBienesIrAnios: number[] | null;
+
+  @Column({ type: 'uuid', name: 'catastros_job_id', nullable: true })
+  catastrosJobId: string | null;
 
   @Column({ type: 'uuid', name: 'row_hash' })
   rowHash: string;

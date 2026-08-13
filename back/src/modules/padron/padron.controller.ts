@@ -19,7 +19,7 @@ export class PadronController {
   /** Personas naturales. Tienen su propio endpoint y nunca salen mezcladas. */
   @Get('personas')
   personas(@Query() query: QueryPadronDto) {
-    return this.service.listar('persona_natural', query);
+    return this.service.listar('personas', query);
   }
 
   /** Sociedades del SRI sin expediente en la Superintendencia. */
