@@ -1,10 +1,5 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-/**
- * Entidad de consulta. El importador NO pasa por aquí: escribe con el cliente
- * `pg` directo vía COPY. Esta entidad existe para el listado, el detalle y como
- * documentación del esquema.
- */
 @Entity('companias')
 export class Compania {
   @PrimaryColumn({ type: 'text' })
@@ -61,11 +56,6 @@ export class Compania {
   @Column({ type: 'text', nullable: true })
   cargo: string | null;
 
-  /**
-   * `pg` devuelve `numeric` como string para no perder precisión. Sin este
-   * transformer el importe llega al frontend como "1234567.89" y cualquier
-   * `.toFixed()` revienta.
-   */
   @Column({
     type: 'numeric',
     precision: 18,
@@ -93,13 +83,6 @@ export class Compania {
 
   @Column({ type: 'date', name: 'fecha_presentacion_balance_inicial', nullable: true })
   fechaPresentacionBalanceInicial: string | null;
-
-  // ------------------------------------------------------ padrón del SRI
-  //
-  // Columnas añadidas por el importador del SRI, nunca por el directorio. Un
-  // NULL aquí significa "esta compañía no se cruzó con el padrón" —RUC vacío,
-  // ausente del padrón, o duplicado y por tanto no enlazado—, no "el SRI dice
-  // que no". `sriJobId` permite distinguir ambos casos.
 
   @Column({ type: 'text', name: 'sri_estado_contribuyente', nullable: true })
   sriEstadoContribuyente: string | null;
@@ -131,16 +114,6 @@ export class Compania {
   @Column({ type: 'uuid', name: 'sri_job_id', nullable: true })
   sriJobId: string | null;
 
-  // ------------------------------------------------ catastros públicos
-  //
-  // Resumen de los catastros del Ministerio de Turismo y del SRI, materializado
-  // por sus importadores. El detalle vive en `turismo_establecimiento` y
-  // `catastro_sri`; aquí sólo está lo que hace falta para filtrar un listado.
-  //
-  // Los años van en un array a propósito: "exportó hasta 2022 y dejó de
-  // hacerlo" es una señal distinta de "no exportó nunca", y un booleano las
-  // confundiría.
-
   @Column({ type: 'smallint', name: 'turismo_registros', nullable: true })
   turismoRegistros: number | null;
 
@@ -150,7 +123,6 @@ export class Compania {
   @Column({ type: 'text', name: 'turismo_clasificaciones', array: true, nullable: true })
   turismoClasificaciones: string[] | null;
 
-  /** ¿Alguno de sus registros turísticos está RATIFICADO (y no sólo pendiente)? */
   @Column({ type: 'boolean', name: 'turismo_ratificado', nullable: true })
   turismoRatificado: boolean | null;
 
@@ -172,7 +144,6 @@ export class Compania {
   @Column({ type: 'uuid', name: 'ultimo_job_id', nullable: true })
   ultimoJobId: string | null;
 
-  /** Job en el que se detectó que la compañía ya no venía en el archivo. */
   @Column({ type: 'uuid', name: 'ausente_desde_job', nullable: true })
   ausenteDesdeJob: string | null;
 

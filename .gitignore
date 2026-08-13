@@ -41,3 +41,6 @@ Thumbs.db
 # Archivos subidos y fixtures generados: cientos de MB por archivo
 storage/
 *.xlsx
+/back/.agents
+/back/AGENTS.md
+/back/skills-lock.json

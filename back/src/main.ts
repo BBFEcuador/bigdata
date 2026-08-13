@@ -8,12 +8,12 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: true,
     credentials: true,
   });
 
-  await app.listen(3001, '0.0.0.0', () => {
-    console.log('🚀 Backend corriendo en: http://localhost:3001');
-  });
+  // app.enableCors();
+
+  await app.listen(3001);
 }
 bootstrap();

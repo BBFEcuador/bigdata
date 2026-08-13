@@ -23,20 +23,13 @@ import { ScrapingModule } from './modules/scraping/scraping.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
+      host: process.env.DB_HOST || '192.168.100.9',
       port: parseInt(process.env.DB_PORT, 10) || 5432,
-      username: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
+      username: process.env.DB_USER || 'myuser',
+      password: process.env.DB_PASSWORD || 'secret',
       database: process.env.DB_NAME || 'app_db',
       autoLoadEntities: true,
       migrations: [join(__dirname, 'database', 'migrations', '*{.ts,.js}')],
-      // synchronize QUEDA DESACTIVADO A PROPÓSITO, también en desarrollo.
-      //
-      // Sobre una tabla de un millón de filas, la sincronización automática de
-      // esquema puede lanzar un ALTER TABLE que reescribe la tabla entera con un
-      // lock exclusivo por una discrepancia trivial, y además borra los índices
-      // que no conoce — justo los que crea el importador con CREATE INDEX
-      // CONCURRENTLY. El esquema se gestiona sólo con migraciones.
       synchronize: false,
       migrationsRun: false,
     }),
@@ -54,4 +47,4 @@ import { ScrapingModule } from './modules/scraping/scraping.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
