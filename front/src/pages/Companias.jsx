@@ -20,6 +20,12 @@ const FILTROS_VACIOS = {
 }
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
+const etiquetaPoblacion = c =>
+  c.tipo === 'natural_contable'
+    ? 'Persona natural · contable'
+    : c.tipo === 'natural_no_contable'
+      ? 'Persona natural · no contable'
+      : c.tipoCompania ?? 'Compañía'
 
 export default function Companias() {
   // Expediente cuya ficha completa está abierta, o null.
@@ -43,6 +49,7 @@ export default function Companias() {
   const [cursores, setCursores] = useState([null])
   const [pagina, setPagina] = useState(0)
   const [hayMas, setHayMas] = useState(false)
+  const [cursorSiguiente, setCursorSiguiente] = useState(null)
 
   useEffect(() => {
     obtenerFacetas().then(setFacetas).catch(() => {})
@@ -56,6 +63,7 @@ export default function Companias() {
         const res = await listarCompanias({ ...filtrosActuales, cursor, limit: 50 })
         setDatos(res.datos)
         setHayMas(res.hayMas)
+        setCursorSiguiente(res.cursorSiguiente ?? null)
         setTotal(res.total)
       } catch (e) {
         setError(e?.response?.data?.message ?? e.message)
@@ -81,12 +89,11 @@ export default function Companias() {
   }, [filtros, cargar])
 
   const siguiente = () => {
-    const ultimo = datos[datos.length - 1]
-    if (!ultimo) return
-    const nuevos = [...cursores.slice(0, pagina + 1), ultimo.expediente]
+    if (!cursorSiguiente) return
+    const nuevos = [...cursores.slice(0, pagina + 1), cursorSiguiente]
     setCursores(nuevos)
     setPagina(pagina + 1)
-    cargar(ultimo.expediente, filtros)
+    cargar(cursorSiguiente, filtros)
   }
 
   const anterior = () => {
@@ -99,7 +106,7 @@ export default function Companias() {
 
   return (
     <div className="companias">
-      <h2>Compañías</h2>
+      <h2>Contribuyentes empresariales</h2>
 
       <div className="filtros">
         <input
@@ -195,17 +202,19 @@ export default function Companias() {
           </thead>
           <tbody>
             {datos.map(c => (
-              <tr key={c.expediente}>
-                <td>{c.expediente}</td>
+              <tr key={c.id ?? c.expediente ?? c.ruc}>
+                <td>{c.expediente ?? '—'}</td>
                 <td className="mono">{c.ruc ?? '—'}</td>
                 <td>{c.nombre}</td>
                 <td>{c.situacionLegal ?? '—'}</td>
                 {/* Estado ante el SRI: es distinto de la situación legal en
                     Supercias, y para prospección comercial manda éste. */}
                 <td>
-                  {c.sriEstadoContribuyente ? (
-                    <span className={`estado ${String(c.sriEstadoContribuyente).toLowerCase()}`}>
-                      {c.sriEstadoContribuyente}
+                  {c.sriEstadoContribuyente ?? c.estadoContribuyente ? (
+                    <span
+                      className={`estado ${String(c.sriEstadoContribuyente ?? c.estadoContribuyente).toLowerCase()}`}
+                    >
+                      {c.sriEstadoContribuyente ?? c.estadoContribuyente}
                     </span>
                   ) : (
                     '—'
@@ -214,7 +223,7 @@ export default function Companias() {
                 <td>{c.representante ?? '—'}</td>
                 <td>{c.cargo ?? '—'}</td>
                 <td className="mono">{c.telefono ?? '—'}</td>
-                <td>{c.tipo ?? '—'}</td>
+                <td>{c.tipo ? etiquetaPoblacion(c) : '—'}</td>
                 <td>{c.provincia ?? '—'}</td>
                 <td>{c.canton ?? '—'}</td>
                 <td>{c.sriParroquia ?? '—'}</td>
@@ -226,7 +235,7 @@ export default function Companias() {
                       })}
                 </td>
                 <td>{c.fechaConstitucion ?? '—'}</td>
-                <td className="der mono">{c.sriNumEstablecimientos ?? '—'}</td>
+                <td className="der mono">{c.sriNumEstablecimientos ?? c.numEstablecimientos ?? '—'}</td>
                 {/* Turismo y exportadores habituales, enlazados por RUC. */}
                 <td className="catastros">
                   <MarcasCatastro fila={c} />
@@ -237,12 +246,12 @@ export default function Companias() {
                   {c.actividad ?? (c.ciiuNivel6 ? <span className="tenue">{c.ciiuNivel6}</span> : '—')}
                 </td>
                 <td className="acciones-fila">
-                  <button type="button" className="ver" onClick={() => setFicha(c.expediente)}>
+                  <button type="button" className="ver" onClick={() => setFicha(c.expediente ?? c.ruc)}>
                     Ficha
                   </button>
                   <BotonRastrear
-                    tipoSujeto="compania"
-                    clave={c.expediente}
+                    tipoSujeto={c.tipo === 'companies' ? 'compania' : 'persona_natural'}
+                    clave={c.expediente ?? c.ruc}
                     onResultado={setMensaje}
                   />
                 </td>

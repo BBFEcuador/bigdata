@@ -28,14 +28,17 @@ export default function PanelImportacion({
   endpoint,
   accept,
   etiquetaEntidad = 'filas',
+  requiereProvincia = false,
+  modoFijo = null,
 }) {
   const [file, setFile] = useState(null)
-  const [modo, setModo] = useState('snapshot_completo')
+  const [modo, setModo] = useState(modoFijo ?? 'snapshot_completo')
   const [subiendoPct, setSubiendoPct] = useState(null)
   const [jobId, setJobId] = useState(null)
   const [job, setJob] = useState(null)
   const [rechazos, setRechazos] = useState(null)
   const [error, setError] = useState(null)
+  const [provincia, setProvincia] = useState('')
   const enVuelo = useRef(false)
 
   useEffect(() => {
@@ -73,12 +76,18 @@ export default function PanelImportacion({
   const onSubmit = async e => {
     e.preventDefault()
     if (!file) return
+    if (requiereProvincia && !provincia.trim()) {
+      setError('Indica la provincia del archivo antes de importar.')
+      return
+    }
     setError(null)
     setJob(null)
     setRechazos(null)
     setSubiendoPct(0)
     try {
-      const res = await subirArchivo(endpoint, file, setSubiendoPct, modo)
+      const res = await subirArchivo(endpoint, file, setSubiendoPct, modo, {
+        ...(requiereProvincia ? { provincia: provincia.trim() } : {}),
+      })
       setJobId(res.jobId)
     } catch (err) {
       setSubiendoPct(null)
@@ -101,13 +110,28 @@ export default function PanelImportacion({
           disabled={activo}
         />
 
-        <label className="modo">
-          <span>Modo</span>
-          <select value={modo} onChange={e => setModo(e.target.value)} disabled={activo}>
-            <option value="snapshot_completo">Snapshot completo (marca las ausentes)</option>
-            <option value="parcial">Parcial (no marca ausentes)</option>
-          </select>
-        </label>
+        {requiereProvincia && (
+          <label className="modo">
+            <span>Provincia del archivo</span>
+            <input
+              value={provincia}
+              onChange={e => setProvincia(e.target.value)}
+              placeholder="Ej. AZUAY"
+              disabled={activo}
+              required
+            />
+          </label>
+        )}
+
+        {!modoFijo && (
+          <label className="modo">
+            <span>Modo</span>
+            <select value={modo} onChange={e => setModo(e.target.value)} disabled={activo}>
+              <option value="snapshot_completo">Snapshot completo (marca las ausentes)</option>
+              <option value="parcial">Parcial (no marca ausentes)</option>
+            </select>
+          </label>
+        )}
 
         <button type="submit" disabled={!file || activo}>
           {activo ? 'Importando…' : 'Importar'}

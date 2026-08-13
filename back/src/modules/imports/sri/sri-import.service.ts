@@ -4,7 +4,11 @@ import { ImportJobsService } from '../import-jobs.service';
 import { serializeCopyRow } from '../transform/copy-text';
 import { huellaDeFila } from '../../../common/text/hash';
 import { abrirLectorDeLineas } from '../../../common/text/lineas';
-import { COPY_CHUNK_BYTES, MAX_STORED_REJECTS, PROGRESS_ROW_INTERVAL } from '../imports.constants';
+import {
+  COPY_CHUNK_BYTES,
+  MAX_STORED_REJECTS,
+  PROGRESS_ROW_INTERVAL,
+} from '../imports.constants';
 import { parsearFilaSri, validarCabecera } from './sri-file.parser';
 import { SriPgSession } from './sri-pg.session';
 
@@ -30,7 +34,10 @@ export class SriImportService {
 
   enqueue(jobId: string): void {
     void this.run(jobId).catch((err) => {
-      this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
+      this.logger.error(
+        `Job ${jobId} falló de forma inesperada: ${err?.message}`,
+        err?.stack,
+      );
     });
   }
 
@@ -41,9 +48,16 @@ export class SriImportService {
     const session = new SriPgSession(jobId);
     const t0 = Date.now();
     let rechazosGuardados = 0;
+    // La ruta histórica `/imports/sri` no guarda provincia; la nueva ruta sí.
+    // Usar el mismo kind mantiene un único lock para todo el padrón provincial.
+    const soloPersonas = Boolean(job.provincia);
+    const provincia = job.provincia ?? undefined;
 
     try {
-      await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
+      await this.jobsService.update(jobId, {
+        status: 'parsing',
+        startedAt: new Date(),
+      });
       await session.connect();
 
       if (!(await session.acquireJobLock())) {
@@ -64,7 +78,11 @@ export class SriImportService {
       let reparadas = 0;
       let buffer = '';
       let cabeceraVista = false;
-      const pendientes: { sourceRowNumber: number; motivo: string; raw?: Record<string, unknown> }[] = [];
+      const pendientes: {
+        sourceRowNumber: number;
+        motivo: string;
+        raw?: Record<string, unknown>;
+      }[] = [];
 
       for await (const linea of lineas) {
         numeroLinea++;
@@ -176,7 +194,8 @@ export class SriImportService {
       const filasCopy = await writer.finish();
 
       if (!cabeceraVista) throw new Error('El archivo está vacío.');
-      if (copiadas === 0) throw new Error('El archivo no contiene ninguna fila válida.');
+      if (copiadas === 0)
+        throw new Error('El archivo no contiene ninguna fila válida.');
       if (filasCopy !== copiadas) {
         throw new Error(
           `Descuadre en el COPY: Postgres aceptó ${filasCopy} filas y se enviaron ${copiadas}.`,
@@ -188,33 +207,62 @@ export class SriImportService {
 
       await this.jobsService.reportProgress(
         jobId,
-        { rowsRead: leidas, rowsCopied: copiadas, rowsRejected: rechazadas, progressPct: 55, status: 'merging' },
+        {
+          rowsRead: leidas,
+          rowsCopied: copiadas,
+          rowsRejected: rechazadas,
+          progressPct: 55,
+          status: 'merging',
+        },
         true,
       );
 
       // ---------- Fase 2: clasificación y merge ----------
       await session.prepararStaging();
-      const stats = await session.estadisticas();
-      const ambiguos = await session.rucAmbiguos();
+      const stats = await session.estadisticas(soloPersonas, provincia);
+      if (soloPersonas && stats.personas === 0) {
+        throw new Error(
+          `El archivo no contiene personas naturales para la provincia "${provincia}".`,
+        );
+      }
+      const ambiguos = soloPersonas ? [] : await session.rucAmbiguos();
 
-      const personas = await session.mergePersonas();
+      const personas = await session.mergePersonas(provincia);
       await this.jobsService.reportProgress(jobId, { progressPct: 70 });
 
-      const noSupervisadas = await session.mergeSociedadesNoSupervisadas();
+      const noSupervisadas = soloPersonas
+        ? { insertadas: 0, actualizadas: 0 }
+        : await session.mergeSociedadesNoSupervisadas(provincia);
       await this.jobsService.reportProgress(jobId, { progressPct: 80 });
 
-      const enriquecidas = await session.enriquecerCompanias();
+      const enriquecidas = soloPersonas
+        ? 0
+        : await session.enriquecerCompanias();
       await this.jobsService.reportProgress(jobId, { progressPct: 88 });
 
-      const establecimientos = await session.mergeEstablecimientos();
+      const establecimientos = await session.mergeEstablecimientos(
+        soloPersonas,
+        provincia,
+      );
 
-      await this.jobsService.reportProgress(jobId, { status: 'indexing', progressPct: 95 }, true);
+      await this.jobsService.reportProgress(
+        jobId,
+        { status: 'indexing', progressPct: 95 },
+        true,
+      );
       await session.vacuumAnalyze();
 
       await this.jobsService.update(jobId, {
         status: 'completed',
         progressPct: 100,
-        avisos: this.componerAvisos({ encoding, stats, ambiguos, enriquecidas, reparadas, establecimientos }),
+        avisos: this.componerAvisos({
+          encoding,
+          stats,
+          ambiguos,
+          enriquecidas,
+          reparadas,
+          establecimientos,
+        }),
         rowsRead: leidas,
         rowsCopied: copiadas,
         rowsRejected: rechazadas,
@@ -234,7 +282,11 @@ export class SriImportService {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);
       await this.jobsService
-        .update(jobId, { status: 'failed', errorMessage: mensaje, finishedAt: new Date() })
+        .update(jobId, {
+          status: 'failed',
+          errorMessage: mensaje,
+          finishedAt: new Date(),
+        })
         .catch(() => undefined);
     } finally {
       await session.dropStaging().catch(() => undefined);
@@ -251,7 +303,13 @@ export class SriImportService {
 
   private componerAvisos(d: {
     encoding: string;
-    stats: { filas: number; rucs: number; personas: number; sociedades: number; sociedadesSupercias: number };
+    stats: {
+      filas: number;
+      rucs: number;
+      personas: number;
+      sociedades: number;
+      sociedadesSupercias: number;
+    };
     ambiguos: string[];
     enriquecidas: number;
     reparadas: number;
@@ -265,7 +323,8 @@ export class SriImportService {
         `${s.sociedades - s.sociedadesSupercias} no supervisadas).`,
       `${d.enriquecidas} compañías enriquecidas con datos del SRI.`,
     ];
-    if (d.encoding !== 'utf-8') partes.push(`Archivo leído como ${d.encoding}.`);
+    if (d.encoding !== 'utf-8')
+      partes.push(`Archivo leído como ${d.encoding}.`);
     if (d.reparadas) {
       partes.push(
         `${d.reparadas} filas traían una barra vertical dentro de un campo entrecomillado ` +

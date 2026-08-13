@@ -33,7 +33,11 @@ import {
   multerConfigCompanias,
   multerConfigTurismo,
 } from './multer.config';
-import { IMPORT_KIND, IMPORT_KIND_CATALOGO, IMPORT_KIND_CIIU } from './imports.constants';
+import {
+  IMPORT_KIND,
+  IMPORT_KIND_CATALOGO,
+  IMPORT_KIND_CIIU,
+} from './imports.constants';
 import { IMPORT_KIND_BALANCES } from './balances/balances.constants';
 import { IMPORT_KIND_SRI } from './sri/sri.constants';
 import { IMPORT_KIND_DATAPORTAL } from './dataportal/dataportal.constants';
@@ -59,7 +63,7 @@ export class ImportsController {
     private readonly turismo: TurismoImportService,
     private readonly catastros: CatastrosImportService,
     private readonly web: WebImportService,
-  ) { }
+  ) {}
 
   /**
    * Excel de compañías. Devuelve 202 de inmediato: la carga tarda minutos y
@@ -68,21 +72,23 @@ export class ImportsController {
   @Post('companias')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('file', multerConfigCompanias))
-  async subirCompanias(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+  async subirCompanias(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('modo') modo?: string,
+  ) {
     const job = await this.crearJob(file, IMPORT_KIND, modo);
     this.companias.enqueue(job.id);
     return this.respuesta(job);
   }
 
-  /**
-   * Catálogo de cuentas en texto plano. Este import tarda milisegundos, pero
-   * usa el mismo contrato de job que el de compañías para que el frontend no
-   * tenga que distinguir entre los dos.
-   */
+  /** Catálogo de cuentas en texto plano. */
   @Post('catalogo-cuentas')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('file', multerConfigCatalogo))
-  async subirCatalogo(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+  async subirCatalogo(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('modo') modo?: string,
+  ) {
     const job = await this.crearJob(file, IMPORT_KIND_CATALOGO, modo);
     this.catalogo.enqueue(job.id);
     return this.respuesta(job);
@@ -95,34 +101,33 @@ export class ImportsController {
   @Post('ciiu')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('file', multerConfigCiiu))
-  async subirCiiu(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+  async subirCiiu(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('modo') modo?: string,
+  ) {
     const job = await this.crearJob(file, IMPORT_KIND_CIIU, modo);
     this.ciiu.enqueue(job.id);
     return this.respuesta(job);
   }
-
   /**
    * Balances de un ejercicio, en texto plano separado por tabuladores.
-   *
-   * Un archivo = un año. El formulario NO se pide ni se deduce del nombre: se
-   * detecta por el plan de cuentas del encabezado, porque el sufijo del nombre
-   * de archivo señala formularios distintos según el año.
+   * Un archivo = un año; el formulario se detecta por el plan de cuentas.
    */
   @Post('balances')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('file', multerConfigBalances))
-  async subirBalances(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+  async subirBalances(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('modo') modo?: string,
+  ) {
     const job = await this.crearJob(file, IMPORT_KIND_BALANCES, modo);
     this.balances.enqueue(job.id);
     return this.respuesta(job);
   }
 
   /**
-   * Padrón del SRI, un CSV por provincia.
-   *
-   * Se fuerza `modo=parcial` y no se acepta otra cosa: cada archivo es UNA
-   * provincia, así que tratarlo como foto completa marcaría como desaparecidos
-   * a los contribuyentes de las otras 23.
+   * Padrón completo del SRI, un CSV por provincia. Siempre es parcial para no
+   * marcar como ausentes los contribuyentes de las otras provincias.
    */
   @Post('sri')
   @HttpCode(202)
@@ -133,30 +138,54 @@ export class ImportsController {
     return this.respuesta(job);
   }
 
+  @Post('personas-naturales')
+  @HttpCode(202)
+  @UseInterceptors(FileInterceptor('file', multerConfigSri))
+  async subirPersonasNaturales(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('provincia') provincia?: string,
+  ) {
+    const provinciaNormalizada = provincia?.trim();
+    if (!provinciaNormalizada) {
+      if (file) await fs.unlink(file.path).catch(() => undefined);
+      throw new BadRequestException(
+        'El parámetro "provincia" es obligatorio para el padrón provincial.',
+      );
+    }
+    if (provinciaNormalizada.length > 80) {
+      if (file) await fs.unlink(file.path).catch(() => undefined);
+      throw new BadRequestException(
+        'El parámetro "provincia" no puede superar 80 caracteres.',
+      );
+    }
+
+    const job = await this.crearJob(
+      file,
+      IMPORT_KIND_SRI,
+      'parcial',
+      provinciaNormalizada,
+    );
+    this.sri.enqueue(job.id);
+    return this.respuesta(job);
+  }
   /**
-   * Catastro Nacional de Turismo (Ministerio de Turismo), en Excel.
-   *
-   * Trae una fila por establecimiento registrado y enlaza por RUC con las tres
-   * poblaciones del proyecto, no sólo con `companias`: cuatro de cada cinco
-   * establecimientos turísticos pertenecen a personas naturales.
+   * Catastro Nacional de Turismo del Ministerio de Turismo. Enlaza por RUC con
+   * las tres poblaciones del proyecto, no sólo con las compañías.
    */
   @Post('turismo')
   @HttpCode(202)
   @UseInterceptors(FileInterceptor('file', multerConfigTurismo))
-  async subirTurismo(@UploadedFile() file: Express.Multer.File, @Query('modo') modo?: string) {
+  async subirTurismo(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('modo') modo?: string,
+  ) {
     const job = await this.crearJob(file, IMPORT_KIND_TURISMO, modo);
     this.turismo.enqueue(job.id);
     return this.respuesta(job);
   }
 
   /**
-   * Catastros del SRI: exportadores habituales (tres listas) y prestadores de
-   * servicios digitales no residentes.
-   *
-   * El tipo se detecta del título que llevan dentro las hojas. `tipo` sólo está
-   * para forzarlo cuando el SRI cambie los rótulos y la detección falle; no
-   * hace falta pasarlo, y pasarlo mal mezcla dos beneficios tributarios en la
-   * misma serie.
+   * Catastros tributarios del SRI. El tipo se detecta del título del archivo.
    */
   @Post('catastros')
   @HttpCode(202)
@@ -170,7 +199,7 @@ export class ImportsController {
       if (file) await fs.unlink(file.path).catch(() => undefined);
       throw new BadRequestException(
         `Tipo de catastro desconocido "${tipo}". Valores válidos: ${TIPOS_CATASTRO.join(', ')}. ` +
-        'Lo normal es no pasar este parámetro: el tipo se deduce del archivo.',
+          'Lo normal es no pasar este parámetro: el tipo se deduce del archivo.',
       );
     }
     const job = await this.crearJob(file, IMPORT_KIND_CATASTROS, modo);
@@ -192,7 +221,9 @@ export class ImportsController {
         `Ya hay un enriquecimiento en curso (job ${activo.id}). Detenlo antes de lanzar otro.`,
       );
     }
-    const ambito = segmento ? await this.dataportal.resolverSegmento(segmento) : null;
+    const ambito = segmento
+      ? await this.dataportal.resolverSegmento(segmento)
+      : null;
 
     const job = await this.jobs.create({
       kind: IMPORT_KIND_DATAPORTAL,
@@ -205,19 +236,15 @@ export class ImportsController {
       fileSizeBytes: 0,
     });
     this.dataportal.enqueue(job.id, segmento);
-    return { ...this.respuesta(job), segmento: ambito && { codigo: segmento, ...ambito } };
+    return {
+      ...this.respuesta(job),
+      segmento: ambito && { codigo: segmento, ...ambito },
+    };
   }
 
   /**
-   * Rastreo de presencia digital. No recibe archivo ni consulta ninguna API de
-   * pago: conjetura dominios a partir del nombre de cada compañía, comprueba
-   * cuáles existen y lee de su portada el título y los enlaces a redes.
-   *
-   * **Nada de lo que encuentra queda como bueno.** Todo entra en
-   * `presencia_canal` como propuesta, y se valida a mano desde `/presencia`.
-   *
-   * Es un recorrido de horas contra servidores ajenos, así que el avance vive
-   * en `web_consulta`: relanzar continúa por las pendientes.
+   * Rastreo de presencia digital: las propuestas quedan pendientes de revisión
+   * manual y el avance se conserva en la base.
    */
   @Post('web')
   @HttpCode(202)
@@ -278,9 +305,12 @@ export class ImportsController {
     file: Express.Multer.File,
     kind: string,
     modo?: string,
+    provincia?: string,
   ): Promise<ImportJob> {
     if (!file) {
-      throw new BadRequestException('No se recibió ningún archivo en el campo "file".');
+      throw new BadRequestException(
+        'No se recibió ningún archivo en el campo "file".',
+      );
     }
 
     const modoImport = modo === 'parcial' ? 'parcial' : 'snapshot_completo';
@@ -290,7 +320,7 @@ export class ImportsController {
       await fs.unlink(file.path).catch(() => undefined);
       throw new ConflictException(
         `Ya hay una importación de este tipo en curso (job ${activo.id}, ` +
-        `estado "${activo.status}"). Espera a que termine.`,
+          `estado "${activo.status}"). Espera a que termine.`,
       );
     }
 
@@ -299,6 +329,7 @@ export class ImportsController {
         kind,
         status: 'pending',
         modo: modoImport,
+        provincia: provincia ?? null,
         originalFilename: file.originalname,
         storedPath: file.path,
         fileSizeBytes: file.size,
@@ -308,7 +339,9 @@ export class ImportsController {
       // 23505 = índice único parcial de "un import activo": otra petición ganó
       // la carrera entre la comprobación de arriba y este INSERT.
       if (err?.code === '23505') {
-        throw new ConflictException('Ya hay una importación de este tipo en curso.');
+        throw new ConflictException(
+          'Ya hay una importación de este tipo en curso.',
+        );
       }
       throw err;
     }
@@ -319,6 +352,7 @@ export class ImportsController {
       jobId: job.id,
       status: job.status,
       modo: job.modo,
+      provincia: job.provincia,
       statusUrl: `/imports/${job.id}`,
     };
   }

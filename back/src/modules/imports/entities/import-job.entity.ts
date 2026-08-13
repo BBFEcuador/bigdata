@@ -1,12 +1,13 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 export type ImportJobStatus =
-  | 'pending'
-  | 'parsing'
-  | 'merging'
-  | 'indexing'
-  | 'completed'
-  | 'failed';
+  'pending' | 'parsing' | 'merging' | 'indexing' | 'completed' | 'failed';
 
 export const ESTADOS_NO_TERMINALES: ImportJobStatus[] = [
   'pending',
@@ -23,12 +24,20 @@ export class ImportJob {
   @Column({ type: 'text' })
   kind: string;
 
-  @Column({ type: 'enum', enum: ['pending', 'parsing', 'merging', 'indexing', 'completed', 'failed'], enumName: 'import_job_status' })
+  @Column({
+    type: 'enum',
+    enum: ['pending', 'parsing', 'merging', 'indexing', 'completed', 'failed'],
+    enumName: 'import_job_status',
+  })
   status: ImportJobStatus;
 
   /** `snapshot_completo` marca ausentes; `parcial` no toca nada fuera del archivo. */
   @Column({ type: 'text' })
   modo: string;
+
+  /** Provincia declarada por los imports provinciales del padrón del SRI. */
+  @Column({ type: 'text', nullable: true })
+  provincia: string | null;
 
   @Column({ type: 'text', name: 'original_filename' })
   originalFilename: string;
@@ -36,10 +45,18 @@ export class ImportJob {
   @Column({ type: 'text', name: 'stored_path' })
   storedPath: string;
 
-  @Column({ type: 'bigint', name: 'file_size_bytes', transformer: bigintNumber() })
+  @Column({
+    type: 'bigint',
+    name: 'file_size_bytes',
+    transformer: bigintNumber(),
+  })
   fileSizeBytes: number;
 
-  @Column({ type: 'bigint', name: 'bytes_processed', transformer: bigintNumber() })
+  @Column({
+    type: 'bigint',
+    name: 'bytes_processed',
+    transformer: bigintNumber(),
+  })
   bytesProcessed: number;
 
   @Column({ type: 'bigint', name: 'rows_read', transformer: bigintNumber() })
@@ -48,19 +65,31 @@ export class ImportJob {
   @Column({ type: 'bigint', name: 'rows_copied', transformer: bigintNumber() })
   rowsCopied: number;
 
-  @Column({ type: 'bigint', name: 'rows_rejected', transformer: bigintNumber() })
+  @Column({
+    type: 'bigint',
+    name: 'rows_rejected',
+    transformer: bigintNumber(),
+  })
   rowsRejected: number;
 
   @Column({ type: 'bigint', name: 'rows_warned', transformer: bigintNumber() })
   rowsWarned: number;
 
-  @Column({ type: 'bigint', name: 'rows_inserted', transformer: bigintNumber() })
+  @Column({
+    type: 'bigint',
+    name: 'rows_inserted',
+    transformer: bigintNumber(),
+  })
   rowsInserted: number;
 
   @Column({ type: 'bigint', name: 'rows_updated', transformer: bigintNumber() })
   rowsUpdated: number;
 
-  @Column({ type: 'bigint', name: 'rows_unchanged', transformer: bigintNumber() })
+  @Column({
+    type: 'bigint',
+    name: 'rows_unchanged',
+    transformer: bigintNumber(),
+  })
   rowsUnchanged: number;
 
   @Column({ type: 'bigint', name: 'rows_missing', transformer: bigintNumber() })

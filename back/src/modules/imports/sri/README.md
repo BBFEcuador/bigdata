@@ -16,12 +16,18 @@ Los 24 archivos juntos son 2,9 GB y **8.432.317 filas**:
 | Método | Ruta | Qué hace |
 |---|---|---|
 | `POST` | `/imports/sri` | Recibe el CSV de una provincia, devuelve **202** con `jobId`. |
+| `POST` | `/imports/personas-naturales?provincia=...` | Importa sólo personas naturales de la provincia, siempre en modo parcial. |
 
-No acepta el parámetro `modo`: **siempre es parcial**, y no por comodidad. Los
+Ninguna de las dos rutas acepta el parámetro `modo`: **siempre es parcial**, y no por comodidad. Los
 otros importadores tratan el archivo como la foto completa del registro y marcan
 lo que no viene; aquí eso significaría que cargar Azuay marca como
 desaparecidos a los contribuyentes de las otras 23 provincias. No se implementa
 el modo completo en vez de dejarlo como una opción que alguien podría pulsar.
+
+`/imports/sri` conserva el comportamiento histórico: procesa personas naturales,
+sociedades no supervisadas y el enriquecimiento de compañías. La ruta nueva
+`/imports/personas-naturales` reutiliza el mismo parser pero sólo mergea personas
+naturales y exige `provincia`; no consulta ni solicita ningún catastro.
 
 ## Tres destinos, no uno
 

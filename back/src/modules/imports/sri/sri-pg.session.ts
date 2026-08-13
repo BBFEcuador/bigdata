@@ -56,8 +56,11 @@ export class SriPgSession extends PgCopySession {
     await this.analyze(this.tabla);
   }
 
-  async estadisticas() {
-    const { rows } = await this.client.query(estadisticasSql(this.tabla));
+  async estadisticas(soloPersonas = false, provincia?: string) {
+    const { rows } = await this.client.query(
+      estadisticasSql(this.tabla, soloPersonas, provincia),
+      provincia ? [provincia] : [],
+    );
     const r = rows[0] ?? {};
     return {
       filas: Number(r.filas ?? 0),
@@ -73,11 +76,12 @@ export class SriPgSession extends PgCopySession {
     return rows.map((r: { ruc: string }) => r.ruc);
   }
 
-  async mergePersonas(): Promise<Totales> {
+  async mergePersonas(provincia?: string): Promise<Totales> {
     // Un RUC puede cambiar de obligado a no obligado entre dos padrones. La
     // clasificación forma parte de la identidad lógica y debe quedar una sola
     // vez en la población correcta.
-    await this.client.query(`
+    await this.client.query(
+      `
       DELETE FROM contribuyentes c
        USING (
          SELECT DISTINCT ON (ruc) ruc,
@@ -85,22 +89,26 @@ export class SriPgSession extends PgCopySession {
                      THEN 'natural_contable' ELSE 'natural_no_contable' END AS tipo
            FROM ${this.tabla}
           WHERE tipo_contribuyente = 'PERSONA NATURAL'
+            ${provincia ? 'AND upper(trim(provincia)) = upper(trim($1))' : ''}
           ORDER BY ruc, numero_establecimiento
        ) s
        WHERE c.ruc = s.ruc
          AND c.tipo IN ('natural_contable', 'natural_no_contable')
          AND c.tipo <> s.tipo
-    `);
-    const { rows } = await this.client.query(mergePersonasSql(this.tabla), [
-      this.jobId,
-    ]);
+    `,
+      provincia ? [provincia] : [],
+    );
+    const { rows } = await this.client.query(
+      mergePersonasSql(this.tabla, provincia),
+      provincia ? [this.jobId, provincia] : [this.jobId],
+    );
     return totales(rows[0], 'insertadas', 'actualizadas');
   }
 
-  async mergeSociedadesNoSupervisadas(): Promise<Totales> {
+  async mergeSociedadesNoSupervisadas(provincia?: string): Promise<Totales> {
     const { rows } = await this.client.query(
-      mergeSociedadesNoSupervisadasSql(this.tabla),
-      [this.jobId],
+      mergeSociedadesNoSupervisadasSql(this.tabla, provincia),
+      provincia ? [this.jobId, provincia] : [this.jobId],
     );
     return totales(rows[0], 'insertadas', 'actualizadas');
   }
@@ -112,10 +120,13 @@ export class SriPgSession extends PgCopySession {
     return res.rowCount ?? 0;
   }
 
-  async mergeEstablecimientos(): Promise<Totales> {
+  async mergeEstablecimientos(
+    soloPersonas = false,
+    provincia?: string,
+  ): Promise<Totales> {
     const { rows } = await this.client.query(
-      mergeEstablecimientosSql(this.tabla),
-      [this.jobId],
+      mergeEstablecimientosSql(this.tabla, soloPersonas, provincia),
+      provincia ? [this.jobId, provincia] : [this.jobId],
     );
     return totales(rows[0], 'insertados', 'actualizados');
   }

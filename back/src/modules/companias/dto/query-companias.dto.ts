@@ -1,7 +1,29 @@
 import { Transform } from 'class-transformer';
-import { IsBooleanString, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBooleanString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+
+export const POBLACIONES_COMPANIAS = [
+  'companies',
+  'natural_contable',
+  'natural_no_contable',
+] as const;
+
+export type PoblacionCompanias = (typeof POBLACIONES_COMPANIAS)[number];
 
 export class QueryCompaniasDto {
+  /** Población del padrón; por defecto devuelve las tres. */
+  @IsOptional()
+  @IsIn(POBLACIONES_COMPANIAS)
+  poblacion?: PoblacionCompanias;
+
   /** Búsqueda por nombre parcial (apoyada en el índice GIN de trigramas). */
   @IsOptional()
   @IsString()

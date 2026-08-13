@@ -18,17 +18,25 @@ export const indicesStagingSql = (tabla: string) => [
   `CREATE INDEX ON ${tabla} (tipo_contribuyente)`,
 ];
 
-function contribuyentesSql(tabla: string, filtroTipo: string): string {
+function contribuyentesSql(
+  tabla: string,
+  filtroTipo: string,
+  provincia?: string,
+): string {
+  const filtroProvincia = provincia
+    ? ` AND upper(trim(s.provincia)) = upper(trim($2))`
+    : '';
   return `
   SELECT DISTINCT ON (s.ruc)
          s.ruc, s.razon_social, s.jurisdiccion, s.estado_contribuyente,
          s.clase_contribuyente, s.fecha_inicio_actividades, s.fecha_actualizacion,
          s.fecha_suspension_definitiva, s.fecha_reinicio_actividades,
          s.obligado_contabilidad, s.agente_retencion, s.contribuyente_especial,
+         s.provincia,
          s.row_hash,
          (SELECT count(*) FROM ${tabla} e WHERE e.ruc = s.ruc)::smallint AS num_establecimientos
     FROM ${tabla} s
-   WHERE ${filtroTipo}
+   WHERE ${filtroTipo}${filtroProvincia}
    ORDER BY s.ruc, s.numero_establecimiento`;
 }
 
@@ -36,11 +44,11 @@ const COLUMNAS_CONTRIBUYENTE = `
   tipo, ruc, nombre, jurisdiccion, estado_contribuyente, clase_contribuyente,
   fecha_inicio_actividades, fecha_actualizacion, fecha_suspension_definitiva,
   fecha_reinicio_actividades, obligado_contabilidad, agente_retencion,
-  contribuyente_especial, row_hash, num_establecimientos`;
+  contribuyente_especial, num_establecimientos, provincia, row_hash`;
 
-export function mergePersonasSql(tabla: string): string {
+export function mergePersonasSql(tabla: string, provincia?: string): string {
   return `
-WITH src AS (${contribuyentesSql(tabla, `s.tipo_contribuyente = 'PERSONA NATURAL'`)}),
+WITH src AS (${contribuyentesSql(tabla, `s.tipo_contribuyente = 'PERSONA NATURAL'`, provincia)}),
 merged AS (
   INSERT INTO contribuyentes (${COLUMNAS_CONTRIBUYENTE}, primer_job_id, ultimo_job_id)
   SELECT CASE WHEN src.obligado_contabilidad IS TRUE
@@ -49,8 +57,8 @@ merged AS (
          src.clase_contribuyente, src.fecha_inicio_actividades,
          src.fecha_actualizacion, src.fecha_suspension_definitiva,
          src.fecha_reinicio_actividades, src.obligado_contabilidad,
-         src.agente_retencion, src.contribuyente_especial, src.row_hash,
-         src.num_establecimientos, $1, $1
+         src.agente_retencion, src.contribuyente_especial,
+         src.num_establecimientos, src.provincia, src.row_hash, $1, $1
     FROM src
   ON CONFLICT (tipo, ruc) WHERE tipo <> 'companies' AND ruc IS NOT NULL DO UPDATE SET
     nombre = EXCLUDED.nombre, jurisdiccion = EXCLUDED.jurisdiccion,
@@ -64,6 +72,7 @@ merged AS (
     agente_retencion = EXCLUDED.agente_retencion,
     contribuyente_especial = EXCLUDED.contribuyente_especial,
     num_establecimientos = EXCLUDED.num_establecimientos,
+    provincia = EXCLUDED.provincia,
     row_hash = EXCLUDED.row_hash, ultimo_job_id = EXCLUDED.ultimo_job_id,
     ausente_desde_job = NULL, updated_at = now()
    WHERE contribuyentes.row_hash IS DISTINCT FROM EXCLUDED.row_hash
@@ -75,7 +84,10 @@ SELECT count(*) FILTER (WHERE insertada) AS insertadas,
   FROM merged`;
 }
 
-export function mergeSociedadesNoSupervisadasSql(tabla: string): string {
+export function mergeSociedadesNoSupervisadasSql(
+  tabla: string,
+  provincia?: string,
+): string {
   return `
 WITH src AS (
   ${contribuyentesSql(
@@ -85,6 +97,7 @@ WITH src AS (
        SELECT 1 FROM contribuyentes c
         WHERE c.tipo = 'companies' AND c.ruc = s.ruc
      )`,
+    provincia,
   )}
 ),
 merged AS (
@@ -94,7 +107,8 @@ merged AS (
          src.fecha_inicio_actividades, src.fecha_actualizacion,
          src.fecha_suspension_definitiva, src.fecha_reinicio_actividades,
          src.obligado_contabilidad, src.agente_retencion,
-         src.contribuyente_especial, src.row_hash, src.num_establecimientos,
+         src.contribuyente_especial, src.num_establecimientos, src.provincia,
+         src.row_hash,
          $1, $1
     FROM src
   ON CONFLICT (tipo, ruc) WHERE tipo <> 'companies' AND ruc IS NOT NULL DO UPDATE SET
@@ -109,6 +123,7 @@ merged AS (
     agente_retencion = EXCLUDED.agente_retencion,
     contribuyente_especial = EXCLUDED.contribuyente_especial,
     num_establecimientos = EXCLUDED.num_establecimientos,
+    provincia = EXCLUDED.provincia,
     row_hash = EXCLUDED.row_hash, ultimo_job_id = EXCLUDED.ultimo_job_id,
     ausente_desde_job = NULL, updated_at = now()
    WHERE contribuyentes.row_hash IS DISTINCT FROM EXCLUDED.row_hash
@@ -160,7 +175,16 @@ UPDATE contribuyentes c
  WHERE c.tipo = 'companies' AND c.ruc = src.ruc`;
 }
 
-export function mergeEstablecimientosSql(tabla: string): string {
+export function mergeEstablecimientosSql(
+  tabla: string,
+  soloPersonas = false,
+  provincia?: string,
+): string {
+  const filtros = [
+    soloPersonas ? `s.tipo_contribuyente = 'PERSONA NATURAL'` : null,
+    provincia ? `upper(trim(s.provincia)) = upper(trim($2))` : null,
+  ].filter(Boolean);
+  const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
   return `
 WITH src AS (
   SELECT DISTINCT ON (s.ruc, s.numero_establecimiento)
@@ -187,6 +211,7 @@ WITH src AS (
          s.provincia, s.canton, s.parroquia, s.codigo_ciiu, s.actividad,
          s.row_hash_estab
     FROM ${tabla} s
+   ${where}
    ORDER BY s.ruc, s.numero_establecimiento
 ), merged AS (
   INSERT INTO establecimiento (
@@ -225,7 +250,16 @@ SELECT c.ruc, count(*)::int AS expedientes
  GROUP BY c.ruc HAVING count(*) > 1`;
 }
 
-export function estadisticasSql(tabla: string): string {
+export function estadisticasSql(
+  tabla: string,
+  soloPersonas = false,
+  provincia?: string,
+): string {
+  const filtros = [
+    soloPersonas ? `s.tipo_contribuyente = 'PERSONA NATURAL'` : null,
+    provincia ? `upper(trim(s.provincia)) = upper(trim($1))` : null,
+  ].filter(Boolean);
+  const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
   return `
 SELECT count(*)::bigint AS filas,
        count(DISTINCT ruc)::bigint AS rucs,
@@ -236,5 +270,5 @@ SELECT count(*)::bigint AS filas,
            AND EXISTS (SELECT 1 FROM contribuyentes c
                         WHERE c.tipo = 'companies' AND c.ruc = s.ruc)
        )::bigint AS sociedades_supercias
-  FROM ${tabla} s`;
+  FROM ${tabla} s ${where}`;
 }

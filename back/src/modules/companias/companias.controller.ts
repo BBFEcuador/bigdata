@@ -1,10 +1,17 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  NotFoundException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { CompaniasService } from './companias.service';
 import { QueryCompaniasDto } from './dto/query-companias.dto';
 
 @Controller('companias')
 export class CompaniasController {
-  constructor(private readonly service: CompaniasService) { }
+  constructor(private readonly service: CompaniasService) {}
 
   @Get()
   listar(@Query() query: QueryCompaniasDto) {
@@ -14,6 +21,19 @@ export class CompaniasController {
   @Get('facetas')
   facetas() {
     return this.service.facetas();
+  }
+
+  @Get('csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  exportar(@Query() query: QueryCompaniasDto) {
+    return this.service.exportarCsv(query);
+  }
+
+  /** Alias explícito para clientes que llaman la operación "export". */
+  @Get('export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  exportarAlternativo(@Query() query: QueryCompaniasDto) {
+    return this.service.exportarCsv(query);
   }
 
   @Get(':expediente')
@@ -26,7 +46,8 @@ export class CompaniasController {
   @Get(':expediente/ficha')
   async ficha(@Param('expediente') expediente: string) {
     const ficha = await this.service.fichaCompleta(expediente);
-    if (!ficha) throw new NotFoundException(`No existe la compañía ${expediente}`);
+    if (!ficha)
+      throw new NotFoundException(`No existe la compañía ${expediente}`);
     return ficha;
   }
 }

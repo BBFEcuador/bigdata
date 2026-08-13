@@ -18,7 +18,7 @@ export default function ImportarCatastros() {
         'de subirlo.'
       }
       endpoint="/imports/catastros"
-      accept=".csv"
+      accept=".xlsx"
       etiquetaEntidad="filas"
     />
   )

@@ -9,12 +9,19 @@ como haga falta.
 | Método | Ruta | Qué hace |
 |---|---|---|
 | `POST` | `/imports/companias?modo=snapshot_completo\|parcial` | Recibe el .xlsx, devuelve **202** con `jobId`. No espera a que termine. |
+| `POST` | `/imports/personas-naturales?provincia=...` | Importa personas naturales de una provincia, siempre en modo parcial. |
 | `GET` | `/imports` | Últimos 20 jobs. |
 | `GET` | `/imports/:id` | Estado y contadores de un job. |
 | `GET` | `/imports/:id/rechazos` | Filas y celdas que no se pudieron interpretar. |
 | `GET` | `/companias` | Listado paginado con filtros. |
 | `GET` | `/companias/facetas` | Valores para los desplegables de filtro. |
 | `GET` | `/companias/:expediente` | Detalle. |
+
+La ruta histórica `/imports/sri` se conserva para cargar el padrón completo
+(personas, sociedades no supervisadas y enriquecimiento de compañías). La ruta
+nueva sólo mergea personas naturales y no usa catastros. `/companias` consulta
+`companies`, `natural_contable` y `natural_no_contable` desde la tabla unificada
+`contribuyentes`.
 
 ### Modos
 

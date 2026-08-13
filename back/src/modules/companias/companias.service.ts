@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { In, Repository, SelectQueryBuilder } from 'typeorm';
 import { Compania } from './entities/compania.entity';
-import { QueryCompaniasDto } from './dto/query-companias.dto';
+import {
+  POBLACIONES_COMPANIAS,
+  QueryCompaniasDto,
+} from './dto/query-companias.dto';
 import {
   aniosPorCatastro,
   condicionCatastro,
@@ -10,6 +13,7 @@ import {
 
 /** Cuánto está dispuesto a contar exactamente antes de dar un aproximado. */
 const TOPE_CONTEO_EXACTO = 10_000;
+const CLAVE_POBLACION = new Set<string>(POBLACIONES_COMPANIAS);
 
 /**
  * Filtro por código CIIU de cualquier nivel.
@@ -46,15 +50,17 @@ export class CompaniasService {
     const limit = q.limit ?? 50;
     const qb = this.repo.createQueryBuilder('c');
 
-    qb.andWhere("c.tipo = 'companies'");
+    this.aplicarPoblacion(qb, q);
     this.aplicarFiltros(qb, q);
     if (q.cursor) {
-      qb.andWhere('c.expediente > :cursor', { cursor: q.cursor });
+      qb.andWhere('COALESCE(c.expediente, c.ruc, c.id::text) > :cursor', {
+        cursor: q.cursor,
+      });
     }
 
     // Se pide una fila de más para saber si hay página siguiente sin contar nada.
     const filas = await qb
-      .orderBy('c.expediente', 'ASC')
+      .orderBy('COALESCE(c.expediente, c.ruc, c.id::text)', 'ASC')
       .take(limit + 1)
       .getMany();
     const hayMas = filas.length > limit;
@@ -62,10 +68,54 @@ export class CompaniasService {
 
     return {
       datos: await this.conNombreActividad(datos),
-      cursorSiguiente: hayMas ? datos[datos.length - 1].expediente : null,
+      cursorSiguiente: hayMas
+        ? this.claveCursor(datos[datos.length - 1])
+        : null,
       hayMas,
       total: await this.contarAcotado(q),
     };
+  }
+
+  /** Exportación acotada de las mismas tres poblaciones y filtros del listado. */
+  async exportarCsv(q: QueryCompaniasDto): Promise<string> {
+    const qb = this.repo.createQueryBuilder('c');
+    this.aplicarPoblacion(qb, q);
+    this.aplicarFiltros(qb, q);
+    const filas = await qb
+      .orderBy('COALESCE(c.expediente, c.ruc, c.id::text)', 'ASC')
+      .take(10_000)
+      .getMany();
+
+    const columnas = [
+      'tipo',
+      'expediente',
+      'ruc',
+      'nombre',
+      'provincia',
+      'canton',
+      'estado',
+    ];
+    const valor = (v: unknown) => {
+      const texto = v === null || v === undefined ? '' : String(v);
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+    const lineas = [columnas.join(';')];
+    for (const f of filas) {
+      lineas.push(
+        [
+          f.tipo,
+          f.expediente,
+          f.ruc,
+          f.nombre,
+          f.provincia,
+          f.canton,
+          f.estadoContribuyente,
+        ]
+          .map(valor)
+          .join(';'),
+      );
+    }
+    return `\ufeff${lineas.join('\n')}\n`;
   }
 
   /**
@@ -91,13 +141,34 @@ export class CompaniasService {
         situacionLegal: q.situacionLegal,
       });
     }
-    if (q.tipo) qb.andWhere('c.tipoCompania = :tipo', { tipo: q.tipo });
+    if (q.tipo && !CLAVE_POBLACION.has(q.tipo)) {
+      qb.andWhere('c.tipoCompania = :tipo', { tipo: q.tipo });
+    }
     if (q.ciiuNivel1)
       qb.andWhere('c.ciiuNivel1 = :ciiu1', { ciiu1: q.ciiuNivel1 });
     if (q.ciiu) aplicarFiltroCiiu(qb, q.ciiu);
 
     const catastro = condicionCatastro('c', q.catastro, q.catastroAnio);
     if (catastro) qb.andWhere(catastro.sql, catastro.params);
+  }
+
+  private aplicarPoblacion(
+    qb: SelectQueryBuilder<Compania>,
+    q: QueryCompaniasDto,
+  ): void {
+    const poblacion =
+      q.poblacion ?? (CLAVE_POBLACION.has(q.tipo ?? '') ? q.tipo : undefined);
+    if (poblacion) {
+      qb.andWhere('c.tipo = :poblacion', { poblacion });
+    } else {
+      qb.andWhere('c.tipo IN (:...poblaciones)', {
+        poblaciones: [...POBLACIONES_COMPANIAS],
+      });
+    }
+  }
+
+  private claveCursor(compania: Compania): string {
+    return compania.expediente ?? compania.ruc ?? compania.id;
   }
 
   /**
@@ -143,6 +214,8 @@ export class CompaniasService {
     q: QueryCompaniasDto,
   ): Promise<{ valor: number; exacto: boolean }> {
     const sinFiltros =
+      !q.poblacion &&
+      !(q.tipo && CLAVE_POBLACION.has(q.tipo)) &&
       !q.nombre &&
       !q.ruc &&
       !q.provincia &&
@@ -154,16 +227,24 @@ export class CompaniasService {
       !q.catastro;
 
     if (sinFiltros) {
+      const qb = this.repo.createQueryBuilder('c').select('1');
+      this.aplicarPoblacion(qb, q);
+      this.aplicarFiltros(qb, q);
+      const [sql, params] = qb
+        .limit(TOPE_CONTEO_EXACTO)
+        .getQueryAndParameters();
       const r = await this.repo.query(
-        `SELECT reltuples::bigint AS n FROM pg_class WHERE relname = 'contribuyentes'`,
+        `SELECT count(*)::bigint AS n FROM (${sql}) t`,
+        params,
       );
-      return { valor: Math.max(0, Number(r?.[0]?.n ?? 0)), exacto: false };
+      const n = Number(r?.[0]?.n ?? 0);
+      return { valor: n, exacto: n < TOPE_CONTEO_EXACTO };
     }
 
     // Los mismos filtros que la consulta, por construcción: `aplicarFiltros` es
     // el único sitio donde están escritos.
     const qb = this.repo.createQueryBuilder('c').select('1');
-    qb.andWhere("c.tipo = 'companies'");
+    this.aplicarPoblacion(qb, q);
     this.aplicarFiltros(qb, q);
 
     const [sql, params] = qb.limit(TOPE_CONTEO_EXACTO).getQueryAndParameters();
@@ -176,7 +257,12 @@ export class CompaniasService {
   }
 
   buscarUno(expediente: string) {
-    return this.repo.findOne({ where: { expediente } });
+    return this.repo.findOne({
+      where: [
+        { expediente },
+        { ruc: expediente, tipo: In([...POBLACIONES_COMPANIAS]) },
+      ],
+    });
   }
 
   /** Valores distintos para poblar los desplegables de filtro. */
@@ -254,30 +340,39 @@ export class CompaniasService {
   }
 
   async facetas() {
-    const [provincias, situaciones, tipos, aniosCatastro] = await Promise.all([
-      this.repo.query(
-        `SELECT provincia AS valor, count(*)::bigint AS n FROM contribuyentes
-         WHERE tipo = 'companies' AND provincia IS NOT NULL AND ausente_desde_job IS NULL
+    const [provincias, situaciones, tipos, poblaciones, aniosCatastro] =
+      await Promise.all([
+        this.repo.query(
+          `SELECT provincia AS valor, count(*)::bigint AS n FROM contribuyentes
+         WHERE tipo IN ('companies', 'natural_contable', 'natural_no_contable')
+           AND provincia IS NOT NULL AND ausente_desde_job IS NULL
          GROUP BY provincia ORDER BY n DESC LIMIT 40`,
-      ),
-      this.repo.query(
-        `SELECT situacion_legal AS valor, count(*)::bigint AS n FROM contribuyentes
+        ),
+        this.repo.query(
+          `SELECT situacion_legal AS valor, count(*)::bigint AS n FROM contribuyentes
          WHERE tipo = 'companies' AND situacion_legal IS NOT NULL AND ausente_desde_job IS NULL
          GROUP BY situacion_legal ORDER BY n DESC LIMIT 40`,
-      ),
-      this.repo.query(
-        `SELECT tipo_compania AS valor, count(*)::bigint AS n FROM contribuyentes
+        ),
+        this.repo.query(
+          `SELECT tipo_compania AS valor, count(*)::bigint AS n FROM contribuyentes
          WHERE tipo = 'companies' AND tipo_compania IS NOT NULL AND ausente_desde_job IS NULL
          GROUP BY tipo_compania ORDER BY n DESC LIMIT 40`,
-      ),
-      aniosPorCatastro((sql) => this.repo.query(sql)),
-    ]);
+        ),
+        this.repo.query(
+          `SELECT tipo AS valor, count(*)::bigint AS n FROM contribuyentes
+         WHERE tipo IN ('companies', 'natural_contable', 'natural_no_contable')
+           AND ausente_desde_job IS NULL
+         GROUP BY tipo ORDER BY tipo`,
+        ),
+        aniosPorCatastro((sql) => this.repo.query(sql)),
+      ]);
     const map = (rows: any[]) =>
       rows.map((r) => ({ valor: r.valor, n: Number(r.n) }));
     return {
       provincias: map(provincias),
       situaciones: map(situaciones),
       tipos: map(tipos),
+      poblaciones: map(poblaciones),
       aniosCatastro,
     };
   }

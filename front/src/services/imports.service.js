@@ -10,11 +10,18 @@ import api from './api'
  *
  * `timeout: 0` porque el Excel de compañías puede tardar minutos en subir.
  */
-export const subirArchivo = (endpoint, file, onProgress, modo = 'snapshot_completo') => {
+export const subirArchivo = (
+  endpoint,
+  file,
+  onProgress,
+  modo = 'snapshot_completo',
+  query = {}
+) => {
   const fd = new FormData()
   fd.append('file', file)
+  const params = new URLSearchParams({ modo, ...query })
   return api
-    .post(`${endpoint}?modo=${modo}`, fd, {
+    .post(`${endpoint}?${params.toString()}`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 0,
       maxBodyLength: Infinity,
