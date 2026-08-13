@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { promises as fs } from 'node:fs';
 import { ImportJobsService } from '../import-jobs.service';
-import { PercentilesService } from '../../balances/percentiles.service';
+import { SolicitarRecalculoPercentilesUseCase } from '../../balances/application/use-cases/percentiles.use-cases';
 import { serializeCopyRow } from '../transform/copy-text';
 import { huellaDeFila } from '../../../common/text/hash';
 import { abrirLectorDeLineas } from '../../../common/text/lineas';
@@ -13,7 +13,11 @@ import {
 } from '../imports.constants';
 import { FORMULARIOS_SOPORTADOS } from './balances.constants';
 import { NOMBRE_FORMULARIO, detectarFormulario } from '../formularios';
-import { CabeceraBalances, parsearCabecera, parsearFila } from './balances-file.parser';
+import {
+  CabeceraBalances,
+  parsearCabecera,
+  parsearFila,
+} from './balances-file.parser';
 import { BalancesPgSession } from './balances-pg.session';
 
 /**
@@ -31,12 +35,15 @@ export class BalancesImportService {
 
   constructor(
     private readonly jobsService: ImportJobsService,
-    private readonly percentiles: PercentilesService,
+    private readonly percentiles: SolicitarRecalculoPercentilesUseCase,
   ) {}
 
   enqueue(jobId: string): void {
     void this.run(jobId).catch((err) => {
-      this.logger.error(`Job ${jobId} falló de forma inesperada: ${err?.message}`, err?.stack);
+      this.logger.error(
+        `Job ${jobId} falló de forma inesperada: ${err?.message}`,
+        err?.stack,
+      );
     });
   }
 
@@ -50,7 +57,10 @@ export class BalancesImportService {
     let rechazosGuardados = 0;
 
     try {
-      await this.jobsService.update(jobId, { status: 'parsing', startedAt: new Date() });
+      await this.jobsService.update(jobId, {
+        status: 'parsing',
+        startedAt: new Date(),
+      });
       await session.connect();
 
       if (!(await session.acquireJobLock())) {
@@ -58,7 +68,9 @@ export class BalancesImportService {
       }
 
       await session.createStaging();
-      await this.jobsService.update(jobId, { stagingTable: session.tablaBalance });
+      await this.jobsService.update(jobId, {
+        stagingTable: session.tablaBalance,
+      });
 
       // ---------- Fase 1: parseo, pivote y COPY ----------
       const { encoding, lineas } = await abrirLectorDeLineas(job.storedPath);
@@ -117,7 +129,8 @@ export class BalancesImportService {
           rechazadas += fila === null ? 1 : 0;
           avisos += fila === null ? 0 : rechazos.length;
           for (const r of rechazos) {
-            if (rechazosGuardados + pendientes.length >= MAX_STORED_REJECTS) break;
+            if (rechazosGuardados + pendientes.length >= MAX_STORED_REJECTS)
+              break;
             pendientes.push({
               sourceRowNumber: numeroLinea,
               columna: r.columna,
@@ -212,7 +225,8 @@ export class BalancesImportService {
       const filasCuenta = await escritorCuenta.finish();
 
       if (cabecera === null) throw new Error('El archivo está vacío.');
-      if (copiadas === 0) throw new Error('El archivo no contiene ninguna fila válida.');
+      if (copiadas === 0)
+        throw new Error('El archivo no contiene ninguna fila válida.');
       if (filasBalance !== copiadas || filasCuenta !== celdas) {
         throw new Error(
           `Descuadre en el COPY: Postgres aceptó ${filasBalance} cabeceras y ${filasCuenta} ` +
@@ -246,7 +260,11 @@ export class BalancesImportService {
       const descuadres = await session.contarDescuadres(formulario);
 
       const { missing, vivas } = await session.contarAusentes(anio, formulario);
-      if (job.modo === 'snapshot_completo' && vivas > 0 && missing / vivas > UMBRAL_AUSENCIA) {
+      if (
+        job.modo === 'snapshot_completo' &&
+        vivas > 0 &&
+        missing / vivas > UMBRAL_AUSENCIA
+      ) {
         throw new Error(
           `El archivo dejaría fuera ${missing} de ${vivas} balances vigentes de ${anio} ` +
             `(${((missing / vivas) * 100).toFixed(1)}%). Parece un archivo incompleto; ` +
@@ -262,9 +280,15 @@ export class BalancesImportService {
       });
 
       const marcadas =
-        job.modo === 'snapshot_completo' ? await session.marcarAusentes(anio, formulario) : 0;
+        job.modo === 'snapshot_completo'
+          ? await session.marcarAusentes(anio, formulario)
+          : 0;
 
-      await this.jobsService.reportProgress(jobId, { status: 'indexing', progressPct: 95 }, true);
+      await this.jobsService.reportProgress(
+        jobId,
+        { status: 'indexing', progressPct: 95 },
+        true,
+      );
       await session.vacuumAnalyze(anio);
 
       await this.jobsService.update(jobId, {
@@ -305,12 +329,18 @@ export class BalancesImportService {
       // Va después de dar el job por completado y sin esperarlo: son ~4 minutos
       // y el import ya terminó bien. Si llegan varios jobs seguidos —cargar
       // cinco ejercicios son cinco jobs— se funden en un solo recálculo.
-      this.percentiles.solicitar(`import de balances ${anio}/formulario ${formulario}`);
+      this.percentiles.execute(
+        `import de balances ${anio}/formulario ${formulario}`,
+      );
     } catch (err) {
       const mensaje = (err as Error)?.message ?? String(err);
       this.logger.error(`Job ${jobId} falló: ${mensaje}`);
       await this.jobsService
-        .update(jobId, { status: 'failed', errorMessage: mensaje, finishedAt: new Date() })
+        .update(jobId, {
+          status: 'failed',
+          errorMessage: mensaje,
+          finishedAt: new Date(),
+        })
         .catch(() => undefined);
     } finally {
       await session.dropStaging().catch(() => undefined);
@@ -355,7 +385,8 @@ export class BalancesImportService {
       `Ejercicio ${d.anio}, ${NOMBRE_FORMULARIO[d.formulario] ?? `formulario ${d.formulario}`}, ` +
         `${d.celdas} celdas con valor.`,
     ];
-    if (d.encoding === 'latin1') partes.push('Archivo leído como Latin-1 (no era UTF-8).');
+    if (d.encoding === 'latin1')
+      partes.push('Archivo leído como Latin-1 (no era UTF-8).');
     if (d.desconocidos.length) {
       partes.push(
         `Códigos no presentes en el catálogo (no se cargaron): ${d.desconocidos.join(', ')}.`,

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { AppDataSource } from '../src/data-source';
-import { PercentilesService } from '../src/modules/balances/percentiles.service';
+import { PercentilesService } from '../src/modules/balances/infrastructure/persistence/percentiles.service';
 
 /**
  * Recalcula los percentiles sectoriales sin levantar la API.

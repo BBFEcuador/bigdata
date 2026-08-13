@@ -1,7 +1,10 @@
-import { porOrdenContable } from './balances.service';
+import { porOrdenContable } from './infrastructure/persistence/typeorm-balances-read.repository';
 
 const ordenar = (codigos: string[]): string[] =>
-  codigos.map((codigo) => ({ codigo })).sort(porOrdenContable).map((c) => c.codigo);
+  codigos
+    .map((codigo) => ({ codigo }))
+    .sort(porOrdenContable)
+    .map((c) => c.codigo);
 
 /**
  * El orden de un estado financiero no es cosmético: es lo que permite leerlo.
@@ -40,8 +43,26 @@ describe('porOrdenContable', () => {
   it('mantiene juntas las ramas profundas del plan real', () => {
     // Códigos reales del catálogo IFRS.
     expect(
-      ordenar(['1010201', '10102', '101', '1', '10101', '1010101', '10103', '102']),
-    ).toEqual(['1', '101', '10101', '1010101', '10102', '1010201', '10103', '102']);
+      ordenar([
+        '1010201',
+        '10102',
+        '101',
+        '1',
+        '10101',
+        '1010101',
+        '10103',
+        '102',
+      ]),
+    ).toEqual([
+      '1',
+      '101',
+      '10101',
+      '1010101',
+      '10102',
+      '1010201',
+      '10103',
+      '102',
+    ]);
   });
 
   it('es estable con códigos iguales y con la lista vacía', () => {
