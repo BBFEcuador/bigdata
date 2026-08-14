@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { BookOpen } from 'lucide-react'
 import { listarCuentas, obtenerResumen } from '../services/catalogo.service'
+import PageHeader from '../components/PageHeader'
 import '../styles/Catalogo.css'
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
@@ -43,6 +45,14 @@ export default function Catalogo() {
 
   return (
     <div className="catalogo">
+      <PageHeader
+        kicker="Referencia financiera"
+        title="Catálogo de cuentas"
+        description="Consulta la jerarquía contable usada para interpretar los balances declarados."
+        source="Catálogo oficial"
+        sourceDetail="Superintendencia de Compañías"
+        icon={BookOpen}
+      />
       <h2>Catálogo de cuentas</h2>
 
       {resumen && resumen.total > 0 && (

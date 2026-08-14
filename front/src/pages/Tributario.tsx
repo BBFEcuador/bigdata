@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChartNoAxesCombined, ShieldCheck } from 'lucide-react'
 import {
   listarRiesgo,
   obtenerFichaTributaria,
@@ -6,6 +7,7 @@ import {
 } from '../services/tributario.service'
 import UtilidadesNoDistribuidas from './UtilidadesNoDistribuidas'
 import CreditoTributario from './CreditoTributario'
+import PageHeader from '../components/PageHeader'
 import '../styles/Tributario.css'
 
 /**
@@ -117,15 +119,27 @@ export default function Tributario() {
 
   return (
     <div className="tributario">
+      <PageHeader
+        kicker="Inteligencia tributaria"
+        title="Análisis tributario"
+        description="Prioriza compañías con señales tributarias que requieren contexto y verificación."
+        source="Señales con evidencia"
+        sourceDetail="Balances públicos · SRI · normativa aplicable"
+        icon={ShieldCheck}
+      />
       <h2>Análisis tributario</h2>
 
-      <div className="vistas">
+      <div className="vistas" role="tablist" aria-label="Vistas del análisis tributario">
         {VISTAS.map(v => (
           <button
             key={v.id}
+            type="button"
+            role="tab"
+            aria-selected={vista === v.id}
             className={vista === v.id ? 'activa' : ''}
             onClick={() => setVista(v.id)}
           >
+            <ChartNoAxesCombined aria-hidden="true" />
             {v.titulo}
           </button>
         ))}

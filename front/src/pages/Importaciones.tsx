@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { CheckCircle2, Clock3, Database, History, LoaderCircle, XCircle } from 'lucide-react'
 import { ETIQUETA_KIND, listarJobs } from '../services/imports.service'
+import PageHeader from '../components/PageHeader'
 import '../styles/Importaciones.css'
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
@@ -27,14 +29,18 @@ const duracion = j => {
 export default function Importaciones() {
   const [jobs, setJobs] = useState([])
   const [error, setError] = useState(null)
+  const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
     let cancelado = false
 
-    const cargar = () =>
+    const cargar = () => {
+      setCargando(true)
       listarJobs()
         .then(d => !cancelado && setJobs(d))
         .catch(e => !cancelado && setError(e?.response?.data?.message ?? e.message))
+        .finally(() => !cancelado && setCargando(false))
+    }
 
     cargar()
     // Refresco periódico para ver avanzar una importación en curso sin recargar.
@@ -45,14 +51,66 @@ export default function Importaciones() {
     }
   }, [])
 
+  const resumen = jobs.reduce(
+    (acc, job) => {
+      acc.total += 1
+      if (ESTADOS_FINALES.includes(job.status)) {
+        if (job.status === 'completed') acc.completadas += 1
+        if (job.status === 'failed') acc.fallidas += 1
+      } else {
+        acc.activas += 1
+      }
+      return acc
+    },
+    { total: 0, activas: 0, completadas: 0, fallidas: 0 }
+  )
+
   return (
     <div className="importaciones">
-      <h2>Historial de importaciones</h2>
+      <PageHeader
+        kicker="Centro de datos"
+        title="Historial de importaciones"
+        description="Revisa el estado de cada carga, sus resultados y cualquier incidencia detectada por el servidor."
+        source="Actividad de datos"
+        sourceDetail="Actualización automática cada 3 segundos"
+        icon={History}
+      />
 
-      {error && <div className="alerta error">{error}</div>}
+      <div className="import-history-summary" aria-label="Resumen de importaciones">
+        <div className="import-history-stat">
+          <strong>{num(resumen.total)}</strong>
+          <span>Total de cargas</span>
+        </div>
+        <div className="import-history-stat">
+          <strong>{num(resumen.activas)}</strong>
+          <span>En proceso</span>
+        </div>
+        <div className="import-history-stat">
+          <strong>{num(resumen.completadas)}</strong>
+          <span>Completadas</span>
+        </div>
+        <div className="import-history-stat">
+          <strong>{num(resumen.fallidas)}</strong>
+          <span>Con error</span>
+        </div>
+      </div>
 
-      {jobs.length === 0 && !error && (
-        <div className="vacio-total">Todavía no se ha ejecutado ninguna importación.</div>
+      {error && <div className="alerta error" role="alert"><XCircle aria-hidden="true" />{error}</div>}
+
+      {cargando && jobs.length === 0 && !error && (
+        <div className="vacio-total" role="status" aria-live="polite">
+          <LoaderCircle className="import-empty-icon spin" aria-hidden="true" />
+          <strong>Cargando historial</strong>
+          <span>Estamos consultando las importaciones recientes.</span>
+        </div>
+      )}
+
+      {!cargando && jobs.length === 0 && !error && (
+        <div className="vacio-total">
+          <Database className="import-empty-icon" aria-hidden="true" />
+          <strong>Todavía no hay importaciones</strong>
+          <span>Cuando subas un archivo, aquí podrás seguir su resultado.</span>
+        </div>
       )}
 
       {jobs.length > 0 && (
@@ -82,6 +140,9 @@ export default function Importaciones() {
                   </td>
                   <td>
                     <span className={`estado ${j.status}`}>
+                      {j.status === 'completed' && <CheckCircle2 aria-hidden="true" />}
+                      {j.status === 'failed' && <XCircle aria-hidden="true" />}
+                      {!ESTADOS_FINALES.includes(j.status) && <Clock3 aria-hidden="true" />}
                       {ETIQUETA_ESTADO[j.status] ?? j.status}
                       {!ESTADOS_FINALES.includes(j.status) && ` ${j.progressPct}%`}
                     </span>

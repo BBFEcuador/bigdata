@@ -1,0 +1,497 @@
+/* Shared visual language for the public-data directory views. */
+.directory-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  margin: 0 0 1.5rem;
+}
+
+.directory-heading-kicker {
+  margin: 0 0 0.45rem;
+  color: var(--secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.directory-page-heading h1 {
+  margin: 0;
+  color: var(--primary-dark);
+  font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.directory-heading-description {
+  max-width: 68ch;
+  margin: 0.75rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.directory-heading-source {
+  display: flex;
+  min-width: 13rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-align: right;
+}
+
+.directory-heading-source .inline-flex {
+  gap: 0.4rem;
+  border-color: var(--primary);
+  color: var(--primary-dark);
+  background: transparent;
+}
+
+.directory-heading-source svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.catalogo,
+.ciiu,
+.padron,
+.tributario {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+.catalogo > h2,
+.ciiu > h2,
+.padron > h2,
+.tributario > h2,
+.ciiu > .ayuda {
+  display: none;
+}
+
+.catalogo .resumen-cajas,
+.ciiu .resumen-cajas,
+.padron .resumen-cajas {
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 0;
+  margin: 0 0 1rem;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.catalogo .caja,
+.ciiu .caja,
+.padron .caja {
+  min-height: 4.7rem;
+  padding: 0.9rem 1rem;
+  border: 0;
+  border-right: 1px solid var(--border-color);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.catalogo .caja:last-child,
+.ciiu .caja:last-child,
+.padron .caja:last-child {
+  border-right: 0;
+}
+
+.catalogo .caja-valor,
+.ciiu .caja-valor,
+.padron .caja-valor {
+  color: var(--primary-dark);
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.catalogo .caja-etiqueta,
+.ciiu .caja-etiqueta,
+.padron .caja-etiqueta {
+  margin-top: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.catalogo .filtros,
+.ciiu .filtros,
+.padron .filtros,
+.tributario .filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.85rem;
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.catalogo .filtros input:not([type='checkbox']),
+.catalogo .filtros select,
+.catalogo .filtros button,
+.ciiu .filtros input:not([type='checkbox']),
+.ciiu .filtros select,
+.ciiu .filtros button,
+.padron .filtros input:not([type='checkbox']),
+.padron .filtros select,
+.padron .filtros button,
+.tributario .filtros input:not([type='checkbox']),
+.tributario .filtros select,
+.tributario .filtros button {
+  min-height: 2.45rem;
+  border-color: var(--border-light);
+  border-radius: 7px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+.catalogo .filtros input:not([type='checkbox']),
+.ciiu .filtros input:not([type='checkbox']),
+.padron .filtros input:not([type='checkbox']),
+.tributario .filtros input:not([type='checkbox']) {
+  padding: 0.55rem 0.75rem;
+}
+
+.catalogo .filtros select,
+.ciiu .filtros select,
+.padron .filtros select,
+.tributario .filtros select,
+.catalogo .filtros button,
+.ciiu .filtros button,
+.padron .filtros button,
+.tributario .filtros button {
+  padding: 0.55rem 0.75rem;
+}
+
+.catalogo .filtros input:focus-visible,
+.ciiu .filtros input:focus-visible,
+.padron .filtros input:focus-visible,
+.tributario .filtros input:focus-visible,
+.catalogo .filtros select:focus-visible,
+.ciiu .filtros select:focus-visible,
+.padron .filtros select:focus-visible,
+.tributario .filtros select:focus-visible,
+.catalogo .filtros button:focus-visible,
+.ciiu .filtros button:focus-visible,
+.padron .filtros button:focus-visible,
+.tributario .filtros button:focus-visible {
+  outline: 3px solid var(--primary-200);
+  outline-offset: 1px;
+}
+
+.catalogo .filtros button,
+.ciiu .filtros button,
+.padron .filtros button,
+.tributario .filtros button {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.catalogo .filtros button:hover,
+.ciiu .filtros button:hover,
+.padron .filtros button:hover,
+.tributario .filtros button:hover {
+  background: var(--primary-dark);
+}
+
+.catalogo .check,
+.ciiu .check,
+.padron .check {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--surface-alt);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.catalogo .resultado,
+.ciiu .resultado,
+.padron .resultado,
+.tributario .resultado {
+  margin: 0 0 0.65rem;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+}
+
+.catalogo .tabla-scroll,
+.ciiu .tabla-scroll,
+.padron .tabla-scroll,
+.tributario .tabla,
+.tributario .tabla-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.catalogo table,
+.ciiu table,
+.padron table,
+.tributario table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.catalogo th,
+.ciiu th,
+.padron th,
+.tributario th {
+  padding: 0.72rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.catalogo td,
+.ciiu td,
+.padron td,
+.tributario td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text);
+  font-size: 0.82rem;
+  vertical-align: middle;
+}
+
+.catalogo tbody tr:last-child td,
+.ciiu tbody tr:last-child td,
+.padron tbody tr:last-child td,
+.tributario tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.catalogo tbody tr:hover,
+.ciiu tbody tr:hover,
+.padron tbody tr:hover,
+.tributario tbody tr:hover {
+  background: var(--surface-alt);
+}
+
+.catalogo a,
+.ciiu a,
+.padron a,
+.tributario a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.catalogo a:hover,
+.ciiu a:hover,
+.padron a:hover,
+.tributario a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.padron .nota,
+.tributario .nota {
+  margin: 0 0 1rem;
+  border-radius: 10px;
+  line-height: 1.55;
+}
+
+.padron .pestanas,
+.tributario .vistas {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-alt);
+}
+
+.padron .pestanas button,
+.tributario .vistas button {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.padron .pestanas button:hover,
+.tributario .vistas button:hover {
+  color: var(--primary-dark);
+}
+
+.padron .pestanas button.activa,
+.tributario .vistas button.activa {
+  border-color: var(--border-color);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+  color: var(--primary-dark);
+}
+
+.tributario .vistas button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.catalogo .vacio,
+.ciiu .vacio,
+.padron .vacio,
+.tributario .vacio,
+.catalogo .vacio-total,
+.ciiu .vacio-total,
+.padron .vacio-total,
+.tributario .vacio-total,
+.catalogo .error,
+.ciiu .error,
+.padron .error,
+.tributario .error {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-soft);
+}
+
+.catalogo .error,
+.ciiu .error,
+.padron .error,
+.tributario .error {
+  border-color: var(--error-border);
+  background: var(--error-light);
+  color: var(--error);
+}
+
+.catalogo .paginacion,
+.ciiu .paginacion,
+.padron .paginacion,
+.tributario .paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+}
+
+.catalogo .paginacion button,
+.ciiu .paginacion button,
+.padron .paginacion button,
+.tributario .paginacion button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--primary-dark);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.catalogo .paginacion button:disabled,
+.ciiu .paginacion button:disabled,
+.padron .paginacion button:disabled,
+.tributario .paginacion button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 760px) {
+  .directory-page-heading {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .directory-heading-source {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .catalogo .caja,
+  .ciiu .caja,
+  .padron .caja {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .catalogo .caja:nth-last-child(-n + 2),
+  .ciiu .caja:nth-last-child(-n + 2),
+  .padron .caja:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .catalogo .caja:nth-child(even),
+  .ciiu .caja:nth-child(even),
+  .padron .caja:nth-child(even) {
+    border-right: 0;
+  }
+
+  .catalogo .filtros,
+  .ciiu .filtros,
+  .padron .filtros,
+  .tributario .filtros {
+    align-items: stretch;
+  }
+
+  .catalogo .filtros input:not([type='checkbox']),
+  .ciiu .filtros input:not([type='checkbox']),
+  .padron .filtros input:not([type='checkbox']),
+  .tributario .filtros input:not([type='checkbox']) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .catalogo .paginacion,
+  .ciiu .paginacion,
+  .padron .paginacion,
+  .tributario .paginacion {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .directory-page-heading h1 {
+    font-size: 1.75rem;
+  }
+
+  .catalogo .resumen-cajas,
+  .ciiu .resumen-cajas,
+  .padron .resumen-cajas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalogo .caja,
+  .ciiu .caja,
+  .padron .caja {
+    border-right: 0;
+  }
+}
