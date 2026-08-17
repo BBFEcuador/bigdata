@@ -116,6 +116,25 @@ describe('ScraperRegistry', () => {
     ]);
   });
 
+  it('permite elegir una fuente predeterminada sin depender del orden', () => {
+    const simulada = new ScraperSimulado();
+    const real = {
+      fuente: 'real',
+      etiqueta: 'Real',
+      pasos: [] as const,
+      ejecutar: async () => ({ documentos: 0 }),
+    };
+    const r = new ScraperRegistry([simulada, real], 'real');
+
+    expect(r.fuentePorDefecto()).toBe('real');
+  });
+
+  it('rechaza una fuente predeterminada que no está registrada', () => {
+    expect(
+      () => new ScraperRegistry([new ScraperSimulado()], 'inexistente'),
+    ).toThrow(/predeterminada/);
+  });
+
   it('rechaza una fuente desconocida en vez de devolver undefined', () => {
     const r = new ScraperRegistry([new ScraperSimulado()]);
     expect(() => r.obtener('supercias')).toThrow(/No existe la fuente/);

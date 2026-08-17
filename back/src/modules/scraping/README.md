@@ -10,9 +10,13 @@ no conoce el expediente y nunca lo conocerá. No es una convención nueva: la
 usan `segmento_miembro`, `segmento_evento` y `sujeto_estado_comercial` desde la
 migración 9000, y `perfil_comercial` la expone con un índice único.
 
-Hoy el único ejecutor registrado es **simulado**: no va a ninguna página. Existe
-para que toda la maquinaria se pueda probar de punta a punta antes de que haya
-un sitio real que rastrear.
+Hay dos ejecutores registrados: **simulada**, para probar la maquinaria sin una
+fuente externa, y **dataportal-web**, que inicia sesión en WordPress y deja un
+contexto aislado, navega a la búsqueda, escribe el RUC del contribuyente y
+envía el formulario. En esta fase todavía no extrae documentos, por lo que
+completa con `documentos: 0`.
+Cuando el alta no especifica `fuente`, se usa **dataportal-web**; la fuente
+simulada debe pedirse explícitamente.
 
 ```
 POST /scraping/masivo  →  N jobs 'encolado'
@@ -167,6 +171,33 @@ sobrescribe.
 | `SCRAPING_SIM_MS_PASO` | 700 | (simulado) duración de cada paso |
 | `SCRAPING_SIM_FALLO_PCT` | 10 | (simulado) fallos por paso; 1 de cada 4 es permanente |
 | `SCRAPING_SIM_LENTO_PCT` | 3 | (simulado) porcentaje que tarda 30 s |
+| `SCRAPING_DATAPORTAL_BASE_URL` | `https://dataportalsys.com` | origen del WordPress |
+| `SCRAPING_DATAPORTAL_USERNAME` | — | usuario; obligatorio para `dataportal-web` |
+| `SCRAPING_DATAPORTAL_PASSWORD` | — | contraseña; obligatoria para `dataportal-web` |
+| `SCRAPING_DATAPORTAL_TIMEOUT_MS` | 30 000 | timeout de acciones y navegaciones |
+| `SCRAPING_DATAPORTAL_HEADLESS` | `true` | usar `false` sólo para diagnóstico local |
+| `SCRAPING_DATAPORTAL_CONCURRENCIA` | 1 | contextos simultáneos por proceso y cuenta |
+| `SCRAPING_DATAPORTAL_DEBUG_ESPERA_MS` | 0 | tiempo que se mantiene abierta la página RUC para inspección local |
+
+## Chromium para DataPortal
+
+Playwright está fijado en `package-lock.json`, pero su navegador se instala por
+separado en cada entorno operativo:
+
+```bash
+npx playwright install chromium
+```
+
+En una imagen Linux nueva pueden hacer falta también las bibliotecas del sistema;
+se instalan durante la construcción de la imagen con:
+
+```bash
+npx playwright install --with-deps chromium
+```
+
+No se debe ejecutar la segunda orden durante el arranque de la aplicación. Las
+credenciales van en variables de entorno y el adaptador no registra cookies,
+valores de campos, HTML ni capturas de páginas autenticadas.
 
 Los fallos del simulado no son ruido: sin ellos, ni el backoff, ni
 `max_intentos`, ni el estado `fallido` se ejercitan nunca, y se descubren rotos

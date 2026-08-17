@@ -118,14 +118,18 @@ export class ScrapingController {
 
   @Post(':id/pausar')
   @HttpCode(202)
-  pausar(@Param('id', ParseUUIDPipe) id: string, @Usuario() usuario: string) {
-    return this.jobs.accionar(id, 'pausar', usuario);
+  async pausar(@Param('id', ParseUUIDPipe) id: string, @Usuario() usuario: string) {
+    const resultado = await this.jobs.accionar(id, 'pausar', usuario);
+    this.dispatcher.interrumpir(id);
+    return resultado;
   }
 
   @Post(':id/cancelar')
   @HttpCode(202)
-  cancelar(@Param('id', ParseUUIDPipe) id: string, @Usuario() usuario: string) {
-    return this.jobs.accionar(id, 'cancelar', usuario);
+  async cancelar(@Param('id', ParseUUIDPipe) id: string, @Usuario() usuario: string) {
+    const resultado = await this.jobs.accionar(id, 'cancelar', usuario);
+    this.dispatcher.interrumpir(id);
+    return resultado;
   }
 
   /** Devuelve el job a la cola. Conserva el checkpoint: sigue donde iba. */

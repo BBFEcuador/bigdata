@@ -12,7 +12,10 @@ import { Scraper } from './scraper.interface';
 export class ScraperRegistry {
   private readonly porFuente = new Map<string, Scraper>();
 
-  constructor(scrapers: Scraper[]) {
+  constructor(
+    scrapers: Scraper[],
+    private readonly fuentePredeterminada?: string,
+  ) {
     for (const s of scrapers) {
       if (this.porFuente.has(s.fuente)) {
         // Fallar al arrancar y no en caliente: con dos scrapers compartiendo
@@ -20,6 +23,14 @@ export class ScraperRegistry {
         throw new Error(`Hay dos scrapers con la fuente "${s.fuente}"`);
       }
       this.porFuente.set(s.fuente, s);
+    }
+    if (
+      this.fuentePredeterminada &&
+      !this.porFuente.has(this.fuentePredeterminada)
+    ) {
+      throw new Error(
+        `La fuente predeterminada "${this.fuentePredeterminada}" no está registrada`,
+      );
     }
   }
 
@@ -48,6 +59,7 @@ export class ScraperRegistry {
 
   /** La fuente que se usa cuando el alta no dice ninguna. */
   fuentePorDefecto(): string {
+    if (this.fuentePredeterminada) return this.fuentePredeterminada;
     const primera = this.porFuente.keys().next();
     if (primera.done) throw new Error('No hay ningún scraper registrado');
     return primera.value;

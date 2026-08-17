@@ -78,6 +78,11 @@ export class ScrapingDispatcherService implements OnApplicationBootstrap, OnModu
     };
   }
 
+  /** Corta inmediatamente una operación externa; el siguiente latido aplica la orden. */
+  interrumpir(jobId: string): void {
+    this.abortos.get(jobId)?.abort();
+  }
+
   private async bucle(): Promise<void> {
     this.logger.log(`Despachador en marcha (${this.identidad}, ${CONCURRENCIA} workers)`);
 

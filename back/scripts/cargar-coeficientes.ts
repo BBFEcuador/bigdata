@@ -2,28 +2,6 @@ import 'reflect-metadata';
 import * as ExcelJS from 'exceljs';
 import { AppDataSource } from '../src/data-source';
 
-/**
- * Carga los coeficientes de estimación presuntiva del SRI desde el comparativo
- * en Excel.
- *
- *     npm run coeficientes -- "C:\\ruta\\SRI_coeficientes_presuntivos_2021-2024.xlsx"
- *
- * ## Por qué un script y no un importador con job
- *
- * El resto de importadores existen porque alguien sube un archivo por pantalla
- * y necesita ver el progreso de una carga de minutos. Esto son 2.664 filas de
- * datos normativos que se tocan **una vez al año**, cuando el SRI publica la
- * resolución del ejercicio, y las carga quien mantiene el sistema. Montarle el
- * contrato de job entero sería maquinaria para un caso que no ocurre.
- *
- * ## Idempotente
- *
- * Reemplaza los coeficientes de los años que traiga el archivo y no toca los
- * demás: recargar un archivo corregido es la operación normal. Va en una
- * transacción porque un año a medias —ingresos sí, activos no— daría una
- * presunción silenciosamente baja para todo ese ejercicio.
- */
-
 const HOJAS = [
   { hoja: 'Ingresos', base: 'ingresos' },
   { hoja: 'Costos y Gastos', base: 'costos_gastos' },
@@ -46,13 +24,6 @@ const texto = (v: ExcelJS.CellValue): string => {
   return String(v);
 };
 
-/**
- * Un coeficiente sólo cuenta si es un número positivo.
- *
- * Las celdas en blanco son intencionales —ramas que la resolución de ese año no
- * contemplaba— y significan "aplica el general del art. 3". Convertirlas en 0
- * sería declarar una base imponible presunta de cero para ese sector.
- */
 function coeficiente(v: ExcelJS.CellValue): number | null {
   if (v === null || v === undefined || v === '') return null;
   const n = typeof v === 'number' ? v : Number(texto(v).replace(',', '.'));
@@ -162,8 +133,6 @@ async function main() {
       );
     }
 
-    // Un ejercicio sin coeficiente general es una trampa: las ramas sin
-    // coeficiente propio se quedarían sin base y saldrían como "sin riesgo".
     const [{ huerfanos }] = await qr.query(
       `SELECT count(*)::int AS huerfanos
          FROM (SELECT DISTINCT anio FROM coeficiente_presuntivo WHERE anio = ANY($1)) a

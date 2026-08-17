@@ -44,7 +44,10 @@ const COLUMNAS_CONTRIBUYENTE = `
   tipo, ruc, nombre, jurisdiccion, estado_contribuyente, clase_contribuyente,
   fecha_inicio_actividades, fecha_actualizacion, fecha_suspension_definitiva,
   fecha_reinicio_actividades, obligado_contabilidad, agente_retencion,
-  contribuyente_especial, num_establecimientos, provincia, row_hash`;
+  contribuyente_especial, num_establecimientos, provincia,
+  sri_estado_contribuyente, sri_clase_contribuyente, sri_fecha_inicio_actividades,
+  sri_obligado_contabilidad, sri_agente_retencion, sri_contribuyente_especial,
+  sri_num_establecimientos, row_hash`;
 
 export function mergePersonasSql(tabla: string, provincia?: string): string {
   return `
@@ -58,7 +61,11 @@ merged AS (
          src.fecha_actualizacion, src.fecha_suspension_definitiva,
          src.fecha_reinicio_actividades, src.obligado_contabilidad,
          src.agente_retencion, src.contribuyente_especial,
-         src.num_establecimientos, src.provincia, src.row_hash, $1, $1
+         src.num_establecimientos, src.provincia,
+         src.estado_contribuyente, src.clase_contribuyente,
+         src.fecha_inicio_actividades, src.obligado_contabilidad,
+         src.agente_retencion, src.contribuyente_especial,
+         src.num_establecimientos, src.row_hash, $1, $1
     FROM src
   ON CONFLICT (tipo, ruc) WHERE tipo <> 'companies' AND ruc IS NOT NULL DO UPDATE SET
     nombre = EXCLUDED.nombre, jurisdiccion = EXCLUDED.jurisdiccion,
@@ -72,6 +79,13 @@ merged AS (
     agente_retencion = EXCLUDED.agente_retencion,
     contribuyente_especial = EXCLUDED.contribuyente_especial,
     num_establecimientos = EXCLUDED.num_establecimientos,
+    sri_estado_contribuyente = EXCLUDED.sri_estado_contribuyente,
+    sri_clase_contribuyente = EXCLUDED.sri_clase_contribuyente,
+    sri_fecha_inicio_actividades = EXCLUDED.sri_fecha_inicio_actividades,
+    sri_obligado_contabilidad = EXCLUDED.sri_obligado_contabilidad,
+    sri_agente_retencion = EXCLUDED.sri_agente_retencion,
+    sri_contribuyente_especial = EXCLUDED.sri_contribuyente_especial,
+    sri_num_establecimientos = EXCLUDED.sri_num_establecimientos,
     provincia = EXCLUDED.provincia,
     row_hash = EXCLUDED.row_hash, ultimo_job_id = EXCLUDED.ultimo_job_id,
     ausente_desde_job = NULL, updated_at = now()
@@ -108,7 +122,10 @@ merged AS (
          src.fecha_suspension_definitiva, src.fecha_reinicio_actividades,
          src.obligado_contabilidad, src.agente_retencion,
          src.contribuyente_especial, src.num_establecimientos, src.provincia,
-         src.row_hash,
+         src.estado_contribuyente, src.clase_contribuyente,
+         src.fecha_inicio_actividades, src.obligado_contabilidad,
+         src.agente_retencion, src.contribuyente_especial,
+         src.num_establecimientos, src.row_hash,
          $1, $1
     FROM src
   ON CONFLICT (tipo, ruc) WHERE tipo <> 'companies' AND ruc IS NOT NULL DO UPDATE SET
@@ -123,6 +140,13 @@ merged AS (
     agente_retencion = EXCLUDED.agente_retencion,
     contribuyente_especial = EXCLUDED.contribuyente_especial,
     num_establecimientos = EXCLUDED.num_establecimientos,
+    sri_estado_contribuyente = EXCLUDED.sri_estado_contribuyente,
+    sri_clase_contribuyente = EXCLUDED.sri_clase_contribuyente,
+    sri_fecha_inicio_actividades = EXCLUDED.sri_fecha_inicio_actividades,
+    sri_obligado_contabilidad = EXCLUDED.sri_obligado_contabilidad,
+    sri_agente_retencion = EXCLUDED.sri_agente_retencion,
+    sri_contribuyente_especial = EXCLUDED.sri_contribuyente_especial,
+    sri_num_establecimientos = EXCLUDED.sri_num_establecimientos,
     provincia = EXCLUDED.provincia,
     row_hash = EXCLUDED.row_hash, ultimo_job_id = EXCLUDED.ultimo_job_id,
     ausente_desde_job = NULL, updated_at = now()

@@ -6,6 +6,15 @@ import { ScrapingController } from './scraping.controller';
 import { ScrapingDispatcherService } from './scraping-dispatcher.service';
 import { ScrapingJobsService } from './scraping-jobs.service';
 import { ScrapingRecoveryService } from './scraping-recovery.service';
+import { ScraperDataportalWeb } from './ejecutores/scraper-dataportal-web';
+import { COMPANIAS_SCRAPING_REPOSITORY } from './application/ports/companias-scraping.repository';
+import { DATAPORTAL_NAVIGATOR } from './application/ports/dataportal-navigator';
+import { PostgresCompaniasScrapingRepository } from './infrastructure/persistence/postgres-companias-scraping.repository';
+import {
+  DATAPORTAL_BROWSER_LAUNCHER,
+  PlaywrightDataportalNavigator,
+} from './infrastructure/navigation/playwright-dataportal.navigator';
+import { chromium } from 'playwright';
 
 /**
  * Para añadir un scraper real:
@@ -26,10 +35,28 @@ import { ScrapingRecoveryService } from './scraping-recovery.service';
     ScrapingRecoveryService,
     ScrapingDispatcherService,
     ScraperSimulado,
+    ScraperDataportalWeb,
+    PostgresCompaniasScrapingRepository,
+    PlaywrightDataportalNavigator,
+    {
+      provide: COMPANIAS_SCRAPING_REPOSITORY,
+      useExisting: PostgresCompaniasScrapingRepository,
+    },
+    {
+      provide: DATAPORTAL_NAVIGATOR,
+      useExisting: PlaywrightDataportalNavigator,
+    },
+    {
+      provide: DATAPORTAL_BROWSER_LAUNCHER,
+      useValue: {
+        launch: (headless: boolean) => chromium.launch({ headless }),
+      },
+    },
     {
       provide: ScraperRegistry,
-      inject: [ScraperSimulado],
-      useFactory: (...scrapers: Scraper[]) => new ScraperRegistry(scrapers),
+      inject: [ScraperSimulado, ScraperDataportalWeb],
+      useFactory: (...scrapers: Scraper[]) =>
+        new ScraperRegistry(scrapers, 'dataportal-web'),
     },
   ],
   exports: [ScrapingJobsService],
