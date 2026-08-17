@@ -16,8 +16,31 @@ const parseado: Parseado = {
       fecha_ingreso: null,
     },
   ],
-  vehiculos: [],
-  propiedades: [],
+  vehiculos: [
+    {
+      ruc: '099',
+      placa: 'ABC1',
+      tipo: null,
+      marca: null,
+      modelo: null,
+      anio: null,
+      lugar: null,
+      fecha_vencimiento: null,
+    },
+  ],
+  propiedades: [
+    {
+      ruc: '099',
+      cedula_catastral: 'CAT1',
+      parroquia: null,
+      codigo_calle: null,
+      calle_principal: null,
+      numero: null,
+      barrio_sector: null,
+      zona: null,
+      telefono: null,
+    },
+  ],
 };
 
 function servicio(coincidencias: Array<{ id: string }>) {
@@ -39,13 +62,13 @@ async function guardar(service: DataportalImportService) {
 }
 
 describe('DataportalImportService - resolución histórica', () => {
-  it('inserta contactos y nómina con una coincidencia exacta', async () => {
+  it('inserta las cuatro colecciones con una coincidencia exacta', async () => {
     const { service, query } = servicio([{ id: 'uuid-1' }]);
     await expect(guardar(service)).resolves.toBeNull();
     const inserts = query.mock.calls.filter(([sql]) =>
-      /INSERT INTO dataportal_(contacto|nomina)/.test(sql),
+      /INSERT INTO dataportal_(contacto|nomina|vehiculo|propiedad)/.test(sql),
     );
-    expect(inserts).toHaveLength(2);
+    expect(inserts).toHaveLength(4);
     expect(inserts.every(([, params]) => params[0] === 'uuid-1')).toBe(true);
   });
 
@@ -56,7 +79,7 @@ describe('DataportalImportService - resolución histórica', () => {
     );
     expect(
       query.mock.calls.some(([sql]) =>
-        /INSERT INTO dataportal_(contacto|nomina)/.test(sql),
+        /INSERT INTO dataportal_(contacto|nomina|vehiculo|propiedad)/.test(sql),
       ),
     ).toBe(false);
   });
@@ -66,7 +89,7 @@ describe('DataportalImportService - resolución histórica', () => {
     await expect(guardar(service)).resolves.toMatch(/varios contribuyentes/);
     expect(
       query.mock.calls.some(([sql]) =>
-        /INSERT INTO dataportal_(contacto|nomina)/.test(sql),
+        /INSERT INTO dataportal_(contacto|nomina|vehiculo|propiedad)/.test(sql),
       ),
     ).toBe(false);
   });

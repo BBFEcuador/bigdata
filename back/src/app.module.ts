@@ -16,6 +16,7 @@ import { TributarioModule } from './modules/tributario/tributario.module';
 import { ScrapingModule } from './modules/scraping/scraping.module';
 import { ContactosModule } from './modules/contactos/contactos.module';
 import { NominaModule } from './modules/nomina/nomina.module';
+import { BienesModule } from './modules/bienes/bienes.module';
 
 @Module({
   imports: [
@@ -33,7 +34,9 @@ import { NominaModule } from './modules/nomina/nomina.module';
       autoLoadEntities: true,
       migrations: [join(__dirname, 'database', 'migrations', '*{.ts,.js}')],
       synchronize: false,
-      migrationsRun: false,
+      // Los workers pueden arrancar inmediatamente; primero deben existir las
+      // columnas y FK que sus adaptadores usan.
+      migrationsRun: true,
     }),
     CompaniasModule,
     CatalogoModule,
@@ -47,6 +50,7 @@ import { NominaModule } from './modules/nomina/nomina.module';
     ScrapingModule,
     ContactosModule,
     NominaModule,
+    BienesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

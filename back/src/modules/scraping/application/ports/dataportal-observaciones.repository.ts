@@ -1,20 +1,35 @@
 import {
   ContactoDataportal,
   PersonaNominaDataportal,
+  PropiedadDataportal,
+  VehiculoDataportal,
 } from './dataportal-navigator';
 
 export const DATAPORTAL_OBSERVACIONES_REPOSITORY = Symbol(
   'DATAPORTAL_OBSERVACIONES_REPOSITORY',
 );
 
-export interface ReemplazoObservacionesDataportal {
+export interface IdentidadObservacionesDataportal {
   contribuyenteId: string;
   ruc: string;
-  contactos: ContactoDataportal[];
-  nomina: PersonaNominaDataportal[];
 }
 
-/** Escritura atómica de la fotografía completa observada en DataPortal. */
+/** Cada operación reemplaza una fotografía completa en su propia transacción. */
 export interface DataportalObservacionesRepository {
-  reemplazar(datos: ReemplazoObservacionesDataportal): Promise<void>;
+  reemplazarContactos(
+    identidad: IdentidadObservacionesDataportal,
+    datos: ContactoDataportal[],
+  ): Promise<void>;
+  reemplazarNomina(
+    identidad: IdentidadObservacionesDataportal,
+    datos: PersonaNominaDataportal[],
+  ): Promise<void>;
+  reemplazarPropiedades(
+    identidad: IdentidadObservacionesDataportal,
+    datos: PropiedadDataportal[],
+  ): Promise<void>;
+  reemplazarVehiculos(
+    identidad: IdentidadObservacionesDataportal,
+    datos: VehiculoDataportal[],
+  ): Promise<void>;
 }

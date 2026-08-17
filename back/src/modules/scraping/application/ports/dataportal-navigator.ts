@@ -16,9 +16,36 @@ export interface PersonaNominaDataportal {
   posibleSalario: number | null;
 }
 
+export interface PropiedadDataportal {
+  cedulaCatastral: string;
+  parroquia: string | null;
+  codigoCalle: string | null;
+  callePrincipal: string | null;
+  numero: string | null;
+  barrioSector: string | null;
+  zona: string | null;
+  telefono: string | null;
+}
+
+export interface VehiculoDataportal {
+  tipo: string | null;
+  modelo: string | null;
+  marca: string | null;
+  anio: number | null;
+  placa: string;
+  lugar: string | null;
+  /** Fecha y hora local del portal, sin zona inventada. */
+  fechaVencimiento: string | null;
+}
+
+export type ResultadoSeccionDataportal<T> =
+  { estado: 'ok'; datos: T[] } | { estado: 'error'; advertencia: string };
+
 export interface ResultadoConsultaDataportal {
-  contactos: ContactoDataportal[];
-  nomina: PersonaNominaDataportal[];
+  contactos: ResultadoSeccionDataportal<ContactoDataportal>;
+  nomina: ResultadoSeccionDataportal<PersonaNominaDataportal>;
+  propiedades: ResultadoSeccionDataportal<PropiedadDataportal>;
+  vehiculos: ResultadoSeccionDataportal<VehiculoDataportal>;
   consultaMs: number;
   extraccionMs: number;
 }

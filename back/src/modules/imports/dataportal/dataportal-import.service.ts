@@ -440,8 +440,8 @@ export class DataportalImportService {
       if (!contribuyenteId) {
         avisoResolucion =
           contribuyentes.length === 0
-            ? `No existe un contribuyente con RUC exacto ${ruc}; se omitieron contactos y nómina`
-            : `El RUC ${ruc} identifica varios contribuyentes; se omitieron contactos y nómina`;
+            ? `No existe un contribuyente con RUC exacto ${ruc}; se omitieron contactos, nómina y bienes`
+            : `El RUC ${ruc} identifica varios contribuyentes; se omitieron contactos, nómina y bienes`;
       }
 
       // Las tablas 1:N se reemplazan enteras para ese contribuyente: si un empleado deja
@@ -481,37 +481,55 @@ export class DataportalImportService {
             ],
           );
         }
-      }
 
-      await m.query(`DELETE FROM dataportal_vehiculo WHERE ruc = $1`, [ruc]);
-      for (const v of p.vehiculos) {
         await m.query(
-          `INSERT INTO dataportal_vehiculo (
-             ruc, placa, tipo, marca, modelo, anio, cilindraje, avaluo, ciudad,
-             fecha_matricula, anio_pago)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-          [
-            v.ruc,
-            v.placa,
-            v.tipo,
-            v.marca,
-            v.modelo,
-            v.anio,
-            v.cilindraje,
-            v.avaluo,
-            v.ciudad,
-            v.fecha_matricula,
-            v.anio_pago,
-          ],
+          `DELETE FROM dataportal_vehiculo WHERE contribuyente_id = $1`,
+          [contribuyenteId],
         );
-      }
+        for (const v of p.vehiculos) {
+          await m.query(
+            `INSERT INTO dataportal_vehiculo
+               (contribuyente_id, ruc, placa, tipo, modelo, marca, anio, lugar,
+                fecha_vencimiento)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+              contribuyenteId,
+              v.ruc,
+              v.placa,
+              v.tipo,
+              v.modelo,
+              v.marca,
+              v.anio,
+              v.lugar,
+              v.fecha_vencimiento,
+            ],
+          );
+        }
 
-      await m.query(`DELETE FROM dataportal_propiedad WHERE ruc = $1`, [ruc]);
-      for (const prop of p.propiedades) {
         await m.query(
-          `INSERT INTO dataportal_propiedad (ruc, datos) VALUES ($1, $2::jsonb)`,
-          [ruc, JSON.stringify(prop)],
+          `DELETE FROM dataportal_propiedad WHERE contribuyente_id = $1`,
+          [contribuyenteId],
         );
+        for (const prop of p.propiedades) {
+          await m.query(
+            `INSERT INTO dataportal_propiedad
+               (contribuyente_id, ruc, cedula_catastral, parroquia, codigo_calle,
+                calle_principal, numero, barrio_sector, zona, telefono)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [
+              contribuyenteId,
+              prop.ruc,
+              prop.cedula_catastral,
+              prop.parroquia,
+              prop.codigo_calle,
+              prop.calle_principal,
+              prop.numero,
+              prop.barrio_sector,
+              prop.zona,
+              prop.telefono,
+            ],
+          );
+        }
       }
     });
     return avisoResolucion;

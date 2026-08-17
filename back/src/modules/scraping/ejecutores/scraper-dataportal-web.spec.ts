@@ -51,10 +51,13 @@ function dependencias(
       return {
         consultaMs: 6,
         extraccionMs: 3,
-        contactos: [
-          { valor: 'a@b.ec', tipo: 'email' as const, tipoCodigo: '3' },
-        ],
-        nomina: [],
+        contactos: {
+          estado: 'ok' as const,
+          datos: [{ valor: 'a@b.ec', tipo: 'email' as const, tipoCodigo: '3' }],
+        },
+        nomina: { estado: 'ok' as const, datos: [] },
+        propiedades: { estado: 'ok' as const, datos: [] },
+        vehiculos: { estado: 'ok' as const, datos: [] },
       };
     }),
     cerrar,
@@ -74,9 +77,12 @@ function dependencias(
     }),
   };
   const observaciones: DataportalObservacionesRepository = {
-    reemplazar: jest.fn(async () => {
+    reemplazarContactos: jest.fn(async () => {
       orden.push('persistir');
     }),
+    reemplazarNomina: jest.fn(async () => undefined),
+    reemplazarPropiedades: jest.fn(async () => undefined),
+    reemplazarVehiculos: jest.fn(async () => undefined),
   };
   return { contribuyentes, navegador, observaciones, sesion, cerrar, orden };
 }
@@ -113,13 +119,22 @@ describe('ScraperDataportalWeb', () => {
     ]);
     expect(resumen).toEqual({
       documentos: 1,
+      avisos: null,
       metricas: {
         loginMs: 12,
         navegacionMs: 8,
         consultaMs: 6,
         extraccionMs: 3,
+        persistenciaMs: expect.any(Number),
         contactos: 1,
         nomina: 0,
+        propiedades: 0,
+        vehiculos: 0,
+        contactosOk: 1,
+        nominaOk: 1,
+        propiedadesOk: 1,
+        vehiculosOk: 1,
+        advertencias: 0,
         intento: 2,
       },
     });
@@ -185,8 +200,10 @@ describe('ScraperDataportalWeb', () => {
     (d.sesion.consultarRuc as jest.Mock).mockResolvedValue({
       consultaMs: 6,
       extraccionMs: 2,
-      contactos: [],
-      nomina: [],
+      contactos: { estado: 'ok', datos: [] },
+      nomina: { estado: 'ok', datos: [] },
+      propiedades: { estado: 'ok', datos: [] },
+      vehiculos: { estado: 'ok', datos: [] },
     });
     const scraper = new ScraperDataportalWeb(
       d.contribuyentes,
@@ -197,12 +214,13 @@ describe('ScraperDataportalWeb', () => {
     await expect(scraper.ejecutar(contexto().ctx)).resolves.toEqual(
       expect.objectContaining({ documentos: 0 }),
     );
-    expect(d.observaciones.reemplazar).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contribuyenteId: 'uuid-1',
-        contactos: [],
-        nomina: [],
-      }),
+    expect(d.observaciones.reemplazarContactos).toHaveBeenCalledWith(
+      { contribuyenteId: 'uuid-1', ruc: '0999999999001' },
+      [],
+    );
+    expect(d.observaciones.reemplazarVehiculos).toHaveBeenCalledWith(
+      expect.any(Object),
+      [],
     );
   });
 
@@ -220,7 +238,32 @@ describe('ScraperDataportalWeb', () => {
     await expect(scraper.ejecutar(contexto().ctx)).rejects.toThrow(
       'DOM incompatible',
     );
-    expect(d.observaciones.reemplazar).not.toHaveBeenCalled();
+    expect(d.observaciones.reemplazarContactos).not.toHaveBeenCalled();
+  });
+
+  it('persiste las secciones válidas y advierte cuando una sección falla', async () => {
+    const d = dependencias();
+    (d.sesion.consultarRuc as jest.Mock).mockResolvedValue({
+      consultaMs: 6,
+      extraccionMs: 2,
+      contactos: { estado: 'ok', datos: [] },
+      nomina: { estado: 'error', advertencia: 'DOM de nómina incompatible' },
+      propiedades: { estado: 'ok', datos: [] },
+      vehiculos: { estado: 'ok', datos: [] },
+    });
+    const resumen = await new ScraperDataportalWeb(
+      d.contribuyentes,
+      d.navegador,
+      d.observaciones,
+    ).ejecutar(contexto().ctx);
+
+    expect(d.observaciones.reemplazarContactos).toHaveBeenCalled();
+    expect(d.observaciones.reemplazarNomina).not.toHaveBeenCalled();
+    expect(d.observaciones.reemplazarPropiedades).toHaveBeenCalled();
+    expect(resumen.avisos).toContain('DOM de nómina incompatible');
+    expect(resumen.metricas).toEqual(
+      expect.objectContaining({ nominaOk: 0, contactosOk: 1, advertencias: 1 }),
+    );
   });
 
   it('tras un aborto consulta el latido para conservar la cancelación', async () => {
