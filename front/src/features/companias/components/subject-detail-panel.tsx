@@ -1,11 +1,13 @@
-import { useEffect, useRef, type ReactNode } from 'react'
-import { BarChart3, Database, MapPin, Radar, ReceiptText, Store, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { BarChart3, Database, MapPin, Radar, ReceiptText, Store, Users, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import BotonRastrear from '@/components/BotonRastrear'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { listarNomina } from '@/features/nomina/api/nomina.api'
+import type { NominaPersona } from '@/features/nomina/api/nomina.types'
 import type { CompaniaResumen } from '../api/companias.types'
 import {
   formatDate,
@@ -47,6 +49,12 @@ function StringList({ values }: { values: Array<string | number> | null | undefi
 
 export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: SubjectDetailPanelProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const [nominaOpen, setNominaOpen] = useState(false)
+  const [nominaRows, setNominaRows] = useState<NominaPersona[]>([])
+  const [nominaCursor, setNominaCursor] = useState<string | null>(null)
+  const [nominaLoading, setNominaLoading] = useState(false)
+  const [nominaError, setNominaError] = useState<string | null>(null)
+  const [nominaLoadedFor, setNominaLoadedFor] = useState<string | null>(null)
 
   useEffect(() => {
     if (!subject) return undefined
@@ -58,7 +66,40 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose, subject])
 
+  useEffect(() => {
+    setNominaOpen(false)
+    setNominaRows([])
+    setNominaCursor(null)
+    setNominaError(null)
+    setNominaLoadedFor(null)
+  }, [subject?.id])
+
   if (!subject) return null
+
+  const loadNomina = async (cursor: string | null = null) => {
+    if (!subject.id || nominaLoading) return
+
+    setNominaLoading(true)
+    setNominaError(null)
+    try {
+      const query: { limit: number; cursor?: string } = { limit: 50 }
+      if (cursor) query.cursor = cursor
+      const result = await listarNomina(subject.id, query)
+      setNominaRows((current) => cursor ? [...current, ...result.datos] : result.datos)
+      setNominaCursor(result.siguiente)
+      setNominaLoadedFor(subject.id)
+    } catch {
+      setNominaError('No se pudo consultar la nómina. Intenta nuevamente.')
+    } finally {
+      setNominaLoading(false)
+    }
+  }
+
+  const handleNominaClick = () => {
+    if (!subject.id) return
+    setNominaOpen(true)
+    if (nominaLoadedFor !== subject.id) void loadNomina()
+  }
 
   const trackingKey = subjectTrackingType(subject) === 'compania'
     ? subject.expediente ?? subject.ruc
@@ -107,6 +148,17 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
               <BarChart3 /> Análisis financiero
             </Link>
           )}
+          <Button
+            aria-controls="subject-nomina-section"
+            aria-expanded={nominaOpen}
+            disabled={!subject.id}
+            onClick={handleNominaClick}
+            size="sm"
+            title={subject.id ? 'Consultar nómina' : 'No hay ID de contribuyente disponible'}
+            variant="outline"
+          >
+            <Users aria-hidden="true" /> Nómina
+          </Button>
           {trackingKey && (
             <BotonRastrear
               clave={trackingKey}
@@ -134,6 +186,66 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
               <strong>{subject.ultimoBalance ?? '—'}</strong>
             </div>
           </section>
+
+          {nominaOpen && (
+            <section className="subject-section subject-nomina" id="subject-nomina-section">
+              <div className="subject-section-title">
+                <Users aria-hidden="true" />
+                <div>
+                  <h3>Nómina</h3>
+                  <p>Personas registradas para este contribuyente.</p>
+                </div>
+              </div>
+
+              {nominaError && <p className="subject-nomina-error" role="alert">{nominaError}</p>}
+              {nominaLoading && nominaRows.length === 0 && (
+                <p aria-live="polite" className="subject-nomina-loading">Consultando nómina…</p>
+              )}
+              {!nominaLoading && !nominaError && nominaRows.length === 0 && (
+                <p className="subject-nomina-empty">No hay registros de nómina para este contribuyente.</p>
+              )}
+              {nominaRows.length > 0 && (
+                <>
+                  <div className="subject-nomina-table-wrap">
+                    <table className="subject-nomina-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Cédula</th>
+                          <th scope="col">Nombre</th>
+                          <th scope="col">Rol</th>
+                          <th scope="col">Ingreso</th>
+                          <th scope="col">Posible salario</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {nominaRows.map((persona) => (
+                          <tr key={persona.cedula}>
+                            <td>{persona.cedula}</td>
+                            <td>{persona.nombre ?? 'No disponible'}</td>
+                            <td>{persona.rol ?? 'No disponible'}</td>
+                            <td>{formatDate(persona.fechaIngreso)}</td>
+                            <td>{formatMoney(persona.posibleSalario)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {nominaCursor && (
+                    <div className="subject-nomina-more">
+                      <Button
+                        disabled={nominaLoading}
+                        onClick={() => void loadNomina(nominaCursor)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        {nominaLoading ? 'Cargando…' : 'Cargar más'}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          )}
 
           <section className="subject-section">
             <div className="subject-section-title">
