@@ -8,7 +8,10 @@ import {
   errors as playwrightErrors,
 } from 'playwright';
 import {
+  ContactoDataportal,
   DataportalNavigator,
+  PersonaNominaDataportal,
+  ResultadoConsultaDataportal,
   SesionDataportal,
 } from '../../application/ports/dataportal-navigator';
 import { ErrorPermanente } from '../../ejecutores/scraper.interface';
@@ -89,9 +92,7 @@ export class PlaywrightDataportalNavigator
           },
           consultarRuc: async (ruc: string) => {
             try {
-              const inicioConsulta = Date.now();
-              await this.consultarRuc(page, ruc, opciones, signal);
-              return { consultaMs: Date.now() - inicioConsulta };
+              return await this.consultarRuc(page, ruc, opciones, signal);
             } catch (error) {
               await cerrar();
               throw clasificarError(error);
@@ -254,7 +255,7 @@ export class PlaywrightDataportalNavigator
     ruc: string,
     opciones: OpcionesDataportal,
     signal: AbortSignal,
-  ): Promise<void> {
+  ): Promise<ResultadoConsultaDataportal> {
     const campo = page.locator('#dni_busqueda');
     const submit = page.locator('#submit_data');
     if ((await campo.count()) !== 1 || (await submit.count()) !== 1) {
@@ -262,14 +263,210 @@ export class PlaywrightDataportalNavigator
         'El formulario de búsqueda por RUC de DataPortal cambió y ya no es compatible',
       );
     }
+    for (const selector of ['#consul-text-ruc', '#midirrecion', '#nomina']) {
+      if ((await page.locator(selector).count()) !== 1) {
+        throw new ErrorPermanente(
+          'La estructura de resultados de DataPortal cambió y ya no es compatible',
+        );
+      }
+    }
 
+    const inicioConsulta = Date.now();
     await campo.fill(ruc);
     // El plugin intercepta el submit y actualiza la página de forma asíncrona;
     // no hay una navegación de documento que se pueda esperar aquí.
     await submit.click();
 
+    await page.waitForFunction(
+      (esperado) =>
+        document.querySelector('#consul-text-ruc')?.textContent?.trim() ===
+        esperado,
+      ruc,
+    );
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll<HTMLElement>('#cargando, .cargando')].every(
+        (elemento) => {
+          const estilo = getComputedStyle(elemento);
+          return (
+            estilo.display === 'none' ||
+            estilo.visibility === 'hidden' ||
+            elemento.hidden
+          );
+        },
+      ),
+    );
+    const consultaMs = Date.now() - inicioConsulta;
+
+    for (const selector of ['#midirrecion', '#nomina']) {
+      if ((await page.locator(selector).count()) !== 1) {
+        throw new ErrorPermanente(
+          'La estructura de resultados de DataPortal cambió y ya no es compatible',
+        );
+      }
+    }
+
+    const inicioExtraccion = Date.now();
+    const crudo = await page.evaluate(() => {
+      const texto = (valor: string | null | undefined) =>
+        (valor ?? '').replace(/\s+/g, ' ').trim();
+      const tablaNomina = document.querySelector('#nomina')?.closest('table');
+      const encabezados = [
+        ...(tablaNomina?.querySelectorAll('thead th') ?? []),
+      ].map((th) => texto(th.textContent).toLocaleLowerCase('es'));
+      return {
+        contactos: [...document.querySelectorAll('#midirrecion tr')].map(
+          (fila) => ({
+            celdas: [...fila.querySelectorAll('td')].map((td) =>
+              texto(td.textContent),
+            ),
+            tipoCodigo:
+              fila.getAttribute('data-tipo-codigo') ??
+              fila
+                .querySelector('[data-tipo-codigo]')
+                ?.getAttribute('data-tipo-codigo'),
+          }),
+        ),
+        encabezados,
+        nomina: [...document.querySelectorAll('#nomina tr')].map((fila) =>
+          [...fila.querySelectorAll('td')].map((td) => texto(td.textContent)),
+        ),
+      };
+    });
+
+    const requeridos = ['consultar', 'cedula', 'nombre', 'ingreso', 'rol'];
+    if (
+      !requeridos.every((nombre) =>
+        crudo.encabezados.some((encabezado) =>
+          sinAcentos(encabezado).includes(nombre),
+        ),
+      ) ||
+      !crudo.encabezados.some((encabezado) =>
+        sinAcentos(encabezado).includes('salario'),
+      )
+    ) {
+      throw new ErrorPermanente(
+        'Las columnas de nómina de DataPortal cambiaron y ya no son compatibles',
+      );
+    }
+
+    const indice = (nombre: string) =>
+      crudo.encabezados.findIndex((encabezado) =>
+        sinAcentos(encabezado).includes(nombre),
+      );
+    const contactos = normalizarContactos(crudo.contactos);
+    const nomina = normalizarNomina(crudo.nomina, {
+      cedula: indice('cedula'),
+      nombre: indice('nombre'),
+      ingreso: indice('ingreso'),
+      rol: indice('rol'),
+      salario: indice('salario'),
+    });
+    const extraccionMs = Date.now() - inicioExtraccion;
+
     await esperarInterrumpible(opciones.debugEsperaMs, signal);
+    return {
+      contactos,
+      nomina,
+      consultaMs,
+      extraccionMs,
+    };
   }
+}
+
+function sinAcentos(valor: string): string {
+  return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizarContactos(
+  filas: Array<{ celdas: string[]; tipoCodigo?: string | null }>,
+): ContactoDataportal[] {
+  const unicos = new Map<string, ContactoDataportal>();
+  for (const fila of filas) {
+    const valor = fila.celdas.find(Boolean)?.replace(/\s+/g, ' ').trim();
+    if (!valor || unicos.has(valor)) continue;
+    unicos.set(valor, {
+      valor,
+      tipo: clasificarContacto(valor),
+      tipoCodigo: limpiarOpcional(fila.tipoCodigo),
+    });
+  }
+  return [...unicos.values()];
+}
+
+function clasificarContacto(valor: string): ContactoDataportal['tipo'] {
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valor)) return 'email';
+  if (/^\+?[\d\s()-]{7,}$/.test(valor)) return 'telefono';
+  return 'otro';
+}
+
+function normalizarNomina(
+  filas: string[][],
+  indices: Record<'cedula' | 'nombre' | 'ingreso' | 'rol' | 'salario', number>,
+): PersonaNominaDataportal[] {
+  const unicos = new Map<string, PersonaNominaDataportal>();
+  for (const fila of filas) {
+    const cedula = limpiarOpcional(fila[indices.cedula]);
+    if (!cedula || unicos.has(cedula)) continue;
+    unicos.set(cedula, {
+      cedula,
+      nombre: limpiarOpcional(fila[indices.nombre]),
+      fechaIngreso: normalizarFecha(fila[indices.ingreso]),
+      rol: limpiarOpcional(fila[indices.rol]),
+      posibleSalario: normalizarMoneda(fila[indices.salario]),
+    });
+  }
+  return [...unicos.values()];
+}
+
+function limpiarOpcional(valor: string | null | undefined): string | null {
+  const limpio = valor?.replace(/\s+/g, ' ').trim();
+  return limpio ? limpio : null;
+}
+
+function normalizarFecha(valor: string | undefined): string | null {
+  const limpio = limpiarOpcional(valor);
+  if (!limpio) return null;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(limpio);
+  const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(limpio);
+  const partes = iso
+    ? [+iso[1], +iso[2], +iso[3]]
+    : dmy
+      ? [+dmy[3], +dmy[2], +dmy[1]]
+      : null;
+  if (!partes) return null;
+  const [anio, mes, dia] = partes;
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+  if (
+    fecha.getUTCFullYear() !== anio ||
+    fecha.getUTCMonth() !== mes - 1 ||
+    fecha.getUTCDate() !== dia
+  )
+    return null;
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+function normalizarMoneda(valor: string | undefined): number | null {
+  let limpio = limpiarOpcional(valor)?.replace(/[^\d,.-]/g, '');
+  if (!limpio) return null;
+  const coma = limpio.lastIndexOf(',');
+  const punto = limpio.lastIndexOf('.');
+  if (coma >= 0 && punto >= 0) {
+    const decimal = Math.max(coma, punto);
+    limpio =
+      limpio.slice(0, decimal).replace(/[.,]/g, '') +
+      '.' +
+      limpio.slice(decimal + 1);
+  } else if (coma >= 0) {
+    limpio = limpio.replace(/\./g, '').replace(',', '.');
+  } else {
+    const partes = limpio.split('.');
+    if (partes.length > 2)
+      limpio = `${partes.slice(0, -1).join('')}.${partes.at(-1)}`;
+    else if (partes.length === 2 && partes[1].length === 3)
+      limpio = partes.join('');
+  }
+  const numero = Number(limpio);
+  return Number.isFinite(numero) ? numero : null;
 }
 
 interface OpcionesDataportal {

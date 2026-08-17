@@ -171,6 +171,7 @@ export class DataportalImportService {
     let conDatos = 0;
     let sinDatos = 0;
     let errores = 0;
+    let avisosResolucion = 0;
 
     try {
       await this.jobsService.update(jobId, {
@@ -205,7 +206,28 @@ export class DataportalImportService {
               sinDatos: vacio,
             } = await client.consultar(ruc);
             const parseado = parsearRespuestas(ruc, crudas);
-            await this.guardar(ruc, jobId, crudas, parseado, status, vacio);
+            const aviso = await this.guardar(
+              ruc,
+              jobId,
+              crudas,
+              parseado,
+              status,
+              vacio,
+            );
+            if (aviso) {
+              avisosResolucion++;
+              this.logger.warn(aviso);
+              if (avisosResolucion <= this.jobsService.maxStoredRejects) {
+                await this.jobsService.saveRejects(jobId, [
+                  {
+                    sourceRowNumber: hechos + 1,
+                    columna: 'ruc',
+                    motivo: aviso,
+                    raw: { ruc },
+                  },
+                ]);
+              }
+            }
             hechos++;
             if (vacio) sinDatos++;
             else conDatos++;
@@ -225,6 +247,7 @@ export class DataportalImportService {
           rowsRead: hechos,
           rowsCopied: conDatos,
           rowsRejected: errores,
+          rowsWarned: avisosResolucion,
           progressPct:
             total > 0 ? Math.min(99, Math.round((hechos / total) * 100)) : 0,
         });
@@ -236,9 +259,11 @@ export class DataportalImportService {
         rowsRead: hechos,
         rowsCopied: conDatos,
         rowsRejected: errores,
+        rowsWarned: avisosResolucion,
         avisos:
           `${conDatos} compañías con datos, ${sinDatos} sin datos en el portal, ` +
           `${errores} con error. Quedan ${await this.contarPendientes(segmento)} pendientes` +
+          `${avisosResolucion ? `; ${avisosResolucion} sin contribuyente único para contactos/nómina` : ''}` +
           `${segmento ? ` en el segmento ${segmento}` : ''}.`,
         finishedAt: new Date(),
       });
@@ -349,7 +374,8 @@ export class DataportalImportService {
     p: Parseado,
     status: number,
     vacio: boolean,
-  ): Promise<void> {
+  ): Promise<string | null> {
+    let avisoResolucion: string | null = null;
     await this.dataSource.transaction(async (m) => {
       await m.query(
         `UPDATE dataportal_consulta
@@ -405,24 +431,56 @@ export class DataportalImportService {
         );
       }
 
-      // Las tablas 1:N se reemplazan enteras para ese RUC: si un empleado deja
-      // la empresa, su fila tiene que desaparecer. Un upsert lo dejaría ahí
-      // para siempre, igual que pasaba con el detalle de los balances.
-      await m.query(`DELETE FROM dataportal_contacto WHERE ruc = $1`, [ruc]);
-      for (const c of p.contactos) {
-        await m.query(
-          `INSERT INTO dataportal_contacto (ruc, valor, tipo, tipo_codigo) VALUES ($1,$2,$3,$4)`,
-          [c.ruc, c.valor, c.tipo, c.tipo_codigo],
-        );
+      const contribuyentes: Array<{ id: string }> = await m.query(
+        `SELECT id FROM contribuyentes WHERE ruc = $1 ORDER BY id LIMIT 2`,
+        [ruc],
+      );
+      const contribuyenteId =
+        contribuyentes.length === 1 ? contribuyentes[0].id : null;
+      if (!contribuyenteId) {
+        avisoResolucion =
+          contribuyentes.length === 0
+            ? `No existe un contribuyente con RUC exacto ${ruc}; se omitieron contactos y nómina`
+            : `El RUC ${ruc} identifica varios contribuyentes; se omitieron contactos y nómina`;
       }
 
-      await m.query(`DELETE FROM dataportal_nomina WHERE ruc = $1`, [ruc]);
-      for (const n of p.nomina) {
+      // Las tablas 1:N se reemplazan enteras para ese contribuyente: si un empleado deja
+      // la empresa, su fila tiene que desaparecer. Un upsert lo dejaría ahí
+      // para siempre, igual que pasaba con el detalle de los balances.
+      if (contribuyenteId) {
         await m.query(
-          `INSERT INTO dataportal_nomina (ruc, cedula, nombre, ocupacion, sueldo, fecha_ingreso)
-           VALUES ($1,$2,$3,$4,$5,$6)`,
-          [n.ruc, n.cedula, n.nombre, n.ocupacion, n.sueldo, n.fecha_ingreso],
+          `DELETE FROM dataportal_contacto WHERE contribuyente_id = $1`,
+          [contribuyenteId],
         );
+        for (const c of p.contactos) {
+          await m.query(
+            `INSERT INTO dataportal_contacto
+               (contribuyente_id, ruc, valor, tipo, tipo_codigo)
+             VALUES ($1,$2,$3,$4,$5)`,
+            [contribuyenteId, c.ruc, c.valor, c.tipo, c.tipo_codigo],
+          );
+        }
+
+        await m.query(
+          `DELETE FROM dataportal_nomina WHERE contribuyente_id = $1`,
+          [contribuyenteId],
+        );
+        for (const n of p.nomina) {
+          await m.query(
+            `INSERT INTO dataportal_nomina
+               (contribuyente_id, ruc, cedula, nombre, ocupacion, sueldo, fecha_ingreso)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [
+              contribuyenteId,
+              n.ruc,
+              n.cedula,
+              n.nombre,
+              n.ocupacion,
+              n.sueldo,
+              n.fecha_ingreso,
+            ],
+          );
+        }
       }
 
       await m.query(`DELETE FROM dataportal_vehiculo WHERE ruc = $1`, [ruc]);
@@ -456,6 +514,7 @@ export class DataportalImportService {
         );
       }
     });
+    return avisoResolucion;
   }
 
   private async marcarError(

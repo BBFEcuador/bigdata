@@ -9,6 +9,10 @@ import {
   SesionDataportal,
 } from '../application/ports/dataportal-navigator';
 import {
+  DATAPORTAL_OBSERVACIONES_REPOSITORY,
+  DataportalObservacionesRepository,
+} from '../application/ports/dataportal-observaciones.repository';
+import {
   ContextoScraping,
   ErrorPermanente,
   ResumenScraping,
@@ -24,7 +28,8 @@ export class ScraperDataportalWeb implements Scraper {
     'iniciando_sesion',
     'navegando_ruc',
     'consultando_ruc',
-    'consulta_enviada',
+    'extrayendo_observaciones',
+    'persistiendo_observaciones',
   ] as const;
 
   constructor(
@@ -32,6 +37,8 @@ export class ScraperDataportalWeb implements Scraper {
     private readonly companias: CompaniasScrapingRepository,
     @Inject(DATAPORTAL_NAVIGATOR)
     private readonly navegador: DataportalNavigator,
+    @Inject(DATAPORTAL_OBSERVACIONES_REPOSITORY)
+    private readonly observaciones: DataportalObservacionesRepository,
   ) {}
 
   async ejecutar(ctx: ContextoScraping): Promise<ResumenScraping> {
@@ -72,20 +79,30 @@ export class ScraperDataportalWeb implements Scraper {
         () => sesion!.navegarABusquedaRuc(),
       );
       await ctx.latido({ pct: 60, paso: 'consultando_ruc' });
-      const { consultaMs } = await this.conLatidoTrasInterrupcion(
+      const resultado = await this.conLatidoTrasInterrupcion(
         ctx,
         'consultando_ruc',
         () => sesion!.consultarRuc(compania.ruc!.trim()),
       );
-      await ctx.latido({ pct: 80, paso: 'consulta_enviada' });
+      await ctx.latido({ pct: 75, paso: 'extrayendo_observaciones' });
+      await ctx.latido({ pct: 85, paso: 'persistiendo_observaciones' });
+      await this.observaciones.reemplazar({
+        contribuyenteId: compania.id,
+        ruc: compania.ruc.trim(),
+        contactos: resultado.contactos,
+        nomina: resultado.nomina,
+      });
       await ctx.latido({ pct: 100, paso: 'terminado' });
 
       return {
-        documentos: 0,
+        documentos: resultado.contactos.length + resultado.nomina.length,
         metricas: {
           loginMs: sesion.loginMs,
           navegacionMs,
-          consultaMs,
+          consultaMs: resultado.consultaMs,
+          extraccionMs: resultado.extraccionMs,
+          contactos: resultado.contactos.length,
+          nomina: resultado.nomina.length,
           intento: ctx.intento,
         },
       };

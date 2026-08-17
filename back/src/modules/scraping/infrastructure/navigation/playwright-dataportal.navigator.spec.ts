@@ -10,6 +10,8 @@ type Modo =
   | 'login-cambiado'
   | 'ruc-cambiado'
   | 'formulario-ruc-cambiado'
+  | 'vacio'
+  | 'multiples'
   | 'lento';
 
 describe('PlaywrightDataportalNavigator', () => {
@@ -57,7 +59,25 @@ describe('PlaywrightDataportalNavigator', () => {
           ) {
             ultimoRuc = new URLSearchParams(cuerpo).get('dni');
             res.setHeader('content-type', 'text/html');
-            res.end('<h1>Resultado de consulta</h1>');
+            const contacto =
+              modo === 'vacio'
+                ? ''
+                : '<tr><td> contacto@example.com </td></tr>' +
+                  (modo === 'multiples'
+                    ? '<tr data-tipo-codigo="8"><td>099 123 4567</td></tr>'
+                    : '');
+            const persona =
+              modo === 'vacio'
+                ? ''
+                : '<tr><td><button>Consultar</button></td><td>0912345678</td><td>Ana Perez</td><td>2/8/2026</td><td>Gerente</td><td>$ 1.234,50</td></tr>' +
+                  (modo === 'multiples'
+                    ? '<tr><td><a>Consultar</a></td><td>0922222222</td><td> </td><td></td><td></td><td></td></tr>'
+                    : '');
+            res.end(`<div id="cargando" hidden></div><div class="cargando" hidden></div>
+              <strong id="consul-text-ruc">${ultimoRuc}</strong>
+              <table><tbody id="midirrecion">${contacto}</tbody></table>
+              <table><thead><tr><th>Consultar</th><th>Cedula</th><th>Nombre</th><th>Ingreso</th><th>Rol</th><th>Posible salario</th></tr></thead>
+              <tbody id="nomina">${persona}</tbody></table>`);
             return;
           }
           if (req.url === '/wp-admin/admin.php?page=shearch_ruc') {
@@ -67,7 +87,10 @@ describe('PlaywrightDataportalNavigator', () => {
                 ? '<h1>Otra página</h1>'
                 : modo === 'formulario-ruc-cambiado'
                   ? '<h1>Buscar por Ruc</h1><input id="dni_busqueda">'
-                  : '<h1>Buscar por Ruc</h1><form method="post"><input id="dni_busqueda" name="dni"><input type="submit" id="submit_data"></form>',
+                  : `<h1>Buscar por Ruc</h1><form method="post"><input id="dni_busqueda" name="dni"><input type="submit" id="submit_data"></form>
+                    <div id="cargando" hidden></div><div class="cargando" hidden></div>
+                    <strong id="consul-text-ruc"></strong><table><tbody id="midirrecion"></tbody></table>
+                    <table><thead><tr><th>Consultar</th><th>Cedula</th><th>Nombre</th><th>Ingreso</th><th>Rol</th><th>Posible salario</th></tr></thead><tbody id="nomina"></tbody></table>`,
             );
             return;
           }
@@ -123,6 +146,19 @@ describe('PlaywrightDataportalNavigator', () => {
     });
     await expect(sesion.consultarRuc('0999999999001')).resolves.toEqual({
       consultaMs: expect.any(Number),
+      extraccionMs: expect.any(Number),
+      contactos: [
+        { valor: 'contacto@example.com', tipo: 'email', tipoCodigo: null },
+      ],
+      nomina: [
+        {
+          cedula: '0912345678',
+          nombre: 'Ana Perez',
+          fechaIngreso: '2026-08-02',
+          rol: 'Gerente',
+          posibleSalario: 1234.5,
+        },
+      ],
     });
     expect(ultimoRuc).toBe('0999999999001');
     await sesion.cerrar();
@@ -133,6 +169,41 @@ describe('PlaywrightDataportalNavigator', () => {
     await expect(
       navegador().iniciarSesion(new AbortController().signal),
     ).rejects.toBeInstanceOf(ErrorPermanente);
+  });
+
+  it('acepta tablas cargadas sin filas como listas vacías', async () => {
+    modo = 'vacio';
+    const sesion = await navegador().iniciarSesion(
+      new AbortController().signal,
+    );
+    await sesion.navegarABusquedaRuc();
+    await expect(sesion.consultarRuc('0999999999001')).resolves.toEqual(
+      expect.objectContaining({ contactos: [], nomina: [] }),
+    );
+    await sesion.cerrar();
+  });
+
+  it('extrae varias filas y conserva como null las columnas opcionales vacías', async () => {
+    modo = 'multiples';
+    const sesion = await navegador().iniciarSesion(
+      new AbortController().signal,
+    );
+    await sesion.navegarABusquedaRuc();
+    const resultado = await sesion.consultarRuc('0999999999001');
+    expect(resultado.contactos).toHaveLength(2);
+    expect(resultado.contactos[1]).toEqual({
+      valor: '099 123 4567',
+      tipo: 'telefono',
+      tipoCodigo: '8',
+    });
+    expect(resultado.nomina[1]).toEqual({
+      cedula: '0922222222',
+      nombre: null,
+      fechaIngreso: null,
+      rol: null,
+      posibleSalario: null,
+    });
+    await sesion.cerrar();
   });
 
   it('detecta un formulario de login incompatible', async () => {

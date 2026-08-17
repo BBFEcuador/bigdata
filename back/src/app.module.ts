@@ -14,6 +14,8 @@ import { SegmentosModule } from './modules/segmentos/segmentos.module';
 import { PresenciaModule } from './modules/presencia/presencia.module';
 import { TributarioModule } from './modules/tributario/tributario.module';
 import { ScrapingModule } from './modules/scraping/scraping.module';
+import { ContactosModule } from './modules/contactos/contactos.module';
+import { NominaModule } from './modules/nomina/nomina.module';
 
 @Module({
   imports: [
@@ -43,8 +45,10 @@ import { ScrapingModule } from './modules/scraping/scraping.module';
     PresenciaModule,
     TributarioModule,
     ScrapingModule,
+    ContactosModule,
+    NominaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

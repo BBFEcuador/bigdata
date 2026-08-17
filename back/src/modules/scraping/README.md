@@ -12,9 +12,9 @@ migración 9000, y `perfil_comercial` la expone con un índice único.
 
 Hay dos ejecutores registrados: **simulada**, para probar la maquinaria sin una
 fuente externa, y **dataportal-web**, que inicia sesión en WordPress y deja un
-contexto aislado, navega a la búsqueda, escribe el RUC del contribuyente y
-envía el formulario. En esta fase todavía no extrae documentos, por lo que
-completa con `documentos: 0`.
+contexto aislado, navega a la búsqueda, espera la carga AJAX y extrae contactos
+y nómina. El navegador sólo devuelve observaciones normalizadas; el ejecutor
+las reemplaza mediante un puerto de aplicación y reporta sus cantidades.
 Cuando el alta no especifica `fuente`, se usa **dataportal-web**; la fuente
 simulada debe pedirse explícitamente.
 
@@ -129,25 +129,28 @@ el configurado. Es exactamente lo que hoy hace `web.client.ts`, donde daba igual
 porque sólo corría un job. **El cliente tiene que ser un provider singleton**
 inyectado en el constructor del scraper.
 
-Y la regla que hereda de `web`: **el scraper escribe en `scraping_resultado` y en
-nada más.** No toca `companias`, ni `presencia_canal`, ni `perfil_comercial`. Lo
-que sale de una página ajena es una observación, no un dato de negocio;
-promoverlo es otra decisión, y tiene que poder tomarla una persona.
+La regla general que hereda de `web` es escribir observaciones, no promoverlas
+como datos de negocio. La excepción controlada de `dataportal-web` son los
+contactos y la nómina normalizados: se escriben en `dataportal_contacto` y
+`dataportal_nomina` mediante un puerto de aplicación y un adaptador PostgreSQL,
+nunca directamente desde Playwright. El reemplazo de ambas listas comparte una
+transacción. No toca los campos de `contribuyentes`, `presencia_canal` ni
+`perfil_comercial`.
 
 ## Rutas
 
-| verbo | ruta | |
-|---|---|---|
-| `POST` | `/scraping` | `{tipoSujeto, clave}` · 201 · 404 si no existe · 409 si ya tiene un job vivo |
-| `POST` | `/scraping/masivo` | 202 → `{ creados, omitidos }`. **Una población por llamada** |
-| `GET` | `/scraping` | lista paginada por cursor + resumen por estado |
-| `GET` | `/scraping/resumen` | contadores + estado del despachador |
-| `GET` | `/scraping/fuentes` | los scrapers registrados |
-| `GET` | `/scraping/:id` | job + últimos 20 eventos |
-| `GET` | `/scraping/:id/resultados` | los documentos guardados |
-| `GET` | `/scraping/sujeto/:tipo/:clave` | el historial de un sujeto |
-| `POST` | `/scraping/:id/pausar` · `/cancelar` | **202**: si ya corría, la orden la cumple el worker |
-| `POST` | `/scraping/:id/reanudar` · `/reintentar` | 200 |
+| verbo  | ruta                                     |                                                                              |
+| ------ | ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `POST` | `/scraping`                              | `{tipoSujeto, clave}` · 201 · 404 si no existe · 409 si ya tiene un job vivo |
+| `POST` | `/scraping/masivo`                       | 202 → `{ creados, omitidos }`. **Una población por llamada**                 |
+| `GET`  | `/scraping`                              | lista paginada por cursor + resumen por estado                               |
+| `GET`  | `/scraping/resumen`                      | contadores + estado del despachador                                          |
+| `GET`  | `/scraping/fuentes`                      | los scrapers registrados                                                     |
+| `GET`  | `/scraping/:id`                          | job + últimos 20 eventos                                                     |
+| `GET`  | `/scraping/:id/resultados`               | los documentos guardados                                                     |
+| `GET`  | `/scraping/sujeto/:tipo/:clave`          | el historial de un sujeto                                                    |
+| `POST` | `/scraping/:id/pausar` · `/cancelar`     | **202**: si ya corría, la orden la cumple el worker                          |
+| `POST` | `/scraping/:id/reanudar` · `/reintentar` | 200                                                                          |
 
 No hay `DELETE` ni un `PATCH { estado }` genérico: un job sólo se mueve por esas
 cuatro acciones, cada una con su estado de origen en el `WHERE`. Un PATCH libre
@@ -161,23 +164,23 @@ sobrescribe.
 
 ## Ajustes
 
-| variable | por defecto | |
-|---|---|---|
-| `SCRAPING_CONCURRENCIA` | 4 | workers **por proceso** (dos instancias dan el doble) |
-| `SCRAPING_INTERVALO_OCIOSO_MS` | 2000 | espera del bucle cuando la cola está vacía |
-| `SCRAPING_TICKS_POR_BARRIDO` | 60 | cada cuántas vueltas se buscan jobs huérfanos |
-| `SCRAPING_MAX_INTENTOS` | 3 | |
-| `SCRAPING_BACKOFF_BASE_MS` / `_MAX_MS` | 30 000 / 600 000 | 30 s, 60 s, 120 s… con tope |
-| `SCRAPING_SIM_MS_PASO` | 700 | (simulado) duración de cada paso |
-| `SCRAPING_SIM_FALLO_PCT` | 10 | (simulado) fallos por paso; 1 de cada 4 es permanente |
-| `SCRAPING_SIM_LENTO_PCT` | 3 | (simulado) porcentaje que tarda 30 s |
-| `SCRAPING_DATAPORTAL_BASE_URL` | `https://dataportalsys.com` | origen del WordPress |
-| `SCRAPING_DATAPORTAL_USERNAME` | — | usuario; obligatorio para `dataportal-web` |
-| `SCRAPING_DATAPORTAL_PASSWORD` | — | contraseña; obligatoria para `dataportal-web` |
-| `SCRAPING_DATAPORTAL_TIMEOUT_MS` | 30 000 | timeout de acciones y navegaciones |
-| `SCRAPING_DATAPORTAL_HEADLESS` | `true` | usar `false` sólo para diagnóstico local |
-| `SCRAPING_DATAPORTAL_CONCURRENCIA` | 1 | contextos simultáneos por proceso y cuenta |
-| `SCRAPING_DATAPORTAL_DEBUG_ESPERA_MS` | 0 | tiempo que se mantiene abierta la página RUC para inspección local |
+| variable                               | por defecto                 |                                                                    |
+| -------------------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `SCRAPING_CONCURRENCIA`                | 4                           | workers **por proceso** (dos instancias dan el doble)              |
+| `SCRAPING_INTERVALO_OCIOSO_MS`         | 2000                        | espera del bucle cuando la cola está vacía                         |
+| `SCRAPING_TICKS_POR_BARRIDO`           | 60                          | cada cuántas vueltas se buscan jobs huérfanos                      |
+| `SCRAPING_MAX_INTENTOS`                | 3                           |                                                                    |
+| `SCRAPING_BACKOFF_BASE_MS` / `_MAX_MS` | 30 000 / 600 000            | 30 s, 60 s, 120 s… con tope                                        |
+| `SCRAPING_SIM_MS_PASO`                 | 700                         | (simulado) duración de cada paso                                   |
+| `SCRAPING_SIM_FALLO_PCT`               | 10                          | (simulado) fallos por paso; 1 de cada 4 es permanente              |
+| `SCRAPING_SIM_LENTO_PCT`               | 3                           | (simulado) porcentaje que tarda 30 s                               |
+| `SCRAPING_DATAPORTAL_BASE_URL`         | `https://dataportalsys.com` | origen del WordPress                                               |
+| `SCRAPING_DATAPORTAL_USERNAME`         | —                           | usuario; obligatorio para `dataportal-web`                         |
+| `SCRAPING_DATAPORTAL_PASSWORD`         | —                           | contraseña; obligatoria para `dataportal-web`                      |
+| `SCRAPING_DATAPORTAL_TIMEOUT_MS`       | 30 000                      | timeout de acciones y navegaciones                                 |
+| `SCRAPING_DATAPORTAL_HEADLESS`         | `true`                      | usar `false` sólo para diagnóstico local                           |
+| `SCRAPING_DATAPORTAL_CONCURRENCIA`     | 1                           | contextos simultáneos por proceso y cuenta                         |
+| `SCRAPING_DATAPORTAL_DEBUG_ESPERA_MS`  | 0                           | tiempo que se mantiene abierta la página RUC para inspección local |
 
 ## Chromium para DataPortal
 

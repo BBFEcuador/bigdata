@@ -10,6 +10,7 @@ import {
   ErrorPermanente,
 } from './scraper.interface';
 import { ScraperDataportalWeb } from './scraper-dataportal-web';
+import { DataportalObservacionesRepository } from '../application/ports/dataportal-observaciones.repository';
 
 function contexto(over: Partial<ContextoScraping> = {}) {
   const latidos: Array<{ pct?: number; paso?: string }> = [];
@@ -47,7 +48,14 @@ function dependencias(
     }),
     consultarRuc: jest.fn(async () => {
       orden.push('consultar');
-      return { consultaMs: 6 };
+      return {
+        consultaMs: 6,
+        extraccionMs: 3,
+        contactos: [
+          { valor: 'a@b.ec', tipo: 'email' as const, tipoCodigo: '3' },
+        ],
+        nomina: [],
+      };
     }),
     cerrar,
   };
@@ -65,34 +73,53 @@ function dependencias(
       return over.iniciar ? over.iniciar() : sesion;
     }),
   };
-  return { companias, navegador, sesion, cerrar, orden };
+  const observaciones: DataportalObservacionesRepository = {
+    reemplazar: jest.fn(async () => {
+      orden.push('persistir');
+    }),
+  };
+  return { companias, navegador, observaciones, sesion, cerrar, orden };
 }
 
 describe('ScraperDataportalWeb', () => {
   it('resuelve la compañía por expediente, inicia sesión y navega en orden', async () => {
     const d = dependencias();
-    const scraper = new ScraperDataportalWeb(d.companias, d.navegador);
+    const scraper = new ScraperDataportalWeb(
+      d.companias,
+      d.navegador,
+      d.observaciones,
+    );
     const { ctx, latidos } = contexto();
 
     const resumen = await scraper.ejecutar(ctx);
 
     expect(d.companias.buscarPorExpediente).toHaveBeenCalledWith('12345');
-    expect(d.orden).toEqual(['resolver', 'login', 'navegar', 'consultar']);
+    expect(d.orden).toEqual([
+      'resolver',
+      'login',
+      'navegar',
+      'consultar',
+      'persistir',
+    ]);
     expect(d.sesion.consultarRuc).toHaveBeenCalledWith('0999999999001');
     expect(latidos.map((l) => l.paso)).toEqual([
       'resolviendo_compania',
       'iniciando_sesion',
       'navegando_ruc',
       'consultando_ruc',
-      'consulta_enviada',
+      'extrayendo_observaciones',
+      'persistiendo_observaciones',
       'terminado',
     ]);
     expect(resumen).toEqual({
-      documentos: 0,
+      documentos: 1,
       metricas: {
         loginMs: 12,
         navegacionMs: 8,
         consultaMs: 6,
+        extraccionMs: 3,
+        contactos: 1,
+        nomina: 0,
         intento: 2,
       },
     });
@@ -101,7 +128,11 @@ describe('ScraperDataportalWeb', () => {
 
   it('rechaza sujetos incompatibles sin consultar infraestructura', async () => {
     const d = dependencias();
-    const scraper = new ScraperDataportalWeb(d.companias, d.navegador);
+    const scraper = new ScraperDataportalWeb(
+      d.companias,
+      d.navegador,
+      d.observaciones,
+    );
     const { ctx } = contexto({ tipoSujeto: 'persona_natural' });
 
     await expect(scraper.ejecutar(ctx)).rejects.toBeInstanceOf(ErrorPermanente);
@@ -116,7 +147,11 @@ describe('ScraperDataportalWeb', () => {
     'rechaza una compañía inexistente o sin RUC',
     async (compania, mensaje) => {
       const d = dependencias({ compania });
-      const scraper = new ScraperDataportalWeb(d.companias, d.navegador);
+      const scraper = new ScraperDataportalWeb(
+        d.companias,
+        d.navegador,
+        d.observaciones,
+      );
 
       await expect(scraper.ejecutar(contexto().ctx)).rejects.toThrow(mensaje);
       expect(d.navegador.iniciarSesion).not.toHaveBeenCalled();
@@ -127,10 +162,57 @@ describe('ScraperDataportalWeb', () => {
     'propaga errores permanentes y transitorios',
     async (error) => {
       const d = dependencias({ iniciar: async () => Promise.reject(error) });
-      const scraper = new ScraperDataportalWeb(d.companias, d.navegador);
+      const scraper = new ScraperDataportalWeb(
+        d.companias,
+        d.navegador,
+        d.observaciones,
+      );
       await expect(scraper.ejecutar(contexto().ctx)).rejects.toBe(error);
     },
   );
+
+  it('reemplaza por vacío cuando ambas tablas se cargan sin filas', async () => {
+    const d = dependencias();
+    (d.sesion.consultarRuc as jest.Mock).mockResolvedValue({
+      consultaMs: 6,
+      extraccionMs: 2,
+      contactos: [],
+      nomina: [],
+    });
+    const scraper = new ScraperDataportalWeb(
+      d.companias,
+      d.navegador,
+      d.observaciones,
+    );
+
+    await expect(scraper.ejecutar(contexto().ctx)).resolves.toEqual(
+      expect.objectContaining({ documentos: 0 }),
+    );
+    expect(d.observaciones.reemplazar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contribuyenteId: 'uuid-1',
+        contactos: [],
+        nomina: [],
+      }),
+    );
+  });
+
+  it('no persiste si la extracción falla', async () => {
+    const d = dependencias();
+    (d.sesion.consultarRuc as jest.Mock).mockRejectedValue(
+      new ErrorPermanente('DOM incompatible'),
+    );
+    const scraper = new ScraperDataportalWeb(
+      d.companias,
+      d.navegador,
+      d.observaciones,
+    );
+
+    await expect(scraper.ejecutar(contexto().ctx)).rejects.toThrow(
+      'DOM incompatible',
+    );
+    expect(d.observaciones.reemplazar).not.toHaveBeenCalled();
+  });
 
   it('tras un aborto consulta el latido para conservar la cancelación', async () => {
     const aborto = new AbortController();
@@ -141,7 +223,11 @@ describe('ScraperDataportalWeb', () => {
         throw new Error('context closed');
       },
     });
-    const scraper = new ScraperDataportalWeb(d.companias, d.navegador);
+    const scraper = new ScraperDataportalWeb(
+      d.companias,
+      d.navegador,
+      d.observaciones,
+    );
     const { ctx } = contexto({
       signal: aborto.signal,
       latido: async (avance) => {

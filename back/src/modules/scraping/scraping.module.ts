@@ -15,6 +15,8 @@ import {
   PlaywrightDataportalNavigator,
 } from './infrastructure/navigation/playwright-dataportal.navigator';
 import { chromium } from 'playwright';
+import { DATAPORTAL_OBSERVACIONES_REPOSITORY } from './application/ports/dataportal-observaciones.repository';
+import { PostgresDataportalObservacionesRepository } from './infrastructure/persistence/postgres-dataportal-observaciones.repository';
 
 /**
  * Para añadir un scraper real:
@@ -37,6 +39,7 @@ import { chromium } from 'playwright';
     ScraperSimulado,
     ScraperDataportalWeb,
     PostgresCompaniasScrapingRepository,
+    PostgresDataportalObservacionesRepository,
     PlaywrightDataportalNavigator,
     {
       provide: COMPANIAS_SCRAPING_REPOSITORY,
@@ -45,6 +48,10 @@ import { chromium } from 'playwright';
     {
       provide: DATAPORTAL_NAVIGATOR,
       useExisting: PlaywrightDataportalNavigator,
+    },
+    {
+      provide: DATAPORTAL_OBSERVACIONES_REPOSITORY,
+      useExisting: PostgresDataportalObservacionesRepository,
     },
     {
       provide: DATAPORTAL_BROWSER_LAUNCHER,

@@ -1,4 +1,8 @@
-import { clasificarContacto, fecha, parsearRespuestas } from './dataportal.parser';
+import {
+  clasificarContacto,
+  fecha,
+  parsearRespuestas,
+} from './dataportal.parser';
 
 /**
  * Las respuestas son las REALES de la API para el RUC 1790013731001
@@ -98,7 +102,9 @@ describe('parsearRespuestas', () => {
 
   it('repara el mojibake de los nombres y ocupaciones de la nómina', () => {
     expect(r.nomina[0].nombre).toBe('TUBAY CARREÑO EMILIO GREGORIO');
-    expect(r.nomina[0].ocupacion).toBe('TRABAJADOR DEL AGRO: CORTE Y RECOLECCIÓN DE RACIMOS');
+    expect(r.nomina[0].ocupacion).toBe(
+      'TRABAJADOR DEL AGRO: CORTE Y RECOLECCIÓN DE RACIMOS',
+    );
   });
 
   it('recorta el espacio final que la API deja en todas las cédulas', () => {
@@ -187,6 +193,6 @@ describe('clasificarContacto', () => {
     expect(clasificarContacto('aceitestropicales.sa@gmail.com')).toBe('email');
     expect(clasificarContacto('0999473756')).toBe('telefono');
     expect(clasificarContacto('+593 99 947 3756')).toBe('telefono');
-    expect(clasificarContacto('no-es-nada')).toBe('desconocido');
+    expect(clasificarContacto('no-es-nada')).toBe('otro');
   });
 });

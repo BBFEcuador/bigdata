@@ -36,7 +36,7 @@ export interface FilaEmpresa {
 export interface FilaContacto {
   ruc: string;
   valor: string;
-  tipo: 'email' | 'telefono' | 'desconocido';
+  tipo: 'email' | 'telefono' | 'otro';
   tipo_codigo: string | null;
 }
 
@@ -73,13 +73,20 @@ export interface Parseado {
 
 /** Texto del portal: recorta, repara el mojibake y colapsa los vacíos a null. */
 function txt(v: unknown): string | null {
-  if (typeof v !== 'string') return v === null || v === undefined ? null : String(v);
+  if (typeof v !== 'string')
+    return v === null || v === undefined ? null : String(v);
   return nullify(repararMojibake(v));
 }
 
 /** `1975-03-17 00:00:00` o `30/4/2026` -> `1975-03-17`. Ilegible -> null. */
 export function fecha(v: unknown): string | null {
-  const s = nullify(typeof v === 'string' ? v : v === null || v === undefined ? null : String(v));
+  const s = nullify(
+    typeof v === 'string'
+      ? v
+      : v === null || v === undefined
+        ? null
+        : String(v),
+  );
   if (s === null) return null;
 
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
@@ -97,12 +104,23 @@ export function fecha(v: unknown): string | null {
 function valida(a: number, m: number, d: number): string | null {
   if (m < 1 || m > 12 || d < 1 || d > 31 || a < 1900 || a > 2100) return null;
   const f = new Date(Date.UTC(a, m - 1, d));
-  if (f.getUTCFullYear() !== a || f.getUTCMonth() !== m - 1 || f.getUTCDate() !== d) return null;
+  if (
+    f.getUTCFullYear() !== a ||
+    f.getUTCMonth() !== m - 1 ||
+    f.getUTCDate() !== d
+  )
+    return null;
   return `${a}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
 function numero(v: unknown): number | null {
-  const s = nullify(typeof v === 'string' ? v : v === null || v === undefined ? null : String(v));
+  const s = nullify(
+    typeof v === 'string'
+      ? v
+      : v === null || v === undefined
+        ? null
+        : String(v),
+  );
   if (s === null) return null;
   const n = Number(s.replace(/[^\d.-]/g, ''));
   return Number.isFinite(n) ? n : null;
@@ -124,25 +142,35 @@ function entero(v: unknown, min: number, max: number): number | null {
  * guarda igualmente por si algún día se conoce su significado.
  */
 export function clasificarContacto(valor: string): FilaContacto['tipo'] {
-  if (valor.includes('@') && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valor)) return 'email';
+  if (valor.includes('@') && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valor))
+    return 'email';
   if (/^\+?[\d\s()-]{7,}$/.test(valor)) return 'telefono';
-  return 'desconocido';
+  return 'otro';
 }
 
 const comoArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const comoObjeto = (v: unknown): Record<string, unknown> =>
-  v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  v !== null && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : {};
 
-export function parsearRespuestas(ruc: string, crudas: RespuestasCrudas): Parseado {
+export function parsearRespuestas(
+  ruc: string,
+  crudas: RespuestasCrudas,
+): Parseado {
   const nomina = parsearNomina(ruc, crudas.nomina);
-  const sueldos = nomina.map((n) => n.sueldo).filter((s): s is number => s !== null);
+  const sueldos = nomina
+    .map((n) => n.sueldo)
+    .filter((s): s is number => s !== null);
 
   return {
     empresa: parsearEmpresa(ruc, crudas.ruc, nomina.length, sueldos),
     contactos: parsearContactos(ruc, crudas.contacto),
     nomina,
     vehiculos: parsearVehiculos(ruc, crudas.carro),
-    propiedades: comoArray(comoObjeto(crudas.propiedades).propiedades ?? crudas.propiedades),
+    propiedades: comoArray(
+      comoObjeto(crudas.propiedades).propiedades ?? crudas.propiedades,
+    ),
   };
 }
 
@@ -167,7 +195,9 @@ function parsearEmpresa(
     estado_contribuyente: txt(d.estadoContribuyente),
     fecha_inicio: fecha(d.fechaInicioActividades),
     // Sí, el portal lo escribe con esa falta: `fechaSupencionDefinitiva`.
-    fecha_suspension: fecha(d.fechaSupencionDefinitiva ?? d.fechaSuspensionDefinitiva),
+    fecha_suspension: fecha(
+      d.fechaSupencionDefinitiva ?? d.fechaSuspensionDefinitiva,
+    ),
     actividad_economica: txt(d.actividadEconomica),
     provincia: txt(d.provincia),
     direccion: txt(d.direccion),

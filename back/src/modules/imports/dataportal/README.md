@@ -6,12 +6,12 @@ móviles, nómina con sueldos y vehículos**. La fuente es la API REST de
 
 ## Endpoints
 
-| Método | Ruta | Qué hace |
-|---|---|---|
-| `POST` | `/imports/dataportal` | Siembra los RUC pendientes y arranca la extracción. Devuelve 202. |
-| `POST` | `/imports/dataportal?segmento=<codigo>` | Igual, pero acotado a un segmento comercial. |
-| `POST` | `/imports/dataportal/detener` | Para tras el RUC en curso. El avance queda guardado. |
-| `GET` | `/imports/dataportal/estado` | Reparto por estado y cuántos datos se llevan extraídos. |
+| Método | Ruta                                    | Qué hace                                                          |
+| ------ | --------------------------------------- | ----------------------------------------------------------------- |
+| `POST` | `/imports/dataportal`                   | Siembra los RUC pendientes y arranca la extracción. Devuelve 202. |
+| `POST` | `/imports/dataportal?segmento=<codigo>` | Igual, pero acotado a un segmento comercial.                      |
+| `POST` | `/imports/dataportal/detener`           | Para tras el RUC en curso. El avance queda guardado.              |
+| `GET`  | `/imports/dataportal/estado`            | Reparto por estado y cuántos datos se llevan extraídos.           |
 
 ## Acotar a un segmento
 
@@ -61,12 +61,12 @@ veces con una credencial muerta no la revive.
 Las credenciales de WordPress **no autorizan estas rutas**. Medido el
 12/08/2026, mismo RUC, cuatro variantes:
 
-| Cómo se pide | Respuesta |
-|---|---|
-| `?token=` en la query | **200** |
+| Cómo se pide                                        | Respuesta                   |
+| --------------------------------------------------- | --------------------------- |
+| `?token=` en la query                               | **200**                     |
 | Contraseña de aplicación por `Authorization: Basic` | 401 `usuario no autorizado` |
-| Contraseña de la cuenta por `Authorization: Basic` | 401 `usuario no autorizado` |
-| Sin nada | 401 `usuario no autorizado` |
+| Contraseña de la cuenta por `Authorization: Basic`  | 401 `usuario no autorizado` |
+| Sin nada                                            | 401 `usuario no autorizado` |
 
 El token sale del propio panel: en `wp-admin`, la pantalla **Buscar por Ruc**
 llama a estos mismos cinco endpoints con el token en la URL. Se ve en la
@@ -82,7 +82,7 @@ equivocado" de "mecanismo equivocado", así que la hipótesis nunca se caía sol
 
 Si algún día vuelve a dar 401: **mira por red qué pide el panel del portal**
 antes de tocar credenciales. Y ojo con los `429` — el portal limita el ritmo
-*antes* de comprobar la autorización, así que tapan el `401` que hay debajo y
+_antes_ de comprobar la autorización, así que tapan el `401` que hay debajo y
 hacen creer que la credencial es buena.
 
 ### El contador de consultas
@@ -146,6 +146,11 @@ trabajar a la vez sin pisarse. Una interrupción cuesta un lote, no la carga.
 
 Las tablas 1:N se reemplazan enteras por RUC en cada consulta: si un empleado
 deja la empresa, su fila desaparece. Un upsert la dejaría ahí para siempre.
+
+Contactos y nómina requieren además que el RUC tenga una sola coincidencia
+exacta en `contribuyentes`. Si no existe o hay más de un titular, esas dos
+listas no se escriben y el job registra un aviso/rechazo con el RUC; el resto de
+la respuesta y el JSON crudo sí se conservan.
 
 ## Probar
 
