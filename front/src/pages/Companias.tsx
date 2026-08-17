@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ArrowLeft, ArrowRight, Building2, DatabaseZap, Target } from 'lucide-react'
+import { ArrowLeft, ArrowRight, DatabaseZap, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,6 @@ export default function Companias() {
     <div className="company-directory-page">
       <header className="company-directory-hero">
         <div className="company-directory-heading">
-          <span className="company-directory-icon"><Building2 aria-hidden="true" /></span>
           <div>
             <h1>Directorio de oportunidades</h1>
             <p>

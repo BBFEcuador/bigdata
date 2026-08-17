@@ -34,7 +34,6 @@ export default function BalancesPage() {
     <div className="balances">
       <header className="page-heading">
         <div>
-          <p className="heading-kicker">Directorio financiero</p>
           <h1>Balances</h1>
           <p className="heading-subtitle">
             Encuentra estados presentados por empresa y abre un análisis con contexto.
