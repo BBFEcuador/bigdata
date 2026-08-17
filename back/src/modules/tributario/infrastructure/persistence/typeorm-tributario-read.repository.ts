@@ -182,7 +182,7 @@ export class TypeormTributarioReadRepository implements TributarioReadRepository
 
   async getFicha(expediente: string): Promise<FichaTributaria | null> {
     const [empresa] = await this.repository.query(
-      `SELECT c.expediente, c.ruc, c.nombre, c.ciiu_nivel_6, c.situacion_legal, coalesce(c.sri_clase_contribuyente = 'RMP', false) AS rimpe, p.anios_con_datos, p.anios_decil_alto, p.anios_sin_utilidad, p.brecha_total, p.percentil_maximo, p.grupo_ciiu, ci.nombre AS actividad FROM contribuyentes c LEFT JOIN perfil_riesgo_tributario p USING (expediente) LEFT JOIN actividad_ciiu ci ON ci.codigo = p.grupo_ciiu WHERE c.expediente = $1`,
+      `SELECT c.id, c.expediente, c.ruc, c.nombre, c.ciiu_nivel_6, c.situacion_legal, coalesce(c.sri_clase_contribuyente = 'RMP', false) AS rimpe, p.anios_con_datos, p.anios_decil_alto, p.anios_sin_utilidad, p.brecha_total, p.percentil_maximo, p.grupo_ciiu, ci.nombre AS actividad FROM contribuyentes c LEFT JOIN perfil_riesgo_tributario p USING (expediente) LEFT JOIN actividad_ciiu ci ON ci.codigo = p.grupo_ciiu WHERE c.expediente = $1`,
       [expediente],
     );
     if (!empresa) return null;

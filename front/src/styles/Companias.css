@@ -245,7 +245,10 @@
 .company-results-header,
 .company-result-row {
   display: grid;
-  grid-template-columns: minmax(280px, 1.35fr) minmax(220px, 1fr) minmax(250px, 1fr) 24px;
+  grid-template-columns: minmax(280px, 1.35fr) minmax(220px, 1fr) minmax(
+      250px,
+      1fr
+    ) 24px;
   gap: 1rem;
   align-items: center;
 }
@@ -532,6 +535,122 @@
   height: 15px;
 }
 
+.subject-related {
+  min-width: 0;
+}
+
+.subject-related-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overscroll-behavior-x: contain;
+}
+
+.subject-related-table-wrap:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.subject-related-table {
+  width: 100%;
+  min-width: 570px;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.subject-related-table th,
+.subject-related-table td {
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+  text-align: left;
+  vertical-align: top;
+}
+
+.subject-related-table th {
+  color: var(--muted-foreground);
+  background: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subject-related-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.subject-related-table tbody tr:hover {
+  background: var(--muted);
+}
+
+.subject-related-state {
+  display: flex;
+  min-height: 52px;
+  margin: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border-radius: 0.5rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  font-size: 0.76rem;
+}
+
+.subject-related-state.error {
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 8%, var(--card));
+}
+
+.subject-related-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.8rem;
+}
+
+.subject-contact-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  list-style: none;
+}
+
+.subject-contact-list li {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.subject-contact-list li:last-child {
+  border-bottom: 0;
+}
+
+.subject-contact-list span {
+  color: var(--muted-foreground);
+  font-size: 0.66rem;
+  text-transform: capitalize;
+}
+
+.subject-contact-list a,
+.subject-contact-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.subject-contact-list a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .subject-drawer-content {
   display: grid;
   align-content: start;
@@ -583,74 +702,6 @@
   font-size: 0.78rem;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.subject-nomina {
-  min-width: 0;
-}
-
-.subject-nomina-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-}
-
-.subject-nomina-table {
-  width: 100%;
-  min-width: 570px;
-  border-collapse: collapse;
-  font-size: 0.72rem;
-}
-
-.subject-nomina-table th,
-.subject-nomina-table td {
-  padding: 0.65rem 0.7rem;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  vertical-align: top;
-}
-
-.subject-nomina-table th {
-  color: var(--muted-foreground);
-  background: var(--muted);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.subject-nomina-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.subject-nomina-table tbody tr:hover {
-  background: var(--muted);
-}
-
-.subject-nomina-loading,
-.subject-nomina-empty,
-.subject-nomina-error {
-  margin: 0;
-  padding: 0.8rem;
-  border-radius: 0.5rem;
-  font-size: 0.76rem;
-}
-
-.subject-nomina-loading,
-.subject-nomina-empty {
-  color: var(--muted-foreground);
-  background: var(--muted);
-}
-
-.subject-nomina-error {
-  color: var(--destructive);
-  background: color-mix(in srgb, var(--destructive) 8%, var(--card));
-}
-
-.subject-nomina-more {
-  display: flex;
-  justify-content: center;
-  padding-top: 0.8rem;
 }
 
 .subject-section {
@@ -744,13 +795,23 @@
 }
 
 @keyframes subject-drawer-in {
-  from { transform: translateX(24px); opacity: 0.8; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(24px);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes subject-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -760,7 +821,10 @@
 
   .company-results-header,
   .company-result-row {
-    grid-template-columns: minmax(260px, 1.2fr) minmax(200px, 1fr) minmax(210px, 0.9fr) 20px;
+    grid-template-columns: minmax(260px, 1.2fr) minmax(200px, 1fr) minmax(
+        210px,
+        0.9fr
+      ) 20px;
   }
 }
 

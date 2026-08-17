@@ -91,6 +91,7 @@ describe('TypeormTributarioReadRepository', () => {
       .mockResolvedValue([]);
     await repository.getFicha('x');
     expect(query).toHaveBeenCalledTimes(7);
+    expect(query.mock.calls[0][0]).toContain('SELECT c.id, c.expediente');
     expect(query.mock.calls[0][1]).toEqual(['x']);
   });
 });

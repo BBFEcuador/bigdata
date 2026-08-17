@@ -1,13 +1,25 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { BarChart3, Database, MapPin, Radar, ReceiptText, Store, Users, X } from 'lucide-react'
+import {
+  BarChart3,
+  Contact,
+  Database,
+  MapPin,
+  Radar,
+  ReceiptText,
+  Store,
+  Users,
+  X,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import BotonRastrear from '@/components/BotonRastrear'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { listarContactos } from '@/features/contactos/api/contactos.api'
+import type { Contacto as ContactoItem } from '@/features/contactos/api/contactos.types'
 import { listarNomina } from '@/features/nomina/api/nomina.api'
 import type { NominaPersona } from '@/features/nomina/api/nomina.types'
+import { cn } from '@/lib/utils'
 import type { CompaniaResumen } from '../api/companias.types'
 import {
   formatDate,
@@ -47,14 +59,23 @@ function StringList({ values }: { values: Array<string | number> | null | undefi
   return values && values.length > 0 ? values.join(', ') : 'No informado'
 }
 
-export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: SubjectDetailPanelProps) {
+export function SubjectDetailPanel({
+  subject,
+  onClose,
+  onTrackingResult,
+}: SubjectDetailPanelProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const [nominaOpen, setNominaOpen] = useState(false)
+  const [relatedView, setRelatedView] = useState<'nomina' | 'contactos' | null>(null)
   const [nominaRows, setNominaRows] = useState<NominaPersona[]>([])
   const [nominaCursor, setNominaCursor] = useState<string | null>(null)
   const [nominaLoading, setNominaLoading] = useState(false)
+  const [nominaLoaded, setNominaLoaded] = useState(false)
   const [nominaError, setNominaError] = useState<string | null>(null)
-  const [nominaLoadedFor, setNominaLoadedFor] = useState<string | null>(null)
+  const [contactos, setContactos] = useState<ContactoItem[]>([])
+  const [contactosCursor, setContactosCursor] = useState<string | null>(null)
+  const [contactosLoading, setContactosLoading] = useState(false)
+  const [contactosLoaded, setContactosLoaded] = useState(false)
+  const [contactosError, setContactosError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!subject) return undefined
@@ -67,27 +88,30 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
   }, [onClose, subject])
 
   useEffect(() => {
-    setNominaOpen(false)
+    setRelatedView(null)
     setNominaRows([])
     setNominaCursor(null)
+    setNominaLoaded(false)
     setNominaError(null)
-    setNominaLoadedFor(null)
+    setContactos([])
+    setContactosCursor(null)
+    setContactosLoaded(false)
+    setContactosError(null)
   }, [subject?.id])
 
   if (!subject) return null
 
   const loadNomina = async (cursor: string | null = null) => {
     if (!subject.id || nominaLoading) return
-
     setNominaLoading(true)
     setNominaError(null)
     try {
       const query: { limit: number; cursor?: string } = { limit: 50 }
       if (cursor) query.cursor = cursor
       const result = await listarNomina(subject.id, query)
-      setNominaRows((current) => cursor ? [...current, ...result.datos] : result.datos)
+      setNominaRows(current => (cursor ? [...current, ...result.datos] : result.datos))
       setNominaCursor(result.siguiente)
-      setNominaLoadedFor(subject.id)
+      setNominaLoaded(true)
     } catch {
       setNominaError('No se pudo consultar la nómina. Intenta nuevamente.')
     } finally {
@@ -95,15 +119,32 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
     }
   }
 
-  const handleNominaClick = () => {
-    if (!subject.id) return
-    setNominaOpen(true)
-    if (nominaLoadedFor !== subject.id) void loadNomina()
+  const loadContactos = async (cursor: string | null = null) => {
+    if (!subject.id || contactosLoading) return
+    setContactosLoading(true)
+    setContactosError(null)
+    try {
+      const query: { limit: number; cursor?: string } = { limit: 50 }
+      if (cursor) query.cursor = cursor
+      const result = await listarContactos(subject.id, query)
+      setContactos(current => (cursor ? [...current, ...result.datos] : result.datos))
+      setContactosCursor(result.siguiente)
+      setContactosLoaded(true)
+    } catch {
+      setContactosError('No se pudieron consultar los contactos. Intenta nuevamente.')
+    } finally {
+      setContactosLoading(false)
+    }
   }
 
-  const trackingKey = subjectTrackingType(subject) === 'compania'
-    ? subject.expediente ?? subject.ruc
-    : subject.ruc
+  const openRelatedView = (view: 'nomina' | 'contactos') => {
+    setRelatedView(view)
+    if (view === 'nomina' && !nominaLoaded) void loadNomina()
+    if (view === 'contactos' && !contactosLoaded) void loadContactos()
+  }
+
+  const trackingKey =
+    subjectTrackingType(subject) === 'compania' ? (subject.expediente ?? subject.ruc) : subject.ruc
 
   return (
     <div className="subject-drawer-layer">
@@ -126,7 +167,9 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
               <Badge variant="outline">{subjectTypeLabel(subject.tipo)}</Badge>
             </div>
             <h2 id="subject-detail-title">{subject.nombre}</h2>
-            <p>{subject.ruc ?? 'RUC no disponible'} · {subjectLocation(subject)}</p>
+            <p>
+              {subject.ruc ?? 'RUC no disponible'} · {subjectLocation(subject)}
+            </p>
           </div>
           <Button
             aria-label="Cerrar detalle"
@@ -149,15 +192,26 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
             </Link>
           )}
           <Button
-            aria-controls="subject-nomina-section"
-            aria-expanded={nominaOpen}
+            aria-controls="subject-related-section"
+            aria-pressed={relatedView === 'nomina'}
             disabled={!subject.id}
-            onClick={handleNominaClick}
+            onClick={() => openRelatedView('nomina')}
             size="sm"
             title={subject.id ? 'Consultar nómina' : 'No hay ID de contribuyente disponible'}
-            variant="outline"
+            variant={relatedView === 'nomina' ? 'secondary' : 'outline'}
           >
             <Users aria-hidden="true" /> Nómina
+          </Button>
+          <Button
+            aria-controls="subject-related-section"
+            aria-pressed={relatedView === 'contactos'}
+            disabled={!subject.id}
+            onClick={() => openRelatedView('contactos')}
+            size="sm"
+            title={subject.id ? 'Consultar contactos' : 'No hay ID de contribuyente disponible'}
+            variant={relatedView === 'contactos' ? 'secondary' : 'outline'}
+          >
+            <Contact aria-hidden="true" /> Contactos
           </Button>
           {trackingKey && (
             <BotonRastrear
@@ -169,6 +223,144 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
         </div>
 
         <div className="subject-drawer-content">
+          {relatedView && (
+            <section className="subject-section subject-related" id="subject-related-section">
+              <div className="subject-section-title">
+                {relatedView === 'nomina' ? (
+                  <Users aria-hidden="true" />
+                ) : (
+                  <Contact aria-hidden="true" />
+                )}
+                <div>
+                  <h3>{relatedView === 'nomina' ? 'Nómina' : 'Contactos'}</h3>
+                  <p>
+                    {relatedView === 'nomina'
+                      ? 'Personas registradas para este contribuyente.'
+                      : 'Canales disponibles para contactar a la compañía.'}
+                  </p>
+                </div>
+              </div>
+
+              {relatedView === 'nomina' && (
+                <>
+                  {nominaError && (
+                    <div className="subject-related-state error" role="alert">
+                      <span>{nominaError}</span>
+                      <Button onClick={() => void loadNomina()} size="sm" variant="outline">
+                        Reintentar
+                      </Button>
+                    </div>
+                  )}
+                  {nominaLoading && nominaRows.length === 0 && (
+                    <p aria-live="polite" className="subject-related-state">
+                      Consultando nómina…
+                    </p>
+                  )}
+                  {!nominaLoading && !nominaError && nominaRows.length === 0 && (
+                    <p className="subject-related-state">
+                      No hay registros de nómina para este contribuyente.
+                    </p>
+                  )}
+                  {nominaRows.length > 0 && (
+                    <>
+                      <div className="subject-related-table-wrap" tabIndex={0}>
+                        <table className="subject-related-table">
+                          <thead>
+                            <tr>
+                              <th scope="col">Cédula</th>
+                              <th scope="col">Nombre</th>
+                              <th scope="col">Rol</th>
+                              <th scope="col">Ingreso</th>
+                              <th scope="col">Posible salario</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {nominaRows.map(persona => (
+                              <tr key={persona.cedula}>
+                                <td>{persona.cedula}</td>
+                                <td>{persona.nombre ?? 'No disponible'}</td>
+                                <td>{persona.rol ?? 'No disponible'}</td>
+                                <td>{formatDate(persona.fechaIngreso)}</td>
+                                <td>{formatMoney(persona.posibleSalario)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {nominaCursor && (
+                        <div className="subject-related-more">
+                          <Button
+                            disabled={nominaLoading}
+                            onClick={() => void loadNomina(nominaCursor)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            {nominaLoading ? 'Cargando…' : 'Cargar más'}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {relatedView === 'contactos' && (
+                <>
+                  {contactosError && (
+                    <div className="subject-related-state error" role="alert">
+                      <span>{contactosError}</span>
+                      <Button onClick={() => void loadContactos()} size="sm" variant="outline">
+                        Reintentar
+                      </Button>
+                    </div>
+                  )}
+                  {contactosLoading && contactos.length === 0 && (
+                    <p aria-live="polite" className="subject-related-state">
+                      Consultando contactos…
+                    </p>
+                  )}
+                  {!contactosLoading && !contactosError && contactos.length === 0 && (
+                    <p className="subject-related-state">
+                      No hay contactos registrados para este contribuyente.
+                    </p>
+                  )}
+                  {contactos.length > 0 && (
+                    <>
+                      <ul className="subject-contact-list">
+                        {contactos.map(contacto => {
+                          const href =
+                            contacto.tipo === 'email'
+                              ? `mailto:${contacto.valor}`
+                              : contacto.tipo === 'telefono'
+                                ? `tel:${contacto.valor}`
+                                : null
+                          return (
+                            <li key={`${contacto.tipo}-${contacto.valor}`}>
+                              <span>{contacto.tipo}</span>
+                              {href ? <a href={href}>{contacto.valor}</a> : <strong>{contacto.valor}</strong>}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                      {contactosCursor && (
+                        <div className="subject-related-more">
+                          <Button
+                            disabled={contactosLoading}
+                            onClick={() => void loadContactos(contactosCursor)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            {contactosLoading ? 'Cargando…' : 'Cargar más'}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
           <section className="subject-summary-band">
             <div>
               <MapPin aria-hidden="true" />
@@ -187,81 +379,44 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
             </div>
           </section>
 
-          {nominaOpen && (
-            <section className="subject-section subject-nomina" id="subject-nomina-section">
-              <div className="subject-section-title">
-                <Users aria-hidden="true" />
-                <div>
-                  <h3>Nómina</h3>
-                  <p>Personas registradas para este contribuyente.</p>
-                </div>
-              </div>
-
-              {nominaError && <p className="subject-nomina-error" role="alert">{nominaError}</p>}
-              {nominaLoading && nominaRows.length === 0 && (
-                <p aria-live="polite" className="subject-nomina-loading">Consultando nómina…</p>
-              )}
-              {!nominaLoading && !nominaError && nominaRows.length === 0 && (
-                <p className="subject-nomina-empty">No hay registros de nómina para este contribuyente.</p>
-              )}
-              {nominaRows.length > 0 && (
-                <>
-                  <div className="subject-nomina-table-wrap">
-                    <table className="subject-nomina-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">Cédula</th>
-                          <th scope="col">Nombre</th>
-                          <th scope="col">Rol</th>
-                          <th scope="col">Ingreso</th>
-                          <th scope="col">Posible salario</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {nominaRows.map((persona) => (
-                          <tr key={persona.cedula}>
-                            <td>{persona.cedula}</td>
-                            <td>{persona.nombre ?? 'No disponible'}</td>
-                            <td>{persona.rol ?? 'No disponible'}</td>
-                            <td>{formatDate(persona.fechaIngreso)}</td>
-                            <td>{formatMoney(persona.posibleSalario)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {nominaCursor && (
-                    <div className="subject-nomina-more">
-                      <Button
-                        disabled={nominaLoading}
-                        onClick={() => void loadNomina(nominaCursor)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        {nominaLoading ? 'Cargando…' : 'Cargar más'}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-
           <section className="subject-section">
             <div className="subject-section-title">
               <ReceiptText aria-hidden="true" />
-              <div><h3>Situación fiscal</h3><p>Información declarada o cruzada con el SRI.</p></div>
+              <div>
+                <h3>Situación fiscal</h3>
+                <p>Información declarada o cruzada con el SRI.</p>
+              </div>
             </div>
             <dl className="subject-field-grid">
               <Field label="Estado" value={subjectStatus(subject)} />
-              <Field label="Clase" value={subject.claseContribuyente ?? subject.sriClaseContribuyente} />
-              <Field label="Inicio de actividades" value={formatDate(subject.fechaInicioActividades ?? subject.sriFechaInicioActividades)} />
+              <Field
+                label="Clase"
+                value={subject.claseContribuyente ?? subject.sriClaseContribuyente}
+              />
+              <Field
+                label="Inicio de actividades"
+                value={formatDate(
+                  subject.fechaInicioActividades ?? subject.sriFechaInicioActividades
+                )}
+              />
               <Field label="Última actualización" value={formatDate(subject.fechaActualizacion)} />
-              <Field label="Suspensión definitiva" value={formatDate(subject.fechaSuspensionDefinitiva)} />
-              <Field label="Reinicio de actividades" value={formatDate(subject.fechaReinicioActividades)} />
-              <Field label="Obligado a contabilidad" value={yesNo(subjectAccountingObligation(subject))} />
+              <Field
+                label="Suspensión definitiva"
+                value={formatDate(subject.fechaSuspensionDefinitiva)}
+              />
+              <Field
+                label="Reinicio de actividades"
+                value={formatDate(subject.fechaReinicioActividades)}
+              />
+              <Field
+                label="Obligado a contabilidad"
+                value={yesNo(subjectAccountingObligation(subject))}
+              />
               <Field label="Agente de retención" value={yesNo(subjectRetentionAgent(subject))} />
-              <Field label="Contribuyente especial" value={yesNo(subjectSpecialTaxpayer(subject))} />
+              <Field
+                label="Contribuyente especial"
+                value={yesNo(subjectSpecialTaxpayer(subject))}
+              />
               <Field label="Nombre comercial" value={subject.sriNombreComercial} />
             </dl>
           </section>
@@ -269,7 +424,10 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
           <section className="subject-section">
             <div className="subject-section-title">
               <Database aria-hidden="true" />
-              <div><h3>Información societaria</h3><p>Datos registrales disponibles para el sujeto.</p></div>
+              <div>
+                <h3>Información societaria</h3>
+                <p>Datos registrales disponibles para el sujeto.</p>
+              </div>
             </div>
             <dl className="subject-field-grid">
               <Field label="Expediente" value={subject.expediente} />
@@ -280,22 +438,41 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
               <Field label="Representante" value={subject.representante} />
               <Field label="Cargo" value={subject.cargo} />
               <Field label="Balance inicial" value={yesNo(subject.presentoBalanceInicial)} />
-              <Field label="Presentación balance inicial" value={formatDate(subject.fechaPresentacionBalanceInicial)} />
+              <Field
+                label="Presentación balance inicial"
+                value={formatDate(subject.fechaPresentacionBalanceInicial)}
+              />
             </dl>
           </section>
 
           <section className="subject-section">
             <div className="subject-section-title">
               <MapPin aria-hidden="true" />
-              <div><h3>Ubicación y actividad</h3><p>Contexto operativo para segmentar y contactar.</p></div>
+              <div>
+                <h3>Ubicación y actividad</h3>
+                <p>Contexto operativo para segmentar y contactar.</p>
+              </div>
             </div>
             <dl className="subject-field-grid">
               <Field label="Jurisdicción" value={subject.jurisdiccion} />
-              <Field label="País / región" value={[subject.pais, subject.region].filter(Boolean).join(' · ') || null} />
+              <Field
+                label="País / región"
+                value={[subject.pais, subject.region].filter(Boolean).join(' · ') || null}
+              />
               <Field label="Provincia" value={subject.provincia} />
-              <Field label="Cantón / ciudad" value={[subject.canton, subject.ciudad].filter(Boolean).join(' · ') || null} />
+              <Field
+                label="Cantón / ciudad"
+                value={[subject.canton, subject.ciudad].filter(Boolean).join(' · ') || null}
+              />
               <Field label="Parroquia" value={subject.sriParroquia} />
-              <Field label="Dirección" value={[subject.calle, subject.numero, subject.interseccion, subject.barrio].filter(Boolean).join(', ') || null} />
+              <Field
+                label="Dirección"
+                value={
+                  [subject.calle, subject.numero, subject.interseccion, subject.barrio]
+                    .filter(Boolean)
+                    .join(', ') || null
+                }
+              />
               <Field label="Teléfono" value={subject.telefono} />
               <Field label="CIIU nivel 1" value={subject.ciiuNivel1} />
               <Field label="CIIU principal" value={subject.ciiuNivel6} />
@@ -306,17 +483,41 @@ export function SubjectDetailPanel({ subject, onClose, onTrackingResult }: Subje
           <section className="subject-section">
             <div className="subject-section-title">
               <Radar aria-hidden="true" />
-              <div><h3>Señales comerciales</h3><p>Presencia en fuentes públicas; no implica una necesidad confirmada.</p></div>
+              <div>
+                <h3>Señales comerciales</h3>
+                <p>Presencia en fuentes públicas; no implica una necesidad confirmada.</p>
+              </div>
             </div>
             <dl className="subject-field-grid">
-              <Field label="Registros turísticos" value={subject.turismoRegistros ?? 'No informado'} />
+              <Field
+                label="Registros turísticos"
+                value={subject.turismoRegistros ?? 'No informado'}
+              />
               <Field label="Turismo ratificado" value={yesNo(subject.turismoRatificado)} />
-              <Field label="Actividades turísticas" value={<StringList values={subject.turismoActividades} />} />
-              <Field label="Clasificaciones turísticas" value={<StringList values={subject.turismoClasificaciones} />} />
-              <Field label="Exportador más reciente" value={newestExportYear(subject) ?? 'No informado'} />
-              <Field label="Bienes · IR" value={<StringList values={subject.exportadorBienesIrAnios} />} />
-              <Field label="Bienes · IVA" value={<StringList values={subject.exportadorBienesIvaAnios} />} />
-              <Field label="Servicios · IVA" value={<StringList values={subject.exportadorServiciosIvaAnios} />} />
+              <Field
+                label="Actividades turísticas"
+                value={<StringList values={subject.turismoActividades} />}
+              />
+              <Field
+                label="Clasificaciones turísticas"
+                value={<StringList values={subject.turismoClasificaciones} />}
+              />
+              <Field
+                label="Exportador más reciente"
+                value={newestExportYear(subject) ?? 'No informado'}
+              />
+              <Field
+                label="Bienes · IR"
+                value={<StringList values={subject.exportadorBienesIrAnios} />}
+              />
+              <Field
+                label="Bienes · IVA"
+                value={<StringList values={subject.exportadorBienesIvaAnios} />}
+              />
+              <Field
+                label="Servicios · IVA"
+                value={<StringList values={subject.exportadorServiciosIvaAnios} />}
+              />
             </dl>
           </section>
 
