@@ -83,7 +83,7 @@ export class TypeormTributarioReadRepository implements TributarioReadRepository
 
   async getUltimoAnioUtilidades(): Promise<number | null> {
     const [{ anio }] = await this.repository.query(
-      `SELECT max(anio)::int AS anio FROM utilidad_no_distribuida`,
+      `SELECT max(anio)::int AS anio FROM utilidad_no_distribuida WHERE base_anticipo > 0`,
     );
     return anio;
   }
@@ -182,7 +182,7 @@ export class TypeormTributarioReadRepository implements TributarioReadRepository
 
   async getFicha(expediente: string): Promise<FichaTributaria | null> {
     const [empresa] = await this.repository.query(
-      `SELECT c.expediente, c.ruc, c.nombre, c.ciiu_nivel_6, c.situacion_legal, c.sri_clase_contribuyente = 'RMP' AS rimpe, p.anios_con_datos, p.anios_decil_alto, p.anios_sin_utilidad, p.brecha_total, p.percentil_maximo, p.grupo_ciiu, ci.nombre AS actividad FROM contribuyentes c LEFT JOIN perfil_riesgo_tributario p USING (expediente) LEFT JOIN actividad_ciiu ci ON ci.codigo = p.grupo_ciiu WHERE c.expediente = $1`,
+      `SELECT c.expediente, c.ruc, c.nombre, c.ciiu_nivel_6, c.situacion_legal, coalesce(c.sri_clase_contribuyente = 'RMP', false) AS rimpe, p.anios_con_datos, p.anios_decil_alto, p.anios_sin_utilidad, p.brecha_total, p.percentil_maximo, p.grupo_ciiu, ci.nombre AS actividad FROM contribuyentes c LEFT JOIN perfil_riesgo_tributario p USING (expediente) LEFT JOIN actividad_ciiu ci ON ci.codigo = p.grupo_ciiu WHERE c.expediente = $1`,
       [expediente],
     );
     if (!empresa) return null;

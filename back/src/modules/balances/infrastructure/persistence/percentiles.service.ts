@@ -148,6 +148,23 @@ export class PercentilesService implements BalancesPercentilesRepository {
   }
 
   /**
+   * Las vistas tributarias también dependen de `balance_magnitud`. Si sólo se
+   * refresca la vista financiera, el análisis tributario queda vacío o muestra
+   * el ejercicio anterior aunque la importación de balances haya terminado.
+   * El orden es obligatorio porque cada vista se deriva de la anterior.
+   */
+  private async refrescarVistasTributarias(): Promise<void> {
+    for (const vista of [
+      'utilidad_no_distribuida',
+      'riesgo_tributario',
+      'riesgo_tributario_anio',
+      'perfil_riesgo_tributario',
+    ]) {
+      await this.dataSource.query(`REFRESH MATERIALIZED VIEW ${vista}`);
+    }
+  }
+
+  /**
    * Reconstruye magnitudes, cortes sectoriales y percentiles por empresa.
    *
    * Se ejecuta entero o no se ejecuta: entre borrar los percentiles viejos y
@@ -170,6 +187,7 @@ export class PercentilesService implements BalancesPercentilesRepository {
     const conceptos = await this.sincronizarConceptos();
 
     await this.dataSource.query('REFRESH MATERIALIZED VIEW balance_magnitud');
+    await this.refrescarVistasTributarias();
     const [{ n: balances }] = await this.dataSource.query(
       'SELECT count(*)::int AS n FROM balance_magnitud',
     );
