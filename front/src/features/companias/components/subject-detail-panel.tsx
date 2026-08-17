@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   BarChart3,
+  Car,
   Contact,
   Database,
+  House,
   MapPin,
   Radar,
   ReceiptText,
@@ -15,6 +17,8 @@ import { Link } from 'react-router-dom'
 import BotonRastrear from '@/components/BotonRastrear'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { listarBienes } from '@/features/bienes/api/bienes.api'
+import type { Propiedad, Vehiculo } from '@/features/bienes/api/bienes.types'
 import { listarContactos } from '@/features/contactos/api/contactos.api'
 import type { Contacto as ContactoItem } from '@/features/contactos/api/contactos.types'
 import { listarNomina } from '@/features/nomina/api/nomina.api'
@@ -65,7 +69,7 @@ export function SubjectDetailPanel({
   onTrackingResult,
 }: SubjectDetailPanelProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const [relatedView, setRelatedView] = useState<'nomina' | 'contactos' | null>(null)
+  const [relatedView, setRelatedView] = useState<'nomina' | 'contactos' | 'bienes' | null>(null)
   const [nominaRows, setNominaRows] = useState<NominaPersona[]>([])
   const [nominaCursor, setNominaCursor] = useState<string | null>(null)
   const [nominaLoading, setNominaLoading] = useState(false)
@@ -76,6 +80,13 @@ export function SubjectDetailPanel({
   const [contactosLoading, setContactosLoading] = useState(false)
   const [contactosLoaded, setContactosLoaded] = useState(false)
   const [contactosError, setContactosError] = useState<string | null>(null)
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([])
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
+  const [propiedadesCursor, setPropiedadesCursor] = useState<string | null>(null)
+  const [vehiculosCursor, setVehiculosCursor] = useState<string | null>(null)
+  const [bienesLoading, setBienesLoading] = useState(false)
+  const [bienesLoaded, setBienesLoaded] = useState(false)
+  const [bienesError, setBienesError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!subject) return undefined
@@ -97,6 +108,12 @@ export function SubjectDetailPanel({
     setContactosCursor(null)
     setContactosLoaded(false)
     setContactosError(null)
+    setPropiedades([])
+    setVehiculos([])
+    setPropiedadesCursor(null)
+    setVehiculosCursor(null)
+    setBienesLoaded(false)
+    setBienesError(null)
   }, [subject?.id])
 
   if (!subject) return null
@@ -137,10 +154,48 @@ export function SubjectDetailPanel({
     }
   }
 
-  const openRelatedView = (view: 'nomina' | 'contactos') => {
+  const loadBienes = async (pagina: 'inicial' | 'propiedades' | 'vehiculos' = 'inicial') => {
+    if (!subject.id || bienesLoading) return
+    setBienesLoading(true)
+    setBienesError(null)
+    try {
+      const query: {
+        limitPropiedades: number
+        limitVehiculos: number
+        cursorPropiedades?: string
+        cursorVehiculos?: string
+      } = { limitPropiedades: 25, limitVehiculos: 25 }
+      if (pagina === 'propiedades' && propiedadesCursor) {
+        query.cursorPropiedades = propiedadesCursor
+      }
+      if (pagina === 'vehiculos' && vehiculosCursor) query.cursorVehiculos = vehiculosCursor
+      const result = await listarBienes(subject.id, query)
+
+      if (pagina !== 'vehiculos') {
+        setPropiedades(current =>
+          pagina === 'propiedades' ? [...current, ...result.propiedades.datos] : result.propiedades.datos,
+        )
+        setPropiedadesCursor(result.propiedades.siguiente)
+      }
+      if (pagina !== 'propiedades') {
+        setVehiculos(current =>
+          pagina === 'vehiculos' ? [...current, ...result.vehiculos.datos] : result.vehiculos.datos,
+        )
+        setVehiculosCursor(result.vehiculos.siguiente)
+      }
+      setBienesLoaded(true)
+    } catch {
+      setBienesError('No se pudieron consultar los bienes. Intenta nuevamente.')
+    } finally {
+      setBienesLoading(false)
+    }
+  }
+
+  const openRelatedView = (view: 'nomina' | 'contactos' | 'bienes') => {
     setRelatedView(view)
     if (view === 'nomina' && !nominaLoaded) void loadNomina()
     if (view === 'contactos' && !contactosLoaded) void loadContactos()
+    if (view === 'bienes' && !bienesLoaded) void loadBienes()
   }
 
   const trackingKey =
@@ -213,6 +268,17 @@ export function SubjectDetailPanel({
           >
             <Contact aria-hidden="true" /> Contactos
           </Button>
+          <Button
+            aria-controls="subject-related-section"
+            aria-pressed={relatedView === 'bienes'}
+            disabled={!subject.id}
+            onClick={() => openRelatedView('bienes')}
+            size="sm"
+            title={subject.id ? 'Consultar bienes' : 'No hay ID de contribuyente disponible'}
+            variant={relatedView === 'bienes' ? 'secondary' : 'outline'}
+          >
+            <House aria-hidden="true" /> Bienes
+          </Button>
           {trackingKey && (
             <BotonRastrear
               clave={trackingKey}
@@ -226,17 +292,23 @@ export function SubjectDetailPanel({
           {relatedView && (
             <section className="subject-section subject-related" id="subject-related-section">
               <div className="subject-section-title">
-                {relatedView === 'nomina' ? (
-                  <Users aria-hidden="true" />
-                ) : (
-                  <Contact aria-hidden="true" />
-                )}
+                {relatedView === 'nomina' && <Users aria-hidden="true" />}
+                {relatedView === 'contactos' && <Contact aria-hidden="true" />}
+                {relatedView === 'bienes' && <House aria-hidden="true" />}
                 <div>
-                  <h3>{relatedView === 'nomina' ? 'Nómina' : 'Contactos'}</h3>
+                  <h3>
+                    {relatedView === 'nomina'
+                      ? 'Nómina'
+                      : relatedView === 'contactos'
+                        ? 'Contactos'
+                        : 'Bienes'}
+                  </h3>
                   <p>
                     {relatedView === 'nomina'
                       ? 'Personas registradas para este contribuyente.'
-                      : 'Canales disponibles para contactar a la compañía.'}
+                      : relatedView === 'contactos'
+                        ? 'Canales disponibles para contactar a la compañía.'
+                        : 'Propiedades y vehículos asociados al contribuyente.'}
                   </p>
                 </div>
               </div>
@@ -355,6 +427,137 @@ export function SubjectDetailPanel({
                         </div>
                       )}
                     </>
+                  )}
+                </>
+              )}
+
+              {relatedView === 'bienes' && (
+                <>
+                  {bienesError && (
+                    <div className="subject-related-state error" role="alert">
+                      <span>{bienesError}</span>
+                      <Button onClick={() => void loadBienes()} size="sm" variant="outline">
+                        Reintentar
+                      </Button>
+                    </div>
+                  )}
+                  {bienesLoading && !bienesLoaded && (
+                    <p aria-live="polite" className="subject-related-state">
+                      Consultando propiedades y vehículos…
+                    </p>
+                  )}
+                  {!bienesLoading && !bienesError && bienesLoaded && (
+                    <div className="subject-assets">
+                      <section aria-labelledby="subject-properties-title">
+                        <div className="subject-assets-heading">
+                          <div>
+                            <House aria-hidden="true" />
+                            <h4 id="subject-properties-title">Propiedades</h4>
+                          </div>
+                          <span>{propiedades.length}</span>
+                        </div>
+                        {propiedades.length === 0 ? (
+                          <p className="subject-related-state">No hay propiedades registradas.</p>
+                        ) : (
+                          <div className="subject-related-table-wrap" tabIndex={0}>
+                            <table className="subject-related-table subject-assets-table">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Cédula catastral</th>
+                                  <th scope="col">Ubicación</th>
+                                  <th scope="col">Dirección</th>
+                                  <th scope="col">Teléfono</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {propiedades.map(propiedad => (
+                                  <tr key={propiedad.cedulaCatastral}>
+                                    <td>{propiedad.cedulaCatastral}</td>
+                                    <td>
+                                      {[propiedad.parroquia, propiedad.barrioSector, propiedad.zona]
+                                        .filter(Boolean)
+                                        .join(' · ') || 'No disponible'}
+                                    </td>
+                                    <td>
+                                      {[propiedad.callePrincipal, propiedad.numero]
+                                        .filter(Boolean)
+                                        .join(' ') || 'No disponible'}
+                                    </td>
+                                    <td>{propiedad.telefono ?? 'No disponible'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {propiedadesCursor && (
+                          <div className="subject-related-more">
+                            <Button
+                              disabled={bienesLoading}
+                              onClick={() => void loadBienes('propiedades')}
+                              size="sm"
+                              variant="outline"
+                            >
+                              {bienesLoading ? 'Cargando…' : 'Cargar más propiedades'}
+                            </Button>
+                          </div>
+                        )}
+                      </section>
+
+                      <section aria-labelledby="subject-vehicles-title">
+                        <div className="subject-assets-heading">
+                          <div>
+                            <Car aria-hidden="true" />
+                            <h4 id="subject-vehicles-title">Vehículos</h4>
+                          </div>
+                          <span>{vehiculos.length}</span>
+                        </div>
+                        {vehiculos.length === 0 ? (
+                          <p className="subject-related-state">No hay vehículos registrados.</p>
+                        ) : (
+                          <div className="subject-related-table-wrap" tabIndex={0}>
+                            <table className="subject-related-table subject-assets-table">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Placa</th>
+                                  <th scope="col">Vehículo</th>
+                                  <th scope="col">Año</th>
+                                  <th scope="col">Lugar</th>
+                                  <th scope="col">Vencimiento</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {vehiculos.map(vehiculo => (
+                                  <tr key={vehiculo.placa}>
+                                    <td>{vehiculo.placa}</td>
+                                    <td>
+                                      {[vehiculo.tipo, vehiculo.marca, vehiculo.modelo]
+                                        .filter(Boolean)
+                                        .join(' · ') || 'No disponible'}
+                                    </td>
+                                    <td>{vehiculo.anio ?? '—'}</td>
+                                    <td>{vehiculo.lugar ?? 'No disponible'}</td>
+                                    <td>{formatDate(vehiculo.fechaVencimiento)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {vehiculosCursor && (
+                          <div className="subject-related-more">
+                            <Button
+                              disabled={bienesLoading}
+                              onClick={() => void loadBienes('vehiculos')}
+                              size="sm"
+                              variant="outline"
+                            >
+                              {bienesLoading ? 'Cargando…' : 'Cargar más vehículos'}
+                            </Button>
+                          </div>
+                        )}
+                      </section>
+                    </div>
                   )}
                 </>
               )}
