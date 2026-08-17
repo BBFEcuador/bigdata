@@ -285,7 +285,9 @@ function clasificarError(error: unknown): Error {
   if (error instanceof ErrorPermanente) return error;
   if (error instanceof playwrightErrors.TimeoutError) {
     return new Error(
-      `Tiempo de espera agotado al navegar DataPortal: ${error.message}`,
+      `Tiempo de espera agotado al navegar DataPortal: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
   }
   return error instanceof Error ? error : new Error(String(error));

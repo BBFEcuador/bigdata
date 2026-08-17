@@ -49,7 +49,7 @@ export class PerfilRiesgoTributario1700000016000 implements MigrationInterface {
                -- ferretería con una constructora.
                CASE WHEN r.ingresos > 0 THEN r.brecha / r.ingresos END AS intensidad
           FROM riesgo_tributario r
-         WHERE NOT r.rimpe
+         WHERE r.rimpe IS NOT TRUE
       ),
       -- El grupo de pares se elige UNA VEZ por empresa y año, como en los
       -- percentiles financieros: si un año se compara contra el grupo y otro
