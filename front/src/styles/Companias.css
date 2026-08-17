@@ -585,6 +585,74 @@
   white-space: nowrap;
 }
 
+.subject-nomina {
+  min-width: 0;
+}
+
+.subject-nomina-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.subject-nomina-table {
+  width: 100%;
+  min-width: 570px;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.subject-nomina-table th,
+.subject-nomina-table td {
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.subject-nomina-table th {
+  color: var(--muted-foreground);
+  background: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.subject-nomina-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.subject-nomina-table tbody tr:hover {
+  background: var(--muted);
+}
+
+.subject-nomina-loading,
+.subject-nomina-empty,
+.subject-nomina-error {
+  margin: 0;
+  padding: 0.8rem;
+  border-radius: 0.5rem;
+  font-size: 0.76rem;
+}
+
+.subject-nomina-loading,
+.subject-nomina-empty {
+  color: var(--muted-foreground);
+  background: var(--muted);
+}
+
+.subject-nomina-error {
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 8%, var(--card));
+}
+
+.subject-nomina-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.8rem;
+}
+
 .subject-section {
   padding: 1rem;
   border: 1px solid var(--border);
