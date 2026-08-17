@@ -1,6 +1,7 @@
 import {
   clasificarContacto,
   fecha,
+  fechaHoraLocal,
   parsearRespuestas,
 } from './dataportal.parser';
 
@@ -56,6 +57,20 @@ const CRUDAS = {
         subClassName: 'aceitestropicales.sa@gmail.com',
         year: '2008',
         city: 'SANTO DOMINGO',
+      },
+    ],
+  },
+  propiedades: {
+    propiedades: [
+      {
+        cedulaCatastral: ' CAT-001 ',
+        parroquia: 'CENTRO',
+        codigoCalle: 'C01',
+        callePrincipal: 'AV. UNO',
+        numero: '10',
+        barrioSector: 'NORTE',
+        zona: 'URBANA',
+        telefono: '02222',
       },
     ],
   },
@@ -129,15 +144,32 @@ describe('parsearRespuestas', () => {
       marca: 'CHEVROLET',
       modelo: 'FVR 32P 7.1 2P 4X2 TM DIESEL',
       anio: 2008,
-      cilindraje: 7127,
-      avaluo: 6367,
-      ciudad: 'SANTO DOMINGO',
-      fecha_matricula: '2026-04-30',
-      anio_pago: 2025,
+      lugar: 'SANTO DOMINGO',
+      fecha_vencimiento: '2026-04-30 00:00:00',
     });
     // El portal mete un correo en `subClassName`; guardarlo como "subclase"
     // sería propagar su error.
     expect(JSON.stringify(r.vehiculos[0])).not.toContain('@');
+  });
+
+  it('transforma propiedades tipadas y exige cédula catastral', () => {
+    expect(r.propiedades).toEqual([
+      {
+        ruc: RUC,
+        cedula_catastral: 'CAT-001',
+        parroquia: 'CENTRO',
+        codigo_calle: 'C01',
+        calle_principal: 'AV. UNO',
+        numero: '10',
+        barrio_sector: 'NORTE',
+        zona: 'URBANA',
+        telefono: '02222',
+      },
+    ]);
+    expect(
+      parsearRespuestas(RUC, { propiedades: [{ parroquia: 'CENTRO' }] })
+        .propiedades,
+    ).toEqual([]);
   });
 
   it('no se rompe con una respuesta vacía o con un RUC desconocido', () => {
@@ -169,6 +201,13 @@ describe('parsearRespuestas', () => {
     });
     expect(dup.nomina).toHaveLength(1);
     expect(dup.contactos).toHaveLength(1);
+  });
+});
+
+describe('fechaHoraLocal', () => {
+  it('normaliza fecha y hora sin inventar zona horaria', () => {
+    expect(fechaHoraLocal('2/8/2026 7:05:09')).toBe('2026-08-02 07:05:09');
+    expect(fechaHoraLocal('31/02/2026 10:00:00')).toBeNull();
   });
 });
 

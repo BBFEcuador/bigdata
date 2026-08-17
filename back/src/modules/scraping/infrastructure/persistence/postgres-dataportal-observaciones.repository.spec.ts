@@ -1,94 +1,80 @@
 import { DataSource } from 'typeorm';
 import { PostgresDataportalObservacionesRepository } from './postgres-dataportal-observaciones.repository';
 
+const identidad = { contribuyenteId: 'uuid-1', ruc: '099' };
+
+type QueryMock = jest.Mock<Promise<unknown[]>, [string, unknown[]?]>;
+
+function escenario(
+  query: QueryMock = jest.fn<Promise<unknown[]>, [string, unknown[]?]>(
+    async () => [],
+  ),
+) {
+  const dataSource = {
+    transaction: jest.fn(async (operacion) => operacion({ query })),
+  } as unknown as DataSource;
+  return {
+    query,
+    dataSource,
+    repository: new PostgresDataportalObservacionesRepository(dataSource),
+  };
+}
+
 describe('PostgresDataportalObservacionesRepository', () => {
-  it('reemplaza ambas listas en una sola transacción y deduplica', async () => {
-    const query = jest.fn<Promise<unknown[]>, [string, unknown[]?]>(
-      async () => [],
-    );
-    const dataSource = {
-      transaction: jest.fn(async (operacion) => operacion({ query })),
-    } as unknown as DataSource;
-    const repository = new PostgresDataportalObservacionesRepository(
-      dataSource,
-    );
+  it('reemplaza cada sección en una transacción propia y deduplica', async () => {
+    const e = escenario();
+    await e.repository.reemplazarContactos(identidad, [
+      { valor: 'a@b.ec', tipo: 'email', tipoCodigo: '3' },
+      { valor: 'a@b.ec', tipo: 'email', tipoCodigo: '3' },
+    ]);
+    await e.repository.reemplazarPropiedades(identidad, [
+      {
+        cedulaCatastral: 'CAT-1',
+        parroquia: null,
+        codigoCalle: null,
+        callePrincipal: null,
+        numero: null,
+        barrioSector: null,
+        zona: null,
+        telefono: null,
+      },
+      {
+        cedulaCatastral: 'CAT-1',
+        parroquia: null,
+        codigoCalle: null,
+        callePrincipal: null,
+        numero: null,
+        barrioSector: null,
+        zona: null,
+        telefono: null,
+      },
+    ]);
 
-    await repository.reemplazar({
-      contribuyenteId: 'uuid-1',
-      ruc: '099',
-      contactos: [
-        { valor: 'a@b.ec', tipo: 'email', tipoCodigo: '3' },
-        { valor: 'a@b.ec', tipo: 'email', tipoCodigo: '3' },
-      ],
-      nomina: [
-        {
-          cedula: '01',
-          nombre: null,
-          fechaIngreso: null,
-          rol: null,
-          posibleSalario: null,
-        },
-        {
-          cedula: '01',
-          nombre: null,
-          fechaIngreso: null,
-          rol: null,
-          posibleSalario: null,
-        },
-      ],
-    });
-
-    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(e.dataSource.transaction).toHaveBeenCalledTimes(2);
     expect(
-      query.mock.calls.filter(([sql]) =>
-        /INSERT INTO dataportal_contacto/.test(sql),
-      ),
-    ).toHaveLength(1);
-    expect(
-      query.mock.calls.filter(([sql]) =>
-        /INSERT INTO dataportal_nomina/.test(sql),
-      ),
-    ).toHaveLength(1);
-    expect(query.mock.calls[0][1]).toEqual(['uuid-1']);
+      e.query.mock.calls.filter(([sql]) => /INSERT INTO/.test(sql)),
+    ).toHaveLength(2);
+    expect(e.query.mock.calls[0][1]).toEqual(['uuid-1']);
   });
 
-  it('reemplaza por listas vacías mediante los dos DELETE', async () => {
-    const query = jest.fn<Promise<unknown[]>, [string, unknown[]?]>(
-      async () => [],
-    );
-    const dataSource = {
-      transaction: jest.fn(async (fn) => fn({ query })),
-    } as unknown as DataSource;
-    await new PostgresDataportalObservacionesRepository(dataSource).reemplazar({
-      contribuyenteId: 'uuid-1',
-      ruc: '099',
-      contactos: [],
-      nomina: [],
-    });
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(query.mock.calls.every(([sql]) => /^DELETE/.test(sql.trim()))).toBe(
-      true,
-    );
+  it('una lista vacía elimina la fotografía anterior', async () => {
+    const e = escenario();
+    await e.repository.reemplazarVehiculos(identidad, []);
+    expect(e.query).toHaveBeenCalledTimes(1);
+    expect(e.query.mock.calls[0][0]).toMatch(/DELETE FROM dataportal_vehiculo/);
   });
 
-  it('propaga un fallo de nómina para que TypeORM revierta toda la transacción', async () => {
+  it('propaga el fallo para que TypeORM revierta sólo esa sección', async () => {
     const error = new Error('falló nómina');
     const query = jest.fn<Promise<unknown[]>, [string, unknown[]?]>(
-      async (sql) => {
+      async (sql: string) => {
         if (/INSERT INTO dataportal_nomina/.test(sql)) throw error;
         return [];
       },
     );
-    const dataSource = {
-      transaction: jest.fn(async (fn) => fn({ query })),
-    } as unknown as DataSource;
-    const promise = new PostgresDataportalObservacionesRepository(
-      dataSource,
-    ).reemplazar({
-      contribuyenteId: 'uuid-1',
-      ruc: '099',
-      contactos: [],
-      nomina: [
+    const e = escenario(query);
+    await expect(
+      e.repository.reemplazarNomina(identidad, [
         {
           cedula: '01',
           nombre: null,
@@ -96,8 +82,7 @@ describe('PostgresDataportalObservacionesRepository', () => {
           rol: null,
           posibleSalario: null,
         },
-      ],
-    });
-    await expect(promise).rejects.toBe(error);
+      ]),
+    ).rejects.toBe(error);
   });
 });

@@ -11,8 +11,11 @@ import {
   ContactoDataportal,
   DataportalNavigator,
   PersonaNominaDataportal,
+  PropiedadDataportal,
   ResultadoConsultaDataportal,
+  ResultadoSeccionDataportal,
   SesionDataportal,
+  VehiculoDataportal,
 } from '../../application/ports/dataportal-navigator';
 import { ErrorPermanente } from '../../ejecutores/scraper.interface';
 
@@ -263,7 +266,7 @@ export class PlaywrightDataportalNavigator
         'El formulario de búsqueda por RUC de DataPortal cambió y ya no es compatible',
       );
     }
-    for (const selector of ['#consul-text-ruc', '#midirrecion', '#nomina']) {
+    for (const selector of ['#consul-text-ruc']) {
       if ((await page.locator(selector).count()) !== 1) {
         throw new ErrorPermanente(
           'La estructura de resultados de DataPortal cambió y ya no es compatible',
@@ -297,14 +300,6 @@ export class PlaywrightDataportalNavigator
     );
     const consultaMs = Date.now() - inicioConsulta;
 
-    for (const selector of ['#midirrecion', '#nomina']) {
-      if ((await page.locator(selector).count()) !== 1) {
-        throw new ErrorPermanente(
-          'La estructura de resultados de DataPortal cambió y ya no es compatible',
-        );
-      }
-    }
-
     const inicioExtraccion = Date.now();
     const crudo = await page.evaluate(() => {
       const texto = (valor: string | null | undefined) =>
@@ -314,6 +309,7 @@ export class PlaywrightDataportalNavigator
         ...(tablaNomina?.querySelectorAll('thead th') ?? []),
       ].map((th) => texto(th.textContent).toLocaleLowerCase('es'));
       return {
+        existeContactos: document.querySelectorAll('#midirrecion').length === 1,
         contactos: [...document.querySelectorAll('#midirrecion tr')].map(
           (fila) => ({
             celdas: [...fila.querySelectorAll('td')].map((td) =>
@@ -327,50 +323,221 @@ export class PlaywrightDataportalNavigator
           }),
         ),
         encabezados,
+        existeNomina: document.querySelectorAll('#nomina').length === 1,
         nomina: [...document.querySelectorAll('#nomina tr')].map((fila) =>
           [...fila.querySelectorAll('td')].map((td) => texto(td.textContent)),
         ),
+        propiedades: extraerTarjetas('#text-data-casas'),
+        vehiculos: extraerTarjetas('#text-data-carros'),
       };
-    });
 
-    const requeridos = ['consultar', 'cedula', 'nombre', 'ingreso', 'rol'];
-    if (
-      !requeridos.every((nombre) =>
-        crudo.encabezados.some((encabezado) =>
-          sinAcentos(encabezado).includes(nombre),
-        ),
-      ) ||
-      !crudo.encabezados.some((encabezado) =>
-        sinAcentos(encabezado).includes('salario'),
-      )
-    ) {
-      throw new ErrorPermanente(
-        'Las columnas de nómina de DataPortal cambiaron y ya no son compatibles',
-      );
-    }
+      function extraerTarjetas(selector: string) {
+        const coincidencias = document.querySelectorAll(selector);
+        if (coincidencias.length !== 1)
+          return { existe: false, texto: '', tarjetas: [] };
+        const contenedor = coincidencias[0];
+        const textoContenedor = texto(contenedor.textContent);
+        const tarjetas = [...contenedor.querySelectorAll(':scope > div')].map(
+          (tarjeta) => {
+            const elementos = [...tarjeta.querySelectorAll('p, li')]
+              .map((linea) => texto(linea.textContent))
+              .filter(Boolean);
+            const porSaltos = tarjeta.innerHTML
+              .split(/<br\s*\/?\s*>/gi)
+              .map((fragmento) => {
+                const temporal = document.createElement('div');
+                temporal.innerHTML = fragmento;
+                return texto(temporal.textContent);
+              })
+              .filter(Boolean);
+            return {
+              texto: texto(tarjeta.textContent),
+              lineas: elementos.length ? elementos : porSaltos,
+            };
+          },
+        );
+        return { existe: true, texto: textoContenedor, tarjetas };
+      }
+    });
 
     const indice = (nombre: string) =>
       crudo.encabezados.findIndex((encabezado) =>
         sinAcentos(encabezado).includes(nombre),
       );
-    const contactos = normalizarContactos(crudo.contactos);
-    const nomina = normalizarNomina(crudo.nomina, {
-      cedula: indice('cedula'),
-      nombre: indice('nombre'),
-      ingreso: indice('ingreso'),
-      rol: indice('rol'),
-      salario: indice('salario'),
+    const contactos = seccionSegura('contactos', () => {
+      if (!crudo.existeContactos)
+        throw new Error('no existe un contenedor único #midirrecion');
+      return normalizarContactos(crudo.contactos);
     });
+    const nomina = seccionSegura('nómina', () => {
+      if (!crudo.existeNomina)
+        throw new Error('no existe un contenedor único #nomina');
+      const requeridos = ['consultar', 'cedula', 'nombre', 'ingreso', 'rol'];
+      if (
+        !requeridos.every((nombre) =>
+          crudo.encabezados.some((encabezado) =>
+            sinAcentos(encabezado).includes(nombre),
+          ),
+        ) ||
+        !crudo.encabezados.some((encabezado) =>
+          sinAcentos(encabezado).includes('salario'),
+        )
+      )
+        throw new Error('las columnas esperadas no están presentes');
+      return normalizarNomina(crudo.nomina, {
+        cedula: indice('cedula'),
+        nombre: indice('nombre'),
+        ingreso: indice('ingreso'),
+        rol: indice('rol'),
+        salario: indice('salario'),
+      });
+    });
+    const propiedades = seccionSegura('propiedades', () =>
+      normalizarPropiedades(crudo.propiedades),
+    );
+    const vehiculos = seccionSegura('vehículos', () =>
+      normalizarVehiculos(crudo.vehiculos),
+    );
     const extraccionMs = Date.now() - inicioExtraccion;
 
     await esperarInterrumpible(opciones.debugEsperaMs, signal);
     return {
       contactos,
       nomina,
+      propiedades,
+      vehiculos,
       consultaMs,
       extraccionMs,
     };
   }
+}
+
+function seccionSegura<T>(
+  nombre: string,
+  extraer: () => T[],
+): ResultadoSeccionDataportal<T> {
+  try {
+    return { estado: 'ok', datos: extraer() };
+  } catch (error) {
+    return {
+      estado: 'error',
+      advertencia: `No se pudo extraer ${nombre}: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+interface TarjetasCrudas {
+  existe: boolean;
+  texto: string;
+  tarjetas: Array<{ texto: string; lineas: string[] }>;
+}
+
+function normalizarPropiedades(crudo: TarjetasCrudas): PropiedadDataportal[] {
+  return normalizarTarjetas(crudo, 'cédula catastral', (campos) => ({
+    cedulaCatastral: normalizarIdentificador(
+      requerido(campos, ['cedula catastral', 'cedula catastal']),
+    ),
+    parroquia: campo(campos, ['parroquia']),
+    codigoCalle: campo(campos, ['codigo calle', 'codigo de calle']),
+    callePrincipal: campo(campos, ['calle principal']),
+    numero: campo(campos, ['numero']),
+    barrioSector: campo(campos, ['barrio sector', 'barrio/sector', 'barrio']),
+    zona: campo(campos, ['zona']),
+    telefono: campo(campos, ['telefono']),
+  }));
+}
+
+function normalizarVehiculos(crudo: TarjetasCrudas): VehiculoDataportal[] {
+  return normalizarTarjetas(crudo, 'placa', (campos) => ({
+    tipo: campo(campos, ['tipo']),
+    modelo: campo(campos, ['modelo']),
+    marca: campo(campos, ['marca']),
+    anio: normalizarAnio(campo(campos, ['anio', 'año'])),
+    placa: normalizarIdentificador(requerido(campos, ['placa'])),
+    lugar: campo(campos, ['lugar']),
+    fechaVencimiento: normalizarFechaHora(
+      campo(campos, ['fecha vencimiento', 'fecha de vencimiento']),
+    ),
+  }));
+}
+
+function normalizarTarjetas<T>(
+  crudo: TarjetasCrudas,
+  identificador: string,
+  mapear: (campos: Map<string, string>) => T,
+): T[] {
+  if (!crudo.existe)
+    throw new Error('el contenedor no existe o está duplicado');
+  if (!crudo.texto) return [];
+  if (crudo.tarjetas.length === 0)
+    throw new Error('hay contenido, pero no está dividido en elementos <div>');
+  const resultado: T[] = [];
+  for (const tarjeta of crudo.tarjetas) {
+    const lineas = tarjeta.lineas.length
+      ? tarjeta.lineas
+      : tarjeta.texto.split(/\n+/).map((linea) => linea.trim());
+    const campos = new Map<string, string>();
+    for (const linea of lineas) {
+      const separador = linea.indexOf(':');
+      if (separador < 0) continue;
+      const etiqueta = normalizarEtiqueta(linea.slice(0, separador));
+      const valor = limpiarOpcional(linea.slice(separador + 1));
+      if (etiqueta && valor) campos.set(etiqueta, valor);
+    }
+    if (campos.size === 0)
+      throw new Error('un elemento no contiene etiquetas reconocibles');
+    try {
+      resultado.push(mapear(campos));
+    } catch {
+      throw new Error(`un elemento no contiene ${identificador}`);
+    }
+  }
+  return resultado;
+}
+
+function normalizarEtiqueta(valor: string): string {
+  return sinAcentos(valor)
+    .toLocaleLowerCase('es')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function campo(campos: Map<string, string>, aliases: string[]): string | null {
+  for (const alias of aliases) {
+    const valor = campos.get(normalizarEtiqueta(alias));
+    if (valor) return valor;
+  }
+  return null;
+}
+
+function requerido(campos: Map<string, string>, aliases: string[]): string {
+  const valor = campo(campos, aliases);
+  if (!valor) throw new Error('identificador obligatorio ausente');
+  return valor;
+}
+
+function normalizarIdentificador(valor: string): string {
+  return valor.replace(/\s+/g, ' ').trim().toLocaleUpperCase('es');
+}
+
+function normalizarAnio(valor: string | null): number | null {
+  if (!valor || !/^\d{4}$/.test(valor)) return null;
+  const anio = Number(valor);
+  return anio >= 1900 && anio <= 2100 ? anio : null;
+}
+
+function normalizarFechaHora(valor: string | null): string | null {
+  if (!valor) return null;
+  const dmy =
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?$/.exec(
+      valor,
+    );
+  if (!dmy) return null;
+  const [, d, m, a, hh = '0', mm = '00', ss = '00'] = dmy;
+  const fecha = normalizarFecha(`${d}/${m}/${a}`);
+  const hora = +hh;
+  if (!fecha || hora > 23 || +mm > 59 || +ss > 59) return null;
+  return `${fecha} ${String(hora).padStart(2, '0')}:${mm}:${ss}`;
 }
 
 function sinAcentos(valor: string): string {

@@ -56,11 +56,20 @@ export interface FilaVehiculo {
   marca: string | null;
   modelo: string | null;
   anio: number | null;
-  cilindraje: number | null;
-  avaluo: number | null;
-  ciudad: string | null;
-  fecha_matricula: string | null;
-  anio_pago: number | null;
+  lugar: string | null;
+  fecha_vencimiento: string | null;
+}
+
+export interface FilaPropiedad {
+  ruc: string;
+  cedula_catastral: string;
+  parroquia: string | null;
+  codigo_calle: string | null;
+  calle_principal: string | null;
+  numero: string | null;
+  barrio_sector: string | null;
+  zona: string | null;
+  telefono: string | null;
 }
 
 export interface Parseado {
@@ -68,7 +77,7 @@ export interface Parseado {
   contactos: FilaContacto[];
   nomina: FilaNomina[];
   vehiculos: FilaVehiculo[];
-  propiedades: unknown[];
+  propiedades: FilaPropiedad[];
 }
 
 /** Texto del portal: recorta, repara el mojibake y colapsa los vacíos a null. */
@@ -168,9 +177,7 @@ export function parsearRespuestas(
     contactos: parsearContactos(ruc, crudas.contacto),
     nomina,
     vehiculos: parsearVehiculos(ruc, crudas.carro),
-    propiedades: comoArray(
-      comoObjeto(crudas.propiedades).propiedades ?? crudas.propiedades,
-    ),
+    propiedades: parsearPropiedades(ruc, crudas.propiedades),
   };
 }
 
@@ -247,30 +254,98 @@ function parsearNomina(ruc: string, crudo: unknown): FilaNomina[] {
 }
 
 function parsearVehiculos(ruc: string, crudo: unknown): FilaVehiculo[] {
-  const lista = comoArray(comoObjeto(crudo).vehicle ?? crudo);
+  const objeto = comoObjeto(crudo);
+  const lista = comoArray(objeto.vehicle ?? objeto.vehiculos ?? crudo);
   const vistos = new Set<string>();
   const out: FilaVehiculo[] = [];
 
   for (const item of lista) {
     const d = comoObjeto(item);
-    const placa = txt(d.carRegistration);
+    const placa = identificador(d.carRegistration ?? d.placa);
     if (placa === null || vistos.has(placa)) continue;
     vistos.add(placa);
     out.push({
       ruc,
       placa,
-      tipo: txt(d.vehicleType),
-      marca: txt(d.brand),
-      modelo: txt(d.model),
-      anio: entero(d.year, 1900, 2100),
-      cilindraje: entero(d.cylinderCapacity, 0, 100000),
-      avaluo: numero(d.appraisalValue),
-      ciudad: txt(d.city),
-      fecha_matricula: fecha(d.dateOfLastCarRegistration),
-      anio_pago: entero(d.yearofPayment, 1900, 2100),
+      tipo: txt(d.vehicleType ?? d.tipo),
+      marca: txt(d.brand ?? d.marca),
+      modelo: txt(d.model ?? d.modelo),
+      anio: entero(d.year ?? d.anio, 1900, 2100),
+      lugar: txt(d.place ?? d.city ?? d.lugar),
+      fecha_vencimiento: fechaHoraLocal(
+        d.expirationDate ?? d.fechaVencimiento ?? d.dateOfLastCarRegistration,
+      ),
       // `subClassName` NO se guarda: el portal mete ahí el correo de la empresa,
       // no una subclase de vehículo. Queda en el payload crudo por si acaso.
     });
   }
   return out;
+}
+
+function parsearPropiedades(ruc: string, crudo: unknown): FilaPropiedad[] {
+  const objeto = comoObjeto(crudo);
+  const lista = comoArray(objeto.propiedades ?? objeto.properties ?? crudo);
+  const vistos = new Set<string>();
+  const out: FilaPropiedad[] = [];
+  for (const item of lista) {
+    const d = comoObjeto(item);
+    const cedula = identificador(
+      d.cedulaCatastral ?? d.cedula_catastral ?? d.cadastralCertificate,
+    );
+    if (!cedula || vistos.has(cedula)) continue;
+    vistos.add(cedula);
+    out.push({
+      ruc,
+      cedula_catastral: cedula,
+      parroquia: txt(d.parroquia ?? d.parish),
+      codigo_calle: txt(d.codigoCalle ?? d.codigo_calle ?? d.streetCode),
+      calle_principal: txt(
+        d.callePrincipal ?? d.calle_principal ?? d.mainStreet,
+      ),
+      numero: txt(d.numero ?? d.number),
+      barrio_sector: txt(d.barrioSector ?? d.barrio_sector ?? d.neighborhood),
+      zona: txt(d.zona ?? d.zone),
+      telefono: txt(d.telefono ?? d.phone),
+    });
+  }
+  return out;
+}
+
+function identificador(v: unknown): string | null {
+  return txt(v)?.toLocaleUpperCase('es') ?? null;
+}
+
+/** Conserva el reloj local entregado por el portal, sin añadir zona horaria. */
+export function fechaHoraLocal(v: unknown): string | null {
+  const s = txt(v);
+  if (!s) return null;
+  const dmy =
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?$/.exec(s);
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}):(\d{2}))?/.exec(
+    s,
+  );
+  const partes = dmy
+    ? [
+        +dmy[3],
+        +dmy[2],
+        +dmy[1],
+        +(dmy[4] ?? 0),
+        +(dmy[5] ?? 0),
+        +(dmy[6] ?? 0),
+      ]
+    : iso
+      ? [
+          +iso[1],
+          +iso[2],
+          +iso[3],
+          +(iso[4] ?? 0),
+          +(iso[5] ?? 0),
+          +(iso[6] ?? 0),
+        ]
+      : null;
+  if (!partes) return null;
+  const [a, m, d, h, min, seg] = partes;
+  const dia = valida(a, m, d);
+  if (!dia || h > 23 || min > 59 || seg > 59) return null;
+  return `${dia} ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(seg).padStart(2, '0')}`;
 }

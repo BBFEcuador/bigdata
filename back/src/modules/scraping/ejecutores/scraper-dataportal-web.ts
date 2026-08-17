@@ -86,23 +86,80 @@ export class ScraperDataportalWeb implements Scraper {
       );
       await ctx.latido({ pct: 75, paso: 'extrayendo_observaciones' });
       await ctx.latido({ pct: 85, paso: 'persistiendo_observaciones' });
-      await this.observaciones.reemplazar({
+      const identidad = {
         contribuyenteId: contribuyente.id,
         ruc: contribuyente.ruc.trim(),
-        contactos: resultado.contactos,
-        nomina: resultado.nomina,
-      });
+      };
+      const advertencias: string[] = [];
+      const inicioPersistencia = Date.now();
+      const persistir = async <T>(
+        nombre: string,
+        seccion:
+          | { estado: 'ok'; datos: T[] }
+          | { estado: 'error'; advertencia: string },
+        reemplazar: (datos: T[]) => Promise<void>,
+      ): Promise<number> => {
+        if (seccion.estado === 'error') {
+          advertencias.push(seccion.advertencia);
+          return 0;
+        }
+        try {
+          await reemplazar(seccion.datos);
+          return 1;
+        } catch (error) {
+          advertencias.push(
+            `No se pudo persistir ${nombre}; se conservó la fotografía anterior: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return 0;
+        }
+      };
+
+      const contactosOk = await persistir(
+        'contactos',
+        resultado.contactos,
+        (datos) => this.observaciones.reemplazarContactos(identidad, datos),
+      );
+      const nominaOk = await persistir('nómina', resultado.nomina, (datos) =>
+        this.observaciones.reemplazarNomina(identidad, datos),
+      );
+      const propiedadesOk = await persistir(
+        'propiedades',
+        resultado.propiedades,
+        (datos) => this.observaciones.reemplazarPropiedades(identidad, datos),
+      );
+      const vehiculosOk = await persistir(
+        'vehículos',
+        resultado.vehiculos,
+        (datos) => this.observaciones.reemplazarVehiculos(identidad, datos),
+      );
+      const persistenciaMs = Date.now() - inicioPersistencia;
       await ctx.latido({ pct: 100, paso: 'terminado' });
 
+      const cantidad = <T>(seccion: { estado: string; datos?: T[] }) =>
+        seccion.estado === 'ok' ? (seccion.datos?.length ?? 0) : 0;
+      const contactos = cantidad(resultado.contactos);
+      const nomina = cantidad(resultado.nomina);
+      const propiedades = cantidad(resultado.propiedades);
+      const vehiculos = cantidad(resultado.vehiculos);
+
       return {
-        documentos: resultado.contactos.length + resultado.nomina.length,
+        documentos: contactos + nomina + propiedades + vehiculos,
+        avisos: advertencias.length ? advertencias.join(' | ') : null,
         metricas: {
           loginMs: sesion.loginMs,
           navegacionMs,
           consultaMs: resultado.consultaMs,
           extraccionMs: resultado.extraccionMs,
-          contactos: resultado.contactos.length,
-          nomina: resultado.nomina.length,
+          persistenciaMs,
+          contactos,
+          nomina,
+          propiedades,
+          vehiculos,
+          contactosOk,
+          nominaOk,
+          propiedadesOk,
+          vehiculosOk,
+          advertencias: advertencias.length,
           intento: ctx.intento,
         },
       };

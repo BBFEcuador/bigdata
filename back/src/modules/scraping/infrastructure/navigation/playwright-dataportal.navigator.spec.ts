@@ -12,6 +12,7 @@ type Modo =
   | 'formulario-ruc-cambiado'
   | 'vacio'
   | 'multiples'
+  | 'bienes-incompatible'
   | 'lento';
 
 describe('PlaywrightDataportalNavigator', () => {
@@ -29,7 +30,7 @@ describe('PlaywrightDataportalNavigator', () => {
       req.on('end', () => {
         const responder = () => {
           if (req.url === '/wp-login.php' && req.method === 'GET') {
-            res.setHeader('content-type', 'text/html');
+            res.setHeader('content-type', 'text/html; charset=utf-8');
             res.end(
               modo === 'login-cambiado'
                 ? '<form><input id="otro"></form>'
@@ -39,7 +40,7 @@ describe('PlaywrightDataportalNavigator', () => {
           }
           if (req.url === '/wp-login.php' && req.method === 'POST') {
             if (modo === 'credenciales') {
-              res.setHeader('content-type', 'text/html');
+              res.setHeader('content-type', 'text/html; charset=utf-8');
               res.end('<div id="login_error">Error</div>');
             } else {
               res.statusCode = 302;
@@ -49,7 +50,7 @@ describe('PlaywrightDataportalNavigator', () => {
             return;
           }
           if (req.url === '/wp-admin/') {
-            res.setHeader('content-type', 'text/html');
+            res.setHeader('content-type', 'text/html; charset=utf-8');
             res.end('<nav><ul id="adminmenu"><li>Inicio</li></ul></nav>');
             return;
           }
@@ -58,7 +59,7 @@ describe('PlaywrightDataportalNavigator', () => {
             req.method === 'POST'
           ) {
             ultimoRuc = new URLSearchParams(cuerpo).get('dni');
-            res.setHeader('content-type', 'text/html');
+            res.setHeader('content-type', 'text/html; charset=utf-8');
             const contacto =
               modo === 'vacio'
                 ? ''
@@ -73,15 +74,26 @@ describe('PlaywrightDataportalNavigator', () => {
                   (modo === 'multiples'
                     ? '<tr><td><a>Consultar</a></td><td>0922222222</td><td> </td><td></td><td></td><td></td></tr>'
                     : '');
+            const propiedades =
+              modo === 'vacio'
+                ? ''
+                : modo === 'bienes-incompatible'
+                  ? '<span>estructura nueva</span>'
+                  : `<div><p>Zona: Norte</p><p>Cédula catastral: CAT-01</p><p>Parroquia: Centro</p><p>Código calle: C-2</p><p>Calle principal: Av. Uno</p><p>Número: 10</p><p>Barrio / Sector: La Paz</p><p>Teléfono: 02222</p></div>`;
+            const vehiculos =
+              modo === 'vacio'
+                ? ''
+                : `<div><p>Marca: CHEVROLET</p><p>Placa: ABC123</p><p>Tipo: SUV</p><p>Modelo: TRACKER</p><p>Año: 2020</p><p>Lugar: QUITO</p><p>Fecha de vencimiento: 2/8/2026 7:05:09</p></div>`;
             res.end(`<div id="cargando" hidden></div><div class="cargando" hidden></div>
               <strong id="consul-text-ruc">${ultimoRuc}</strong>
               <table><tbody id="midirrecion">${contacto}</tbody></table>
               <table><thead><tr><th>Consultar</th><th>Cedula</th><th>Nombre</th><th>Ingreso</th><th>Rol</th><th>Posible salario</th></tr></thead>
-              <tbody id="nomina">${persona}</tbody></table>`);
+              <tbody id="nomina">${persona}</tbody></table>
+              <section hidden><div id="text-data-carros">${vehiculos}</div><div id="text-data-casas">${propiedades}</div></section>`);
             return;
           }
           if (req.url === '/wp-admin/admin.php?page=shearch_ruc') {
-            res.setHeader('content-type', 'text/html');
+            res.setHeader('content-type', 'text/html; charset=utf-8');
             res.end(
               modo === 'ruc-cambiado'
                 ? '<h1>Otra página</h1>'
@@ -90,7 +102,8 @@ describe('PlaywrightDataportalNavigator', () => {
                   : `<h1>Buscar por Ruc</h1><form method="post"><input id="dni_busqueda" name="dni"><input type="submit" id="submit_data"></form>
                     <div id="cargando" hidden></div><div class="cargando" hidden></div>
                     <strong id="consul-text-ruc"></strong><table><tbody id="midirrecion"></tbody></table>
-                    <table><thead><tr><th>Consultar</th><th>Cedula</th><th>Nombre</th><th>Ingreso</th><th>Rol</th><th>Posible salario</th></tr></thead><tbody id="nomina"></tbody></table>`,
+                    <table><thead><tr><th>Consultar</th><th>Cedula</th><th>Nombre</th><th>Ingreso</th><th>Rol</th><th>Posible salario</th></tr></thead><tbody id="nomina"></tbody></table>
+                    <div hidden><div id="text-data-carros"></div><div id="text-data-casas"></div></div>`,
             );
             return;
           }
@@ -147,18 +160,53 @@ describe('PlaywrightDataportalNavigator', () => {
     await expect(sesion.consultarRuc('0999999999001')).resolves.toEqual({
       consultaMs: expect.any(Number),
       extraccionMs: expect.any(Number),
-      contactos: [
-        { valor: 'contacto@example.com', tipo: 'email', tipoCodigo: null },
-      ],
-      nomina: [
-        {
-          cedula: '0912345678',
-          nombre: 'Ana Perez',
-          fechaIngreso: '2026-08-02',
-          rol: 'Gerente',
-          posibleSalario: 1234.5,
-        },
-      ],
+      contactos: {
+        estado: 'ok',
+        datos: [
+          { valor: 'contacto@example.com', tipo: 'email', tipoCodigo: null },
+        ],
+      },
+      nomina: {
+        estado: 'ok',
+        datos: [
+          {
+            cedula: '0912345678',
+            nombre: 'Ana Perez',
+            fechaIngreso: '2026-08-02',
+            rol: 'Gerente',
+            posibleSalario: 1234.5,
+          },
+        ],
+      },
+      propiedades: {
+        estado: 'ok',
+        datos: [
+          {
+            cedulaCatastral: 'CAT-01',
+            parroquia: 'Centro',
+            codigoCalle: 'C-2',
+            callePrincipal: 'Av. Uno',
+            numero: '10',
+            barrioSector: 'La Paz',
+            zona: 'Norte',
+            telefono: '02222',
+          },
+        ],
+      },
+      vehiculos: {
+        estado: 'ok',
+        datos: [
+          {
+            tipo: 'SUV',
+            modelo: 'TRACKER',
+            marca: 'CHEVROLET',
+            anio: 2020,
+            placa: 'ABC123',
+            lugar: 'QUITO',
+            fechaVencimiento: '2026-08-02 07:05:09',
+          },
+        ],
+      },
     });
     expect(ultimoRuc).toBe('0999999999001');
     await sesion.cerrar();
@@ -178,7 +226,12 @@ describe('PlaywrightDataportalNavigator', () => {
     );
     await sesion.navegarABusquedaRuc();
     await expect(sesion.consultarRuc('0999999999001')).resolves.toEqual(
-      expect.objectContaining({ contactos: [], nomina: [] }),
+      expect.objectContaining({
+        contactos: { estado: 'ok', datos: [] },
+        nomina: { estado: 'ok', datos: [] },
+        propiedades: { estado: 'ok', datos: [] },
+        vehiculos: { estado: 'ok', datos: [] },
+      }),
     );
     await sesion.cerrar();
   });
@@ -190,19 +243,39 @@ describe('PlaywrightDataportalNavigator', () => {
     );
     await sesion.navegarABusquedaRuc();
     const resultado = await sesion.consultarRuc('0999999999001');
-    expect(resultado.contactos).toHaveLength(2);
-    expect(resultado.contactos[1]).toEqual({
+    expect(resultado.contactos.estado).toBe('ok');
+    if (resultado.contactos.estado !== 'ok') throw new Error('inaccesible');
+    expect(resultado.contactos.datos).toHaveLength(2);
+    expect(resultado.contactos.datos[1]).toEqual({
       valor: '099 123 4567',
       tipo: 'telefono',
       tipoCodigo: '8',
     });
-    expect(resultado.nomina[1]).toEqual({
+    expect(resultado.nomina.estado).toBe('ok');
+    if (resultado.nomina.estado !== 'ok') throw new Error('inaccesible');
+    expect(resultado.nomina.datos[1]).toEqual({
       cedula: '0922222222',
       nombre: null,
       fechaIngreso: null,
       rol: null,
       posibleSalario: null,
     });
+    await sesion.cerrar();
+  });
+
+  it('marca sólo la colección cuyo DOM es incompatible', async () => {
+    modo = 'bienes-incompatible';
+    const sesion = await navegador().iniciarSesion(
+      new AbortController().signal,
+    );
+    await sesion.navegarABusquedaRuc();
+    const resultado = await sesion.consultarRuc('0999999999001');
+    expect(resultado.propiedades).toEqual({
+      estado: 'error',
+      advertencia: expect.stringContaining('propiedades'),
+    });
+    expect(resultado.vehiculos.estado).toBe('ok');
+    expect(resultado.contactos.estado).toBe('ok');
     await sesion.cerrar();
   });
 
