@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { CompaniasScrapingRepository } from '../application/ports/companias-scraping.repository';
+import { ContribuyentesScrapingRepository } from '../application/ports/contribuyentes-scraping.repository';
 import {
   DataportalNavigator,
   SesionDataportal,
@@ -34,7 +34,7 @@ function contexto(over: Partial<ContextoScraping> = {}) {
 
 function dependencias(
   over: {
-    compania?: { id: string; expediente: string; ruc: string | null } | null;
+    contribuyente?: { id: string; ruc: string | null } | null;
     iniciar?: () => Promise<SesionDataportal>;
   } = {},
 ) {
@@ -59,12 +59,12 @@ function dependencias(
     }),
     cerrar,
   };
-  const companias: CompaniasScrapingRepository = {
-    buscarPorExpediente: jest.fn(async () => {
+  const contribuyentes: ContribuyentesScrapingRepository = {
+    buscar: jest.fn(async () => {
       orden.push('resolver');
-      return over.compania === undefined
-        ? { id: 'uuid-1', expediente: '12345', ruc: '0999999999001' }
-        : over.compania;
+      return over.contribuyente === undefined
+        ? { id: 'uuid-1', ruc: '0999999999001' }
+        : over.contribuyente;
     }),
   };
   const navegador: DataportalNavigator = {
@@ -78,14 +78,14 @@ function dependencias(
       orden.push('persistir');
     }),
   };
-  return { companias, navegador, observaciones, sesion, cerrar, orden };
+  return { contribuyentes, navegador, observaciones, sesion, cerrar, orden };
 }
 
 describe('ScraperDataportalWeb', () => {
   it('resuelve la compañía por expediente, inicia sesión y navega en orden', async () => {
     const d = dependencias();
     const scraper = new ScraperDataportalWeb(
-      d.companias,
+      d.contribuyentes,
       d.navegador,
       d.observaciones,
     );
@@ -93,7 +93,7 @@ describe('ScraperDataportalWeb', () => {
 
     const resumen = await scraper.ejecutar(ctx);
 
-    expect(d.companias.buscarPorExpediente).toHaveBeenCalledWith('12345');
+    expect(d.contribuyentes.buscar).toHaveBeenCalledWith('compania', '12345');
     expect(d.orden).toEqual([
       'resolver',
       'login',
@@ -103,7 +103,7 @@ describe('ScraperDataportalWeb', () => {
     ]);
     expect(d.sesion.consultarRuc).toHaveBeenCalledWith('0999999999001');
     expect(latidos.map((l) => l.paso)).toEqual([
-      'resolviendo_compania',
+      'resolviendo_sujeto',
       'iniciando_sesion',
       'navegando_ruc',
       'consultando_ruc',
@@ -126,29 +126,38 @@ describe('ScraperDataportalWeb', () => {
     expect(d.cerrar).toHaveBeenCalledTimes(1);
   });
 
-  it('rechaza sujetos incompatibles sin consultar infraestructura', async () => {
-    const d = dependencias();
-    const scraper = new ScraperDataportalWeb(
-      d.companias,
-      d.navegador,
-      d.observaciones,
-    );
-    const { ctx } = contexto({ tipoSujeto: 'persona_natural' });
+  it.each(['persona_natural', 'sociedad_no_supervisada'] as const)(
+    'consulta DataPortal para sujetos de tipo %s usando su RUC',
+    async (tipoSujeto) => {
+      const d = dependencias();
+      const scraper = new ScraperDataportalWeb(
+        d.contribuyentes,
+        d.navegador,
+        d.observaciones,
+      );
+      const { ctx } = contexto({ tipoSujeto, clave: '0999999999001' });
 
-    await expect(scraper.ejecutar(ctx)).rejects.toBeInstanceOf(ErrorPermanente);
-    expect(d.companias.buscarPorExpediente).not.toHaveBeenCalled();
-  });
+      await expect(scraper.ejecutar(ctx)).resolves.toEqual(
+        expect.objectContaining({ documentos: 1 }),
+      );
+      expect(d.contribuyentes.buscar).toHaveBeenCalledWith(
+        tipoSujeto,
+        '0999999999001',
+      );
+      expect(d.sesion.consultarRuc).toHaveBeenCalledWith('0999999999001');
+    },
+  );
 
   it.each([
     [null, /No existe la compañía/],
-    [{ id: 'u', expediente: '12345', ruc: null }, /no tiene RUC/],
-    [{ id: 'u', expediente: '12345', ruc: '   ' }, /no tiene RUC/],
+    [{ id: 'u', ruc: null }, /no tiene RUC/],
+    [{ id: 'u', ruc: '   ' }, /no tiene RUC/],
   ])(
-    'rechaza una compañía inexistente o sin RUC',
-    async (compania, mensaje) => {
-      const d = dependencias({ compania });
+    'rechaza un sujeto inexistente o sin RUC',
+    async (contribuyente, mensaje) => {
+      const d = dependencias({ contribuyente });
       const scraper = new ScraperDataportalWeb(
-        d.companias,
+        d.contribuyentes,
         d.navegador,
         d.observaciones,
       );
@@ -163,7 +172,7 @@ describe('ScraperDataportalWeb', () => {
     async (error) => {
       const d = dependencias({ iniciar: async () => Promise.reject(error) });
       const scraper = new ScraperDataportalWeb(
-        d.companias,
+        d.contribuyentes,
         d.navegador,
         d.observaciones,
       );
@@ -180,7 +189,7 @@ describe('ScraperDataportalWeb', () => {
       nomina: [],
     });
     const scraper = new ScraperDataportalWeb(
-      d.companias,
+      d.contribuyentes,
       d.navegador,
       d.observaciones,
     );
@@ -203,7 +212,7 @@ describe('ScraperDataportalWeb', () => {
       new ErrorPermanente('DOM incompatible'),
     );
     const scraper = new ScraperDataportalWeb(
-      d.companias,
+      d.contribuyentes,
       d.navegador,
       d.observaciones,
     );
@@ -224,7 +233,7 @@ describe('ScraperDataportalWeb', () => {
       },
     });
     const scraper = new ScraperDataportalWeb(
-      d.companias,
+      d.contribuyentes,
       d.navegador,
       d.observaciones,
     );

@@ -7,9 +7,9 @@ import { ScrapingDispatcherService } from './scraping-dispatcher.service';
 import { ScrapingJobsService } from './scraping-jobs.service';
 import { ScrapingRecoveryService } from './scraping-recovery.service';
 import { ScraperDataportalWeb } from './ejecutores/scraper-dataportal-web';
-import { COMPANIAS_SCRAPING_REPOSITORY } from './application/ports/companias-scraping.repository';
+import { CONTRIBUYENTES_SCRAPING_REPOSITORY } from './application/ports/contribuyentes-scraping.repository';
 import { DATAPORTAL_NAVIGATOR } from './application/ports/dataportal-navigator';
-import { PostgresCompaniasScrapingRepository } from './infrastructure/persistence/postgres-companias-scraping.repository';
+import { PostgresContribuyentesScrapingRepository } from './infrastructure/persistence/postgres-contribuyentes-scraping.repository';
 import {
   DATAPORTAL_BROWSER_LAUNCHER,
   PlaywrightDataportalNavigator,
@@ -38,12 +38,12 @@ import { PostgresDataportalObservacionesRepository } from './infrastructure/pers
     ScrapingDispatcherService,
     ScraperSimulado,
     ScraperDataportalWeb,
-    PostgresCompaniasScrapingRepository,
+    PostgresContribuyentesScrapingRepository,
     PostgresDataportalObservacionesRepository,
     PlaywrightDataportalNavigator,
     {
-      provide: COMPANIAS_SCRAPING_REPOSITORY,
-      useExisting: PostgresCompaniasScrapingRepository,
+      provide: CONTRIBUYENTES_SCRAPING_REPOSITORY,
+      useExisting: PostgresContribuyentesScrapingRepository,
     },
     {
       provide: DATAPORTAL_NAVIGATOR,

@@ -13,8 +13,10 @@ migración 9000, y `perfil_comercial` la expone con un índice único.
 Hay dos ejecutores registrados: **simulada**, para probar la maquinaria sin una
 fuente externa, y **dataportal-web**, que inicia sesión en WordPress y deja un
 contexto aislado, navega a la búsqueda, espera la carga AJAX y extrae contactos
-y nómina. El navegador sólo devuelve observaciones normalizadas; el ejecutor
-las reemplaza mediante un puerto de aplicación y reporta sus cantidades.
+y nómina para cualquiera de los tres tipos de sujeto. Las compañías se resuelven
+por expediente; las personas naturales y sociedades no supervisadas, por RUC.
+El navegador sólo devuelve observaciones normalizadas; el ejecutor las
+reemplaza mediante un puerto de aplicación y reporta sus cantidades.
 Cuando el alta no especifica `fuente`, se usa **dataportal-web**; la fuente
 simulada debe pedirse explícitamente.
 
@@ -208,12 +210,12 @@ el día que entre el scraper de verdad.
 
 ## Dónde se comprueba que el sujeto existe
 
-En el alta de **uno solo**, contra la tabla de origen —`companias`,
-`persona_natural`, `sociedad_no_supervisada`—, para que un sujeto importado hace
-diez minutos no se rechace. En el alta **masiva**, contra `perfil_comercial`, que
-es la única con las tres poblaciones en la misma forma y con provincia ya
-calculada; ahí sí da igual que sea materializada, porque un barrido de miles no
-necesita a los últimos que entraron.
+En el alta de **uno solo**, contra la población correspondiente de
+`contribuyentes`, para que un sujeto importado hace diez minutos no se rechace.
+En el alta **masiva**, contra `perfil_comercial`, que es la única con las tres
+poblaciones en la misma forma y con provincia ya calculada; ahí sí da igual que
+sea materializada, porque un barrido de miles no necesita a los últimos que
+entraron.
 
 No hay clave foránea en ninguno de los dos casos: el historial de por qué se
 rastreó algo tiene que sobrevivir a que el sujeto desaparezca del padrón.

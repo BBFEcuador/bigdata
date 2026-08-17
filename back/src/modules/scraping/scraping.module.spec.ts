@@ -1,11 +1,11 @@
 import { MODULE_METADATA } from '@nestjs/common/constants';
-import { COMPANIAS_SCRAPING_REPOSITORY } from './application/ports/companias-scraping.repository';
+import { CONTRIBUYENTES_SCRAPING_REPOSITORY } from './application/ports/contribuyentes-scraping.repository';
 import { DATAPORTAL_NAVIGATOR } from './application/ports/dataportal-navigator';
 import { DATAPORTAL_OBSERVACIONES_REPOSITORY } from './application/ports/dataportal-observaciones.repository';
 import { ScraperDataportalWeb } from './ejecutores/scraper-dataportal-web';
 import { ScraperRegistry } from './ejecutores/scraper.registry';
 import { PlaywrightDataportalNavigator } from './infrastructure/navigation/playwright-dataportal.navigator';
-import { PostgresCompaniasScrapingRepository } from './infrastructure/persistence/postgres-companias-scraping.repository';
+import { PostgresContribuyentesScrapingRepository } from './infrastructure/persistence/postgres-contribuyentes-scraping.repository';
 import { PostgresDataportalObservacionesRepository } from './infrastructure/persistence/postgres-dataportal-observaciones.repository';
 import { ScrapingModule } from './scraping.module';
 
@@ -17,15 +17,15 @@ describe('ScrapingModule', () => {
 
   it('enlaza los puertos con los adaptadores reales', () => {
     expect(providers).toContain(PlaywrightDataportalNavigator);
-    expect(providers).toContain(PostgresCompaniasScrapingRepository);
+    expect(providers).toContain(PostgresContribuyentesScrapingRepository);
     expect(providers).toContain(PostgresDataportalObservacionesRepository);
     expect(providers).toContainEqual({
       provide: DATAPORTAL_NAVIGATOR,
       useExisting: PlaywrightDataportalNavigator,
     });
     expect(providers).toContainEqual({
-      provide: COMPANIAS_SCRAPING_REPOSITORY,
-      useExisting: PostgresCompaniasScrapingRepository,
+      provide: CONTRIBUYENTES_SCRAPING_REPOSITORY,
+      useExisting: PostgresContribuyentesScrapingRepository,
     });
     expect(providers).toContainEqual({
       provide: DATAPORTAL_OBSERVACIONES_REPOSITORY,

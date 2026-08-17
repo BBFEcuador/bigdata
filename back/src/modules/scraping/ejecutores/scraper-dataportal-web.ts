@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  COMPANIAS_SCRAPING_REPOSITORY,
-  CompaniasScrapingRepository,
-} from '../application/ports/companias-scraping.repository';
+  CONTRIBUYENTES_SCRAPING_REPOSITORY,
+  ContribuyentesScrapingRepository,
+} from '../application/ports/contribuyentes-scraping.repository';
 import {
   DATAPORTAL_NAVIGATOR,
   DataportalNavigator,
@@ -18,13 +18,14 @@ import {
   ResumenScraping,
   Scraper,
 } from './scraper.interface';
+import { ETIQUETA_SUJETO } from '../scraping.sujetos';
 
 @Injectable()
 export class ScraperDataportalWeb implements Scraper {
   readonly fuente = 'dataportal-web';
   readonly etiqueta = 'DataPortal web';
   readonly pasos = [
-    'resolviendo_compania',
+    'resolviendo_sujeto',
     'iniciando_sesion',
     'navegando_ruc',
     'consultando_ruc',
@@ -33,8 +34,8 @@ export class ScraperDataportalWeb implements Scraper {
   ] as const;
 
   constructor(
-    @Inject(COMPANIAS_SCRAPING_REPOSITORY)
-    private readonly companias: CompaniasScrapingRepository,
+    @Inject(CONTRIBUYENTES_SCRAPING_REPOSITORY)
+    private readonly contribuyentes: ContribuyentesScrapingRepository,
     @Inject(DATAPORTAL_NAVIGATOR)
     private readonly navegador: DataportalNavigator,
     @Inject(DATAPORTAL_OBSERVACIONES_REPOSITORY)
@@ -42,27 +43,26 @@ export class ScraperDataportalWeb implements Scraper {
   ) {}
 
   async ejecutar(ctx: ContextoScraping): Promise<ResumenScraping> {
-    if (ctx.tipoSujeto !== 'compania') {
+    await ctx.latido({ pct: 0, paso: 'resolviendo_sujeto' });
+    const contribuyente = await this.contribuyentes.buscar(
+      ctx.tipoSujeto,
+      ctx.clave,
+    );
+    if (!contribuyente) {
       throw new ErrorPermanente(
-        'La fuente dataportal-web sólo admite sujetos de tipo compañía',
+        `No existe ${ETIQUETA_SUJETO[ctx.tipoSujeto]} ${ctx.clave}`,
       );
     }
-
-    await ctx.latido({ pct: 0, paso: 'resolviendo_compania' });
-    const compania = await this.companias.buscarPorExpediente(ctx.clave);
-    if (!compania) {
+    if (!contribuyente.ruc?.trim()) {
       throw new ErrorPermanente(
-        `No existe la compañía con expediente ${ctx.clave}`,
+        `${ETIQUETA_SUJETO[ctx.tipoSujeto]} ${ctx.clave} no tiene RUC`,
       );
-    }
-    if (!compania.ruc?.trim()) {
-      throw new ErrorPermanente(`La compañía ${ctx.clave} no tiene RUC`);
     }
 
     await ctx.latido({
       pct: 25,
       paso: 'iniciando_sesion',
-      checkpoint: { contribuyenteId: compania.id },
+      checkpoint: { contribuyenteId: contribuyente.id },
     });
 
     let sesion: SesionDataportal | null = null;
@@ -82,13 +82,13 @@ export class ScraperDataportalWeb implements Scraper {
       const resultado = await this.conLatidoTrasInterrupcion(
         ctx,
         'consultando_ruc',
-        () => sesion!.consultarRuc(compania.ruc!.trim()),
+        () => sesion!.consultarRuc(contribuyente.ruc!.trim()),
       );
       await ctx.latido({ pct: 75, paso: 'extrayendo_observaciones' });
       await ctx.latido({ pct: 85, paso: 'persistiendo_observaciones' });
       await this.observaciones.reemplazar({
-        contribuyenteId: compania.id,
-        ruc: compania.ruc.trim(),
+        contribuyenteId: contribuyente.id,
+        ruc: contribuyente.ruc.trim(),
         contactos: resultado.contactos,
         nomina: resultado.nomina,
       });
