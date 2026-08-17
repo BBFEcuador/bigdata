@@ -4,6 +4,7 @@ export const POBLACIONES_COMPANIAS = [
   'companies',
   'natural_contable',
   'natural_no_contable',
+  'sociedad_no_supervisada',
 ] as const;
 
 export type PoblacionCompanias = (typeof POBLACIONES_COMPANIAS)[number];

@@ -15,7 +15,7 @@ export type CompanyDirectoryFilters = {
   search: string
   provincia: string
   situacionLegal: string
-  tipo: string
+  poblacion: string
   ciiu: string
   catastro: string
   catastroAnio: string
@@ -25,7 +25,7 @@ const EMPTY_FILTERS: CompanyDirectoryFilters = {
   search: '',
   provincia: '',
   situacionLegal: '',
-  tipo: '',
+  poblacion: '',
   ciiu: '',
   catastro: '',
   catastroAnio: '',
@@ -39,7 +39,7 @@ function toApiFilters(filters: CompanyDirectoryFilters): FiltrosCompanias {
     ruc: isRuc ? search : '',
     provincia: filters.provincia,
     situacionLegal: filters.situacionLegal,
-    tipo: filters.tipo,
+    poblacion: filters.poblacion,
     ciiu: filters.ciiu.trim(),
     catastro: filters.catastro,
     catastroAnio: filters.catastroAnio,

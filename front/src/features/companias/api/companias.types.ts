@@ -6,7 +6,7 @@ export type FiltrosCompanias = {
   ruc: string
   provincia: string
   situacionLegal: string
-  tipo: string
+  poblacion: string
   ciiu: string
   catastro: string
   catastroAnio: string
@@ -94,6 +94,7 @@ export type FacetasCompanias = {
   provincias: Faceta[]
   situaciones: Faceta[]
   tipos: Faceta[]
+  poblaciones: Faceta[]
   aniosCatastro?: Record<string, number[]>
 }
 

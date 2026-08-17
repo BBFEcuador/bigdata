@@ -54,7 +54,12 @@ describe('TypeormCompaniasReadRepository', () => {
     await adapter.findForExport({}, 10_000);
 
     expect(qb.andWhere).toHaveBeenCalledWith('c.tipo IN (:...poblaciones)', {
-      poblaciones: ['companies', 'natural_contable', 'natural_no_contable'],
+      poblaciones: [
+        'companies',
+        'natural_contable',
+        'natural_no_contable',
+        'sociedad_no_supervisada',
+      ],
     });
     expect(qb.take).toHaveBeenCalledWith(10_000);
   });

@@ -128,7 +128,7 @@ export class TypeormCompaniasReadRepository implements CompaniasReadRepository {
       await Promise.all([
         this.repository
           .query(`SELECT provincia AS valor, count(*)::bigint AS n FROM contribuyentes
-        WHERE tipo IN ('companies', 'natural_contable', 'natural_no_contable')
+        WHERE tipo IN ('companies', 'natural_contable', 'natural_no_contable', 'sociedad_no_supervisada')
           AND provincia IS NOT NULL AND ausente_desde_job IS NULL GROUP BY provincia ORDER BY n DESC LIMIT 40`),
         this.repository
           .query(`SELECT situacion_legal AS valor, count(*)::bigint AS n FROM contribuyentes
@@ -140,7 +140,7 @@ export class TypeormCompaniasReadRepository implements CompaniasReadRepository {
         GROUP BY tipo_compania ORDER BY n DESC LIMIT 40`),
         this.repository
           .query(`SELECT tipo AS valor, count(*)::bigint AS n FROM contribuyentes
-        WHERE tipo IN ('companies', 'natural_contable', 'natural_no_contable')
+        WHERE tipo IN ('companies', 'natural_contable', 'natural_no_contable', 'sociedad_no_supervisada')
           AND ausente_desde_job IS NULL GROUP BY tipo ORDER BY tipo`),
         aniosPorCatastro((sql) => this.repository.query(sql)),
       ]);
