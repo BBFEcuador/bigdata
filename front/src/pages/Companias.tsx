@@ -37,8 +37,8 @@ export default function Companias() {
             </p>
           </div>
         </div>
-        <Link className="company-segments-link" to="/segmentos">
-          <Target aria-hidden="true" /> Explorar segmentos
+        <Link className="company-segments-link" to="/oportunidades">
+          <Target aria-hidden="true" /> Ver oportunidades
         </Link>
       </header>
 

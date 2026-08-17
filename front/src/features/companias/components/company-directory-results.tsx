@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, Landmark, MapPin, Store, UserRound } from 'lucide-react'
+import { ChevronRight, MapPin, Store } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,12 +20,6 @@ interface CompanyDirectoryResultsProps {
   isLoading: boolean
   onSelect: (subject: CompaniaResumen) => void
   selectedKey: string | null
-}
-
-function SubjectIcon({ type }: { type: string | null }) {
-  if (type?.includes('natural')) return <UserRound aria-hidden="true" />
-  if (type?.includes('no_supervisada')) return <Landmark aria-hidden="true" />
-  return <Building2 aria-hidden="true" />
 }
 
 function Signals({ subject }: { subject: CompaniaResumen }) {
@@ -93,7 +87,6 @@ export function CompanyDirectoryResults({
               type="button"
             >
               <span className="company-result-identity">
-                <span className="company-result-icon"><SubjectIcon type={subject.tipo} /></span>
                 <span className="company-result-name">
                   <strong>{subject.nombre}</strong>
                   <span>{subject.ruc ?? 'RUC no disponible'} · {subjectTypeLabel(subject.tipo)}</span>

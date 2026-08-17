@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Building2, Users } from 'lucide-react'
 import {
   listarPersonas,
   listarProvincias,
@@ -9,6 +10,7 @@ import {
 import { Link } from 'react-router-dom'
 import { MarcasCatastro, NOMBRE_CATASTRO, SelectorCatastro } from '../components/Catastros'
 import BotonRastrear from '../components/BotonRastrear'
+import PageHeader from '../components/PageHeader'
 import '../styles/Padron.css'
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
@@ -278,6 +280,16 @@ export default function PadronLista({ tipo }) {
 
   return (
     <div className="padron">
+      <PageHeader
+        kicker="Padrón del SRI"
+        title={config.titulo}
+        description={tipo === 'sociedades'
+          ? 'Identifica sociedades activas fuera de la supervisión societaria y revisa su contexto operativo.'
+          : 'Segmenta contribuyentes por estado, provincia, actividad y señales del padrón tributario.'}
+        source="Fuente pública"
+        sourceDetail="Servicio de Rentas Internas"
+        icon={tipo === 'sociedades' ? Building2 : Users}
+      />
       <h2>{config.titulo}</h2>
 
       {resumen && (

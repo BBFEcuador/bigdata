@@ -17,7 +17,7 @@ import ImportarCiiu from './pages/ImportarCiiu'
 import ImportarTurismo from './pages/ImportarTurismo'
 import ImportarCatastros from './pages/ImportarCatastros'
 import Importaciones from './pages/Importaciones'
-import Segmentos from './pages/Segmentos'
+import Oportunidades from './pages/Oportunidades'
 import Scraping from './pages/Scraping'
 import { RUTA_INICIAL } from './routes'
 import './styles/App.css'
@@ -56,7 +56,8 @@ function App() {
             element={<PadronLista tipo="personas-inactivas" />}
           />
           <Route path="/padron/sociedades" element={<PadronLista tipo="sociedades" />} />
-          <Route path="/segmentos" element={<Segmentos />} />
+          <Route path="/oportunidades" element={<Oportunidades />} />
+          <Route path="/segmentos" element={<Navigate to="/oportunidades" replace />} />
           <Route path="/scraping" element={<Scraping />} />
           <Route path="/importar/companias" element={<ImportarCompanias />} />
           <Route path="/importar/balances" element={<ImportarBalances />} />

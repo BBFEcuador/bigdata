@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { GitBranch } from 'lucide-react'
 import { listarActividades, obtenerResumenCiiu } from '../services/ciiu.service'
+import PageHeader from '../components/PageHeader'
 import '../styles/Ciiu.css'
 
 const num = n => (n ?? 0).toLocaleString('es-EC')
@@ -43,6 +45,14 @@ export default function Ciiu() {
 
   return (
     <div className="ciiu">
+      <PageHeader
+        kicker="Clasificación económica"
+        title="Catálogo CIIU"
+        description="Explora actividades económicas y abre las compañías asociadas a cada código."
+        source="Clasificación CIIU"
+        sourceDetail="Catálogo de actividades económicas"
+        icon={GitBranch}
+      />
       <h2>Catálogo CIIU</h2>
       <p className="ayuda">Actividades económicas. Pulsa el número de compañías para verlas.</p>
 
